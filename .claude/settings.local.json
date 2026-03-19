@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(npm --version)",
+      "Bash(pnpm --version)",
+      "Bash(docker --version)",
+      "Bash(docker compose:*)",
+      "Bash(git --version)",
+      "WebFetch(domain:linestep.jp)",
+      "WebFetch(domain:linelab.jp)",
+      "Bash(git init:*)",
+      "Bash(pnpm install:*)",
+      "Bash(npx @nestjs/cli@latest new api --directory apps/api --package-manager pnpm --skip-git --skip-install --strict --language ts)",
+      "Bash(pnpm dlx:*)",
+      "Bash(1:*)",
+      "Bash(pnpm approve-builds:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(pnpm add:*)",
+      "Bash(npx nest:*)",
+      "Bash(npx next:*)"
+    ]
+  }
+}
