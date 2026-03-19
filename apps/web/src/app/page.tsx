@@ -95,28 +95,44 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="lp-hero">
-        <div className="lp-hero-badge">AI-Powered LINE Marketing</div>
-        <h1>
-          LINE公式アカウントを<br />
-          <span className="accent">AIが自動で運用</span>します
-        </h1>
-        <p className="lp-hero-sub">
-          構築も運用もAIにおまかせ。外注費・コンサル費・人件費を大幅カットしながら、エルメ・エルステップ以上の成果を。
-        </p>
-        <div className="lp-hero-actions">
-          <Link href="/signup" className="btn-primary btn-large">
-            無料で始める →
-          </Link>
-          <a href="#pricing" className="btn-secondary btn-large">料金を見る</a>
+        <div className="aurora-bg">
+          <div className="aurora-blob green" />
+          <div className="aurora-blob coral" />
+          <div className="aurora-blob amber" />
         </div>
-        <p className="lp-hero-note">クレジットカード不要 / 14日間無料トライアル</p>
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div className="lp-hero-badge">AI-Powered LINE Marketing</div>
+          <h1>
+            LINE公式アカウントを<br />
+            <span className="gradient-text">AIが自動で運用</span>します
+          </h1>
+          <p className="lp-hero-sub">
+            構築も運用もAIにおまかせ。外注費・コンサル費・人件費を大幅カットしながら、エルメ・エルステップ以上の成果を。
+          </p>
+          <div className="lp-hero-actions">
+            <Link href="/signup" className="btn-primary btn-large">
+              無料で始める →
+            </Link>
+            <a href="#pricing" className="btn-secondary btn-large">料金を見る</a>
+          </div>
+          <p className="lp-hero-note">クレジットカード不要 / 14日間無料トライアル</p>
+        </div>
+        <div className="lp-hero-visual">
+          <img
+            src="https://images.unsplash.com/photo-1551434678-e076c223a692?w=1200&h=600&fit=crop&q=80"
+            alt="Team working on marketing dashboard"
+          />
+        </div>
       </section>
 
       {/* Cost Comparison */}
       <section className="lp-comparison">
         <div className="lp-comparison-inner" ref={compRef}>
           <div className="reveal">
-            <h2>総コストを大幅に削減</h2>
+            <div className="accent-dots" style={{ justifyContent: 'center' }}>
+              <span /><span /><span />
+            </div>
+            <h2>総コストを<span className="gradient-text">大幅に削減</span></h2>
           </div>
           <div className="lp-comparison-cards reveal" style={{ transitionDelay: '0.2s' }}>
             <div className="lp-comparison-card before">
@@ -143,7 +159,7 @@ export default function LandingPage() {
         <div className="lp-features-inner" ref={featRef}>
           <div className="reveal">
             <span className="section-label">Features</span>
-            <h2 className="section-title">AI時代のLINEマーケティング</h2>
+            <h2 className="section-title"><span className="gradient-text">AI時代</span>のLINEマーケティング</h2>
             <p className="section-sub">エルメの手軽さ + エルステップの高機能 + AIによる革新</p>
           </div>
           <div className="lp-features-grid stagger-children" ref={useReveal()}>
@@ -183,7 +199,7 @@ export default function LandingPage() {
         <div className="lp-pricing-inner" ref={pricingRef}>
           <div className="reveal">
             <span className="section-label">Pricing</span>
-            <h2 className="section-title">プランが上がるほど、人件費が下がる</h2>
+            <h2 className="section-title">プランが上がるほど、<span className="gradient-text">人件費が下がる</span></h2>
             <p className="section-sub">AI活用度に応じた4つのプラン</p>
           </div>
           <div className="lp-pricing-grid stagger-children" ref={useReveal()}>
