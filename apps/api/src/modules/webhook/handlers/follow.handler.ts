@@ -1,8 +1,10 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
+import { eq, and } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../../database/database.module';
 import { FriendsService } from '../../friends/friends.service';
 import { LineService } from '../../line/line.service';
-import { lineAccounts } from '@line-saas/db';
+import { StepsService } from '../../steps/steps.service';
+import { lineAccounts, stepScenarios } from '@line-saas/db';
 
 @Injectable()
 export class FollowHandler {
@@ -12,6 +14,7 @@ export class FollowHandler {
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     private readonly friendsService: FriendsService,
     private readonly lineService: LineService,
+    private readonly stepsService: StepsService,
   ) {}
 
   async handle(
@@ -33,7 +36,7 @@ export class FollowHandler {
     }
 
     // Upsert friend
-    await this.friendsService.upsertFriend({
+    const friend = await this.friendsService.upsertFriend({
       tenantId: account.tenantId,
       lineAccountId: account.id,
       lineUserId: userId,
@@ -44,5 +47,26 @@ export class FollowHandler {
       isFollowing: true,
       followedAt: new Date(),
     });
+
+    // Auto-enroll in active "follow" trigger scenarios
+    try {
+      const followScenarios = await this.db
+        .select()
+        .from(stepScenarios)
+        .where(
+          and(
+            eq(stepScenarios.tenantId, account.tenantId),
+            eq(stepScenarios.triggerType, 'follow'),
+            eq(stepScenarios.isActive, true),
+          ),
+        );
+
+      for (const scenario of followScenarios) {
+        await this.stepsService.enrollFriend(friend.id, scenario.id);
+        this.logger.log(`Enrolled friend ${friend.id} in scenario ${scenario.name}`);
+      }
+    } catch (error) {
+      this.logger.error(`Auto-enrollment failed: ${error}`);
+    }
   }
 }

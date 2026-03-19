@@ -7,6 +7,7 @@ import { FriendsModule } from './modules/friends/friends.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AccountsModule } from './modules/accounts/accounts.module';
 import { AiModule } from './modules/ai/ai.module';
+import { StepsModule } from './modules/steps/steps.module';
 import { validateEnv } from './config/env.validation';
 
 @Module({
@@ -20,6 +21,7 @@ import { validateEnv } from './config/env.validation';
     AuthModule,
     AccountsModule,
     AiModule,
+    StepsModule,
     WebhookModule,
     FriendsModule,
   ],
