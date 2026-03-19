@@ -19,8 +19,8 @@
     {
       "name": "web",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["node_modules/next/dist/bin/next", "dev", "--turbopack", "-p", "3000"],
-      "port": 3000,
+      "runtimeArgs": ["node_modules/next/dist/bin/next", "dev", "--turbopack", "-p", "3600"],
+      "port": 3600,
       "cwd": "apps/web",
       "env": {
         "NEXT_PUBLIC_API_URL": "http://localhost:3001"

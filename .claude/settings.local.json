@@ -21,7 +21,8 @@
       "Bash(pnpm add:*)",
       "Bash(npx nest:*)",
       "Bash(npx next:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(xargs wc:*)"
     ]
   }
 }
