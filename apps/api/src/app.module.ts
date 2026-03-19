@@ -8,6 +8,9 @@ import { AuthModule } from './modules/auth/auth.module';
 import { AccountsModule } from './modules/accounts/accounts.module';
 import { AiModule } from './modules/ai/ai.module';
 import { StepsModule } from './modules/steps/steps.module';
+import { FormsModule } from './modules/forms/forms.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { TagsModule } from './modules/tags/tags.module';
 import { validateEnv } from './config/env.validation';
 
 @Module({
@@ -22,6 +25,9 @@ import { validateEnv } from './config/env.validation';
     AccountsModule,
     AiModule,
     StepsModule,
+    FormsModule,
+    AnalyticsModule,
+    TagsModule,
     WebhookModule,
     FriendsModule,
   ],
