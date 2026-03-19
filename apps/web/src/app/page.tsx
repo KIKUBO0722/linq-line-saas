@@ -117,7 +117,7 @@ export default function LandingPage() {
           <div className="lp-social-avatars">
             <img src="/images/lp/1.png" alt="" className="lp-avatar" />
             <img src="/images/lp/10.png" alt="" className="lp-avatar" />
-            <img src="/images/lp/11.png" alt="" className="lp-avatar" />
+            <img src="/images/lp/8.png" alt="" className="lp-avatar" />
             <img src="/images/lp/5.png" alt="" className="lp-avatar" />
           </div>
         </div>
@@ -248,20 +248,20 @@ export default function LandingPage() {
             </div>
             <div className="lp-case-card">
               <div className="lp-case-photo">
-                <img src="/images/lp/11.png" alt="レストランオーナー" />
+                <img src="/images/lp/10.png" alt="カフェオーナー" />
               </div>
               <div className="lp-case-body">
-                <span className="lp-case-tag">飲食店</span>
+                <span className="lp-case-tag">飲食店・カフェ</span>
                 <h4>予約キャンセルほぼゼロ</h4>
                 <p>リマインド配信と当日メッセージの自動化で、無断キャンセルを大幅に削減。空席率の改善に成功。</p>
               </div>
             </div>
             <div className="lp-case-card">
               <div className="lp-case-photo">
-                <img src="/images/lp/10.png" alt="カフェ店員" />
+                <img src="/images/lp/8.png" alt="チームで分析" />
               </div>
               <div className="lp-case-body">
-                <span className="lp-case-tag">カフェ</span>
+                <span className="lp-case-tag">ECサイト</span>
                 <h4>友だち紹介で月50人増加</h4>
                 <p>お友だち紹介プログラムでバイラル成長。クーポン自動配布で紹介者もハッピー。広告費¥0で集客。</p>
               </div>
@@ -295,7 +295,7 @@ export default function LandingPage() {
                 <p>チャネル情報を入力するだけ</p>
               </div>
               <div className="lp-step-photo">
-                <img src="/images/lp/12.png" alt="手元でセットアップ作業" />
+                <img src="/images/lp/6.png" alt="PCでセットアップ作業" />
               </div>
             </div>
             <div className="lp-step-row">
