@@ -20,7 +20,8 @@
       "Bash(git commit:*)",
       "Bash(pnpm add:*)",
       "Bash(npx nest:*)",
-      "Bash(npx next:*)"
+      "Bash(npx next:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }
