@@ -11,6 +11,8 @@ import { StepsModule } from './modules/steps/steps.module';
 import { FormsModule } from './modules/forms/forms.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { TagsModule } from './modules/tags/tags.module';
+import { ReferralModule } from './modules/referral/referral.module';
+import { BillingModule } from './modules/billing/billing.module';
 import { validateEnv } from './config/env.validation';
 
 @Module({
@@ -28,6 +30,8 @@ import { validateEnv } from './config/env.validation';
     FormsModule,
     AnalyticsModule,
     TagsModule,
+    ReferralModule,
+    BillingModule,
     WebhookModule,
     FriendsModule,
   ],
