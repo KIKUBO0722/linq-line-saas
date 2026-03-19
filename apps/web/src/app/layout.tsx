@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'LINE SaaS - AI-Powered LINE Marketing Platform',
+  title: 'LinQ｜LINE運用を、もっと速く、もっと簡単に',
   description:
-    'AIがLINE公式アカウントの運用を自動化。ステップ配信、セグメント配信、顧客管理、AI自動応答を1つのプラットフォームで。',
+    'LinQはAIがLINE公式アカウントの運用を自動化するSaaSプラットフォーム。AI自動応答、ステップ配信、顧客管理・分析を1つのツールで。構築も運用もAIにおまかせ。',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

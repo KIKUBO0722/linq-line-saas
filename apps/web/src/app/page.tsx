@@ -5,25 +5,23 @@ import Link from 'next/link';
 import './landing.css';
 
 /* ── Image mapping ──
-  1.png  = ユミ: 美容院入口で腕組み
-  2.png  = ユミ: レセプションでリラックス
-  3.png  = ユミ: サムズアップ
-  4.png  = ユミ: 施術中
-  5.png  = マイ: カフェでスマホ
-  6.png  = マイ: コワーキングでPC
-  7.png  = マイ: 自宅ソファでスマホ
-  8.png  = チーム: モニター前
-  9.png  = チーム: スマホを一緒に見る
-  10.png = タクヤ: カフェ店員スマホ
-  11.png = シェフ: レストランオーナー
-  12.png = 手元: セットアップ
+  1.png  = ユミ: 美容院入口で腕組み (ヒーロー)
+  2.png  = ユミ: レセプションでリラックス (コスト比較)
+  3.png  = ユミ: サムズアップ (CTA)
+  4.png  = ユミ: 施術中 (導入事例)
+  5.png  = マイ: カフェでスマホ (紹介)
+  6.png  = マイ: コワーキングでPC (ステップ配信)
+  7.png  = マイ: 自宅ソファでスマホ (ステップ1)
+  8.png  = チーム: モニター前 (顧客管理)
+  9.png  = チーム: スマホを一緒に見る (オンボーディング)
+  10.png = タクヤ: カフェ店員スマホ (AI自動応答)
 */
 
 const plans = [
-  { name: 'Free', price: '¥0', period: '', features: ['友だち100人', '1,000通/月', 'AI応答50回/月', 'ステップ配信1個'], cta: '無料で始める', popular: false },
-  { name: 'Start', price: '¥5,000', period: '/月', features: ['友だち500人', '5,000通/月', 'AI応答500回/月', 'ステップ配信5個', 'LINEコスト可視化'], cta: '14日間無料トライアル', popular: false },
-  { name: 'Standard', price: '¥15,000', period: '/月', features: ['友だち5,000人', '30,000通/月', 'AI応答5,000回/月', '無制限ステップ配信', 'AI顧客分析', '外部Webhook'], cta: '14日間無料トライアル', popular: true },
-  { name: 'Pro', price: '¥30,000', period: '/月', features: ['友だち50,000人', '100,000通/月', 'AI応答無制限', 'AIオンボーディング', 'AI配信最適化', '全機能無制限'], cta: '14日間無料トライアル', popular: false },
+  { name: 'Free', price: '¥0', period: '', features: ['友だち100人', '1,000通/月', 'AI応答50回/月', 'ステップ配信1個'], cta: '無料で始める', popular: false, saving: '' },
+  { name: 'Start', price: '¥5,000', period: '/月', features: ['友だち500人', '5,000通/月', 'AI応答500回/月', 'ステップ配信5個', 'LINEコスト可視化'], cta: '14日間無料トライアル', popular: false, saving: 'スタッフ月10〜20h節約' },
+  { name: 'Standard', price: '¥15,000', period: '/月', features: ['友だち5,000人', '30,000通/月', 'AI応答5,000回/月', '無制限ステップ配信', 'AI顧客分析', '外部Webhook'], cta: '14日間無料トライアル', popular: true, saving: 'コンサル代 月5〜20万円削減' },
+  { name: 'Pro', price: '¥30,000', period: '/月', features: ['友だち50,000人', '100,000通/月', 'AI応答無制限', 'AIオンボーディング', 'AI配信最適化', '全機能無制限'], cta: '14日間無料トライアル', popular: false, saving: '外注+運用 月25〜55万円削減' },
 ];
 
 const faqs = [
@@ -64,14 +62,16 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 export default function LandingPage() {
   return (
     <div className="landing">
-      {/* ────── Header ────── */}
+      {/* ════════ Header ════════ */}
       <header className="lp-header">
-        <Link href="/" className="lp-header-logo">LINE SaaS</Link>
+        <Link href="/" className="lp-header-logo">
+          <span className="logo-lin">Lin</span><span className="logo-q">Q</span>
+        </Link>
         <nav>
           <ul className="lp-header-nav">
+            <li><a href="#pricing">料金</a></li>
             <li><a href="#features">機能</a></li>
             <li><a href="#use-cases">導入事例</a></li>
-            <li><a href="#pricing">料金</a></li>
             <li><a href="#faq">FAQ</a></li>
           </ul>
         </nav>
@@ -81,7 +81,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* ────── Hero: ユミ (美容院オーナー) ────── */}
+      {/* ════════ Hero ════════ */}
       <section className="lp-hero">
         <div className="aurora-bg">
           <div className="aurora-blob green" />
@@ -92,11 +92,12 @@ export default function LandingPage() {
           <div className="lp-hero-text">
             <div className="lp-hero-badge">AI-Powered LINE Marketing</div>
             <h1>
-              LINE公式アカウントを<br />
-              <span className="gradient-text">AIが自動で運用</span>します
+              LINE運用を、もっと<span className="gradient-text">速く</span>、<br />
+              もっと<span className="gradient-text">簡単に</span>。
             </h1>
             <p className="lp-hero-sub">
-              構築も運用もAIにおまかせ。外注費・コンサル費・人件費を大幅カット。
+              構築も運用もAIにおまかせ。<br />
+              外注費・コンサル費・人件費を大幅カット。
             </p>
             <div className="lp-hero-actions">
               <Link href="/signup" className="btn-primary btn-large">無料で始める →</Link>
@@ -110,125 +111,116 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ────── Social Proof ────── */}
-      <section className="lp-social-proof" ref={useReveal()}>
-        <div className="reveal">
-          <p className="lp-social-text">美容院・飲食店・ECサイト — <strong>あらゆる業種</strong>のLINE運用を変える</p>
-          <div className="lp-social-avatars">
-            <img src="/images/lp/1.png" alt="" className="lp-avatar" />
-            <img src="/images/lp/10.png" alt="" className="lp-avatar" />
-            <img src="/images/lp/8.png" alt="" className="lp-avatar" />
-            <img src="/images/lp/5.png" alt="" className="lp-avatar" />
+      {/* ════════ Trial Banner (メルカリ式キャンペーンバナー) ════════ */}
+      <section className="lp-trial-banner" ref={useReveal()}>
+        <div className="lp-trial-inner reveal">
+          <div className="lp-trial-content">
+            <span className="lp-trial-badge">期間限定</span>
+            <h3>全プラン <span className="gradient-text">14日間無料</span> トライアル</h3>
+            <p>クレジットカード不要ですぐに始められます。AI自動応答を体験してください。</p>
           </div>
+          <Link href="/signup" className="btn-primary btn-large">今すぐ試す →</Link>
         </div>
       </section>
 
-      {/* ────── Cost Comparison: ユミがリラックス ────── */}
-      <section className="lp-comparison">
-        <div className="lp-comparison-inner" ref={useReveal()}>
+      {/* ════════ Pricing (メルカリ式: 早い段階で料金を見せる) ════════ */}
+      <section className="lp-pricing" id="pricing">
+        <div className="lp-pricing-inner" ref={useReveal()}>
           <div className="reveal">
-            <div className="accent-dots" style={{ justifyContent: 'center' }}><span /><span /><span /></div>
-            <h2>総コストを<span className="gradient-text">大幅に削減</span></h2>
+            <span className="section-label">Pricing</span>
+            <h2 className="section-title">プランが上がるほど、<span className="gradient-text">人件費が下がる</span></h2>
+            <p className="section-sub">AI活用度に応じた4つのプラン</p>
           </div>
-          <div className="lp-comparison-visual reveal" style={{ transitionDelay: '0.2s' }}>
-            <div className="lp-comparison-cards">
-              <div className="lp-comparison-card before">
-                <div className="lp-comparison-label">従来型の運用</div>
-                <div className="lp-comparison-price">月25〜55万円</div>
-                <div className="lp-comparison-desc">ツール代 + LINE課金 + 構築外注<br />+ コンサル + 運用スタッフ</div>
+          <div className="lp-pricing-grid stagger-children" ref={useReveal()}>
+            {plans.map((plan) => (
+              <div key={plan.name} className={`lp-plan-card ${plan.popular ? 'popular' : ''}`}>
+                {plan.popular && <div className="lp-plan-badge">人気No.1</div>}
+                <div className="lp-plan-name">{plan.name}</div>
+                <div className="lp-plan-price">{plan.price}</div>
+                <div className="lp-plan-period">{plan.period || '永久無料'}</div>
+                {plan.saving && <div className="lp-plan-saving">{plan.saving}</div>}
+                <ul className="lp-plan-features">
+                  {plan.features.map((f) => (<li key={f}>{f}</li>))}
+                </ul>
+                <Link href="/signup" className="lp-plan-cta">{plan.cta}</Link>
               </div>
-              <div className="lp-comparison-arrow">→</div>
-              <div className="lp-comparison-card after">
-                <div className="lp-comparison-label">LINE SaaS Pro</div>
-                <div className="lp-comparison-price">月5〜8万円</div>
-                <div className="lp-comparison-desc">ツール代 + LINE課金のみ<br />AIが構築・運用・最適化を担当</div>
-              </div>
-            </div>
-            <div className="lp-comparison-photo">
-              <img src="/images/lp/2.png" alt="サロンでリラックスするオーナー" />
-              <p className="lp-photo-caption">「AIが対応してくれるから、施術に集中できるようになりました」</p>
-            </div>
+            ))}
+          </div>
+
+          {/* 実質コスト比較テーブル */}
+          <div className="lp-cost-table reveal" ref={useReveal()}>
+            <h3>従来型との総コスト比較</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th />
+                  <th>従来型運用</th>
+                  <th>LinQ Pro</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>ツール代</td><td>¥10,000〜30,000</td><td>¥30,000</td></tr>
+                <tr><td>LINE課金</td><td>¥5,000〜15,000</td><td>¥5,000〜15,000</td></tr>
+                <tr><td>構築外注</td><td>¥300,000〜1,000,000 (初回)</td><td className="linq-free">¥0 (AIが構築)</td></tr>
+                <tr><td>コンサル費</td><td>¥50,000〜200,000/月</td><td className="linq-free">¥0 (AIが提案)</td></tr>
+                <tr><td>運用スタッフ</td><td>¥200,000〜300,000/月</td><td className="linq-free">¥0 (AIが運用)</td></tr>
+                <tr className="total-row"><td>月額合計</td><td className="old-total">月25〜55万円</td><td className="new-total">月3.5〜4.5万円</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
 
-      {/* ────── Features (写真交互レイアウト) ────── */}
+      {/* ════════ 3 Features (メルカリ式: 3つの魅力) ════════ */}
       <section className="lp-features" id="features">
         <div className="lp-features-inner">
           <div className="reveal" ref={useReveal()} style={{ textAlign: 'center', marginBottom: '64px' }}>
-            <span className="section-label">Features</span>
+            <span className="section-label">LinQの3つの強み</span>
             <h2 className="section-title"><span className="gradient-text">AI時代</span>のLINEマーケティング</h2>
-            <p className="section-sub">エルメの手軽さ + エルステップの高機能 + AIによる革新</p>
           </div>
 
-          {/* Feature 1: AI自動応答 — タクヤ(カフェ店員) */}
+          {/* Feature 1: AI自動応答 */}
           <div className="lp-feature-row reveal" ref={useReveal()}>
             <div className="lp-feature-photo">
-              <img src="/images/lp/10.png" alt="カフェ店員がスマホを確認" />
+              <img src="/images/lp/10.png" alt="カフェ店員がスマホを確認して安心している" />
             </div>
             <div className="lp-feature-content">
               <div className="accent-line" />
               <h3>AI自動応答</h3>
               <p className="lp-feature-lead">24時間、AIがお客様対応。<br />あなたは本業に集中するだけ。</p>
-              <p>ナレッジベースを学習したAIが的確に回答。予約受付、メニュー案内、よくある質問への対応を全自動化。Reply API利用で応答コスト¥0。</p>
+              <p>ナレッジベースを学習したAIが的確に回答。予約受付、メニュー案内、よくある質問への対応を全自動化。Reply API利用で応答コスト¥0。対応できない質問はスタッフに自動引き継ぎ。</p>
             </div>
           </div>
 
-          {/* Feature 2: ステップ配信 — マイ(PC作業) */}
+          {/* Feature 2: ステップ配信 + シナリオ自動構築 */}
           <div className="lp-feature-row reverse reveal" ref={useReveal()}>
             <div className="lp-feature-photo">
-              <img src="/images/lp/6.png" alt="コワーキングスペースでPCに向かう女性" />
+              <img src="/images/lp/6.png" alt="コワーキングスペースでマーケティングを管理" />
             </div>
             <div className="lp-feature-content">
               <div className="accent-line" />
-              <h3>ステップ配信</h3>
-              <p className="lp-feature-lead">友だち追加から自動で<br />最適なシナリオを配信。</p>
-              <p>条件分岐で一人ひとりに合わせたタイミングでメッセージを届けます。AIがあなたの業種に最適なシナリオを自動提案。</p>
+              <h3>AIが作るステップ配信</h3>
+              <p className="lp-feature-lead">ビジネス情報を入力するだけ。<br />シナリオもAIが自動構築。</p>
+              <p>友だち追加→フォローアップ→クーポン→リマインド。条件分岐も含めた最適なシナリオをAIが業種に合わせて自動提案。外注費¥0、構築時間5分。</p>
             </div>
           </div>
 
-          {/* Feature 3: 顧客管理 — チーム(モニター) */}
+          {/* Feature 3: 顧客管理・分析 */}
           <div className="lp-feature-row reveal" ref={useReveal()}>
             <div className="lp-feature-photo">
-              <img src="/images/lp/8.png" alt="チームでモニターを見ながら分析" />
+              <img src="/images/lp/8.png" alt="チームでダッシュボードを見ながら分析" />
             </div>
             <div className="lp-feature-content">
               <div className="accent-line" />
-              <h3>顧客管理・分析</h3>
+              <h3>AI顧客分析</h3>
               <p className="lp-feature-lead">タグ・スコアリングで<br />顧客を完全に可視化。</p>
-              <p>AIが会話履歴から興味・ニーズ・温度感を自動分析。配信実績、友だち推移、流入経路をリアルタイムで把握し、次のアクションを提案。</p>
-            </div>
-          </div>
-
-          {/* Feature 4: AIオンボーディング — チーム(スマホ) */}
-          <div className="lp-feature-row reverse reveal" ref={useReveal()}>
-            <div className="lp-feature-photo">
-              <img src="/images/lp/9.png" alt="チームでスマホを見ながら設定" />
-            </div>
-            <div className="lp-feature-content">
-              <div className="accent-line" />
-              <h3>AIオンボーディング</h3>
-              <p className="lp-feature-lead">ビジネス情報を入力するだけ。<br />5分で全て自動構築。</p>
-              <p>AIがリッチメニュー、挨拶メッセージ、ステップ配信シナリオ、アンケートフォームを一括生成。外注費¥0、構築時間5分。</p>
-            </div>
-          </div>
-
-          {/* Feature 5: お友だち紹介 — マイ(カフェ×スマホ) */}
-          <div className="lp-feature-row reveal" ref={useReveal()}>
-            <div className="lp-feature-photo">
-              <img src="/images/lp/5.png" alt="カフェでスマホを見て微笑む女性" />
-            </div>
-            <div className="lp-feature-content">
-              <div className="accent-line" />
-              <h3>お友だち紹介プログラム</h3>
-              <p className="lp-feature-lead">友だちが友だちを紹介。<br />自動でバイラル成長。</p>
-              <p>紹介リンク生成、報酬自動配布、紹介経路トラッキング。紹介者・被紹介者の両方にメリットがある仕組みを簡単に構築できます。</p>
+              <p>AIが会話履歴から興味・ニーズ・温度感を自動分析。配信実績、友だち推移、流入経路をリアルタイムで把握し、次のアクションを提案します。</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ────── Use Cases (導入事例) ────── */}
+      {/* ════════ Use Cases (導入事例) ════════ */}
       <section className="lp-use-cases" id="use-cases">
         <div className="lp-use-cases-inner" ref={useReveal()}>
           <div className="reveal" style={{ textAlign: 'center', marginBottom: '64px' }}>
@@ -258,7 +250,7 @@ export default function LandingPage() {
             </div>
             <div className="lp-case-card">
               <div className="lp-case-photo">
-                <img src="/images/lp/8.png" alt="チームで分析" />
+                <img src="/images/lp/5.png" alt="スマホでLINE運用を管理" />
               </div>
               <div className="lp-case-body">
                 <span className="lp-case-tag">ECサイト</span>
@@ -270,84 +262,39 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ────── How it Works (ステップ) ────── */}
+      {/* ════════ How it Works ════════ */}
       <section className="lp-steps">
         <div className="lp-steps-inner" ref={useReveal()}>
-          <div className="reveal">
+          <div className="reveal" style={{ textAlign: 'center', marginBottom: '48px' }}>
             <span className="section-label">How it Works</span>
-            <h2 className="section-title">5分で始められる</h2>
+            <h2 className="section-title"><span className="gradient-text">5分</span>で始められる</h2>
           </div>
-          <div className="lp-steps-visual reveal" ref={useReveal()}>
-            <div className="lp-step-row">
-              <div className="lp-step-card">
-                <div className="lp-step-number">1</div>
-                <h4>アカウント作成</h4>
-                <p>メールアドレスで簡単登録</p>
-              </div>
-              <div className="lp-step-photo">
-                <img src="/images/lp/7.png" alt="自宅でスマホ登録" />
-              </div>
+          <div className="lp-steps-flow reveal" ref={useReveal()}>
+            <div className="lp-step-item">
+              <div className="lp-step-number">1</div>
+              <h4>アカウント作成</h4>
+              <p>メールアドレスで簡単登録</p>
             </div>
-            <div className="lp-step-row reverse">
-              <div className="lp-step-card">
-                <div className="lp-step-number">2</div>
-                <h4>LINE接続</h4>
-                <p>チャネル情報を入力するだけ</p>
-              </div>
-              <div className="lp-step-photo">
-                <img src="/images/lp/6.png" alt="PCでセットアップ作業" />
-              </div>
+            <div className="lp-step-item">
+              <div className="lp-step-number">2</div>
+              <h4>LINE接続</h4>
+              <p>チャネル情報を入力するだけ</p>
             </div>
-            <div className="lp-step-row">
-              <div className="lp-step-card">
-                <div className="lp-step-number">3</div>
-                <h4>AIが自動構築</h4>
-                <p>業種に合わせて全て自動設定</p>
-              </div>
-              <div className="lp-step-photo">
-                <img src="/images/lp/8.png" alt="チームでモニターを確認" />
-              </div>
+            <div className="lp-step-item">
+              <div className="lp-step-number">3</div>
+              <h4>AIが自動構築</h4>
+              <p>業種に合わせて全て自動設定</p>
             </div>
-            <div className="lp-step-row reverse">
-              <div className="lp-step-card">
-                <div className="lp-step-number">4</div>
-                <h4>運用開始</h4>
-                <p>すぐにLINEマーケティング開始</p>
-              </div>
-              <div className="lp-step-photo">
-                <img src="/images/lp/3.png" alt="サムズアップするオーナー" />
-              </div>
+            <div className="lp-step-item">
+              <div className="lp-step-number">4</div>
+              <h4>運用開始</h4>
+              <p>すぐにLINEマーケティング開始</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ────── Pricing ────── */}
-      <section className="lp-pricing" id="pricing">
-        <div className="lp-pricing-inner" ref={useReveal()}>
-          <div className="reveal">
-            <span className="section-label">Pricing</span>
-            <h2 className="section-title">プランが上がるほど、<span className="gradient-text">人件費が下がる</span></h2>
-            <p className="section-sub">AI活用度に応じた4つのプラン</p>
-          </div>
-          <div className="lp-pricing-grid stagger-children" ref={useReveal()}>
-            {plans.map((plan) => (
-              <div key={plan.name} className={`lp-plan-card ${plan.popular ? 'popular' : ''}`}>
-                {plan.popular && <div className="lp-plan-badge">人気No.1</div>}
-                <div className="lp-plan-name">{plan.name}</div>
-                <div className="lp-plan-price">{plan.price}</div>
-                <div className="lp-plan-period">{plan.period || '永久無料'}</div>
-                <ul className="lp-plan-features">
-                  {plan.features.map((f) => (<li key={f}>{f}</li>))}
-                </ul>
-                <Link href="/signup" className="lp-plan-cta">{plan.cta}</Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ────── FAQ ────── */}
+      {/* ════════ FAQ ════════ */}
       <section className="lp-faq" id="faq">
         <div className="lp-faq-inner" ref={useReveal()}>
           <div className="reveal" style={{ textAlign: 'center', marginBottom: '48px' }}>
@@ -360,7 +307,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ────── CTA: ユミ(サムズアップ) ────── */}
+      {/* ════════ CTA ════════ */}
       <section className="lp-cta">
         <div className="aurora-bg">
           <div className="aurora-blob green" />
@@ -368,8 +315,8 @@ export default function LandingPage() {
         </div>
         <div className="lp-cta-inner reveal" ref={useReveal()}>
           <div className="lp-cta-text">
-            <h2>今すぐ始めましょう</h2>
-            <p>5分でセットアップ完了。AIがあなたのLINE運用を変えます。</p>
+            <h2>LinQで、LINE運用を変えよう</h2>
+            <p>5分でセットアップ完了。AIがあなたのビジネスを加速させます。</p>
             <Link href="/signup" className="btn-white">無料で始める →</Link>
           </div>
           <div className="lp-cta-photo">
@@ -378,9 +325,23 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ────── Footer ────── */}
+      {/* ════════ Footer ════════ */}
       <footer className="lp-footer">
-        © 2026 LINE SaaS — AI-Powered LINE Marketing Platform
+        <div className="lp-footer-inner">
+          <div className="lp-footer-brand">
+            <span className="logo-lin">Lin</span><span className="logo-q">Q</span>
+            <p>LINE運用を、もっと速く、もっと簡単に。</p>
+          </div>
+          <div className="lp-footer-links">
+            <a href="#pricing">料金</a>
+            <a href="#features">機能</a>
+            <a href="#use-cases">導入事例</a>
+            <a href="#faq">FAQ</a>
+          </div>
+        </div>
+        <div className="lp-footer-bottom">
+          © 2026 LinQ — AI-Powered LINE Marketing Platform
+        </div>
       </footer>
     </div>
   );

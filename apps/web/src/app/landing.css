@@ -1,6 +1,10 @@
-/* ===== Landing Page Styles ===== */
+/* ===== LinQ Landing Page Styles ===== */
 /* Colors: LINE Green #06C755, Dark Navy #1A1A2E, Soft Gray #F7F8FA */
 /* Accent: Coral #FF6B6B, Amber #FFB347 — used in aurora blobs */
+
+/* LinQ Logo */
+.logo-lin { font-weight: 700; color: #1A1A2E; }
+.logo-q { font-weight: 800; color: #06C755; }
 
 /* Reset & Base */
 .landing * {
@@ -986,12 +990,161 @@
 }
 
 /* ===== Footer ===== */
-.lp-footer {
-  padding: 40px;
-  background: #1A1A2E;
-  color: rgba(255, 255, 255, 0.4);
+/* ===== Trial Banner ===== */
+.lp-trial-banner {
+  padding: 0 40px;
+  margin-top: -40px;
+  position: relative;
+  z-index: 2;
+}
+
+.lp-trial-inner {
+  max-width: 1000px;
+  margin: 0 auto;
+  background: linear-gradient(135deg, #1A1A2E 0%, #2d2d4e 100%);
+  border-radius: 20px;
+  padding: 40px 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  color: #fff;
+  box-shadow: 0 12px 40px rgba(26, 26, 46, 0.3);
+}
+
+.lp-trial-badge {
+  display: inline-block;
+  background: linear-gradient(90deg, #FF6B6B, #FFB347);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 20px;
+  margin-bottom: 8px;
+}
+
+.lp-trial-content h3 {
+  font-size: 22px;
+  margin-bottom: 6px;
+}
+
+.lp-trial-content p {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ===== Cost Table ===== */
+.lp-cost-table {
+  max-width: 700px;
+  margin: 64px auto 0;
   text-align: center;
+}
+
+.lp-cost-table h3 {
+  font-size: 20px;
+  margin-bottom: 24px;
+}
+
+.lp-cost-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.lp-cost-table th,
+.lp-cost-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.lp-cost-table th {
+  font-weight: 600;
   font-size: 13px;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.lp-cost-table th:nth-child(2) { color: #FF6B6B; }
+.lp-cost-table th:nth-child(3) { color: #06C755; }
+
+.linq-free {
+  color: #06C755;
+  font-weight: 600;
+}
+
+.total-row td {
+  font-weight: 700;
+  font-size: 16px;
+  border-top: 2px solid #1A1A2E;
+  padding-top: 16px;
+}
+
+.old-total { color: #FF6B6B; }
+.new-total { color: #06C755; }
+
+/* ===== Plan Saving Badge ===== */
+.lp-plan-saving {
+  background: linear-gradient(90deg, rgba(6, 199, 85, 0.1), rgba(255, 179, 71, 0.1));
+  color: #06C755;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  display: inline-block;
+}
+
+/* ===== Footer (updated) ===== */
+.lp-footer {
+  padding: 60px 40px 24px;
+  background: #1A1A2E;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
+}
+
+.lp-footer-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 40px;
+}
+
+.lp-footer-brand {
+  font-size: 24px;
+}
+
+.lp-footer-brand .logo-lin { color: #fff; }
+.lp-footer-brand .logo-q { color: #06C755; }
+
+.lp-footer-brand p {
+  font-size: 13px;
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.lp-footer-links {
+  display: flex;
+  gap: 24px;
+}
+
+.lp-footer-links a {
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.2s;
+}
+
+.lp-footer-links a:hover { color: #06C755; }
+
+.lp-footer-bottom {
+  text-align: center;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.3);
 }
 
 /* ===== Responsive ===== */
@@ -1004,6 +1157,9 @@
   .lp-comparison-cards { grid-template-columns: 1fr; gap: 16px; }
   .lp-comparison-arrow { transform: rotate(90deg); padding: 8px; }
   .lp-header-nav { display: none; }
+  .lp-trial-inner { flex-direction: column; text-align: center; padding: 32px 24px; }
+  .lp-cost-table { overflow-x: auto; }
+  .lp-footer-inner { flex-direction: column; gap: 24px; align-items: center; text-align: center; }
 }
 
 @media (max-width: 600px) {
