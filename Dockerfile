@@ -41,6 +41,8 @@ COPY --from=base /app/packages/db packages/db
 
 WORKDIR /app/apps/api
 
+ENV NODE_OPTIONS="--dns-result-order=ipv4first"
+
 EXPOSE 3601
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "--dns-result-order=ipv4first", "dist/main.js"]
