@@ -129,4 +129,13 @@ export class FriendsController {
     const result = await this.friendsService.updateCustomFields(id, body);
     return { ok: true, customFields: result };
   }
+
+  @Patch(':id/chat-status')
+  async updateChatStatus(
+    @Param('id') id: string,
+    @Body() body: { status: string },
+  ) {
+    await this.friendsService.updateChatStatus(id, body.status);
+    return { ok: true };
+  }
 }

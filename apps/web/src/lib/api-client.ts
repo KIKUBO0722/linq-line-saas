@@ -37,6 +37,8 @@ export const api = {
     },
     getById: (id: string) => fetchApi<any>(`/api/v1/friends/${id}`),
     sync: () => fetchApi<{ synced: number }>('/api/v1/friends/sync', { method: 'POST' }),
+    updateChatStatus: (id: string, status: string) =>
+      fetchApi(`/api/v1/friends/${id}/chat-status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
     listTags: (friendId: string) => fetchApi<any[]>(`/api/v1/friends/${friendId}/tags`),
     assignTag: (friendId: string, tagId: string) =>
       fetchApi(`/api/v1/friends/${friendId}/tags`, { method: 'POST', body: JSON.stringify({ tagId }) }),
@@ -221,5 +223,15 @@ export const api = {
       fetchApi(`/api/v1/rich-menus/groups/${id}/default`, { method: 'POST' }),
     assignToUser: (data: { friendId: string; richMenuId: string }) =>
       fetchApi('/api/v1/rich-menus/assign', { method: 'POST', body: JSON.stringify(data) }),
+  },
+
+  greetings: {
+    list: () => fetchApi<any[]>('/api/v1/greetings'),
+    create: (data: { type: string; name: string; messages: any[]; isActive?: boolean }) =>
+      fetchApi('/api/v1/greetings', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: { name?: string; messages?: any[]; isActive?: boolean }) =>
+      fetchApi(`/api/v1/greetings/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      fetchApi(`/api/v1/greetings/${id}`, { method: 'DELETE' }),
   },
 };

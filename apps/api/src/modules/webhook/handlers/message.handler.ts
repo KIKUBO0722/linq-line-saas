@@ -57,9 +57,10 @@ export class MessageHandler {
       });
     }
 
-    // Update engagement score (+1 for sending a message)
+    // Update engagement score (+1 for sending a message) and mark as unread
     if (friend?.id) {
       await this.friendsService.updateScore(friend.id, 1);
+      await this.friendsService.updateChatStatus(friend.id, 'unread');
     }
 
     // Store inbound message

@@ -22,6 +22,17 @@ export class FriendsService {
 
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
+  async findByLineUserId(lineAccountId: string, lineUserId: string) {
+    const [friend] = await this.db
+      .select()
+      .from(friends)
+      .where(
+        and(eq(friends.lineAccountId, lineAccountId), eq(friends.lineUserId, lineUserId)),
+      )
+      .limit(1);
+    return friend ?? null;
+  }
+
   async upsertFriend(dto: UpsertFriendDto) {
     const existing = await this.db
       .select()
@@ -66,6 +77,13 @@ export class FriendsService {
       .returning();
 
     return newFriend;
+  }
+
+  async updateChatStatus(friendId: string, status: string) {
+    await this.db
+      .update(friends)
+      .set({ chatStatus: status })
+      .where(eq(friends.id, friendId));
   }
 
   async markUnfollowed(lineAccountId: string, lineUserId: string) {

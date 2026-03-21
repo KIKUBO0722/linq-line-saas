@@ -5,6 +5,7 @@ import { FriendsService } from '../../friends/friends.service';
 import { LineService } from '../../line/line.service';
 import { StepsService } from '../../steps/steps.service';
 import { AiService } from '../../ai/ai.service';
+import { GreetingsService } from '../../greetings/greetings.service';
 import { lineAccounts, stepScenarios } from '@line-saas/db';
 
 @Injectable()
@@ -17,6 +18,7 @@ export class FollowHandler {
     private readonly lineService: LineService,
     private readonly stepsService: StepsService,
     private readonly aiService: AiService,
+    private readonly greetingsService: GreetingsService,
   ) {}
 
   async handle(
@@ -37,6 +39,13 @@ export class FollowHandler {
       this.logger.warn(`Failed to get profile for ${userId}: ${error}`);
     }
 
+    // Check if this is a re-follow (user previously unfollowed/blocked)
+    const existingFriend = await this.friendsService.findByLineUserId(
+      account.id,
+      userId,
+    );
+    const isReFollow = existingFriend?.unfollowedAt != null;
+
     // Upsert friend
     const friend = await this.friendsService.upsertFriend({
       tenantId: account.tenantId,
@@ -56,17 +65,34 @@ export class FollowHandler {
       await this.friendsService.updateScore(friend.id, 5);
     }
 
-    // Send welcome message if configured
+    // Send greeting message (priority: greeting_messages > aiConfig.welcomeMessage)
     try {
-      const aiConfig = await this.aiService.getConfig(account.tenantId);
-      if (aiConfig?.welcomeMessage) {
-        await this.lineService.pushMessage(credentials, userId, [
-          { type: 'text', text: aiConfig.welcomeMessage },
-        ]);
-        this.logger.log(`Sent welcome message to ${userId}`);
+      const greetingType = isReFollow ? 're_follow' : 'new_follow';
+      const greeting = await this.greetingsService.getByType(
+        account.tenantId,
+        greetingType,
+      );
+
+      if (greeting && Array.isArray(greeting.messages) && greeting.messages.length > 0) {
+        // Use greeting_messages template
+        await this.lineService.pushMessage(
+          credentials,
+          userId,
+          greeting.messages as any[],
+        );
+        this.logger.log(`Sent ${greetingType} greeting to ${userId}`);
+      } else {
+        // Fallback to AI config welcome message
+        const aiConfig = await this.aiService.getConfig(account.tenantId);
+        if (aiConfig?.welcomeMessage) {
+          await this.lineService.pushMessage(credentials, userId, [
+            { type: 'text', text: aiConfig.welcomeMessage },
+          ]);
+          this.logger.log(`Sent welcome message (fallback) to ${userId}`);
+        }
       }
     } catch (error) {
-      this.logger.error(`Failed to send welcome message: ${error}`);
+      this.logger.error(`Failed to send greeting: ${error}`);
     }
 
     // Auto-enroll in active "follow" trigger scenarios

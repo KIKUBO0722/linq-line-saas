@@ -15,3 +15,4 @@ export * from './templates';
 export * from './segments';
 export * from './coupons';
 export * from './reservations';
+export * from './greetings';

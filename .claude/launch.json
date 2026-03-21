@@ -4,15 +4,15 @@
     {
       "name": "api",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["dist/main.js"],
+      "runtimeArgs": ["dist/src/main.js"],
       "port": 3601,
       "cwd": "apps/api",
       "env": {
         "SESSION_SECRET": "line-saas-dev-session-secret-2026",
         "ENCRYPTION_KEY": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6",
-        "DATABASE_URL": "postgresql://postgres:iom4tH0M8hbKyNOq@db.xukshmqcfsqtubfaduii.supabase.co:5432/postgres",
-        "API_URL": "https://dustier-perry-amusively.ngrok-free.dev",
-        "WEB_URL": "http://localhost:3000",
+        "DATABASE_URL": "postgresql://postgres:Bor9fgAkIvhNiJ4T@db.xukshmqcfsqtubfaduii.supabase.co:5432/postgres",
+        "API_URL": "https://linq-line-saas.onrender.com",
+        "WEB_URL": "http://localhost:3600",
         "API_PORT": "3601",
         "REDIS_URL": "redis://localhost:6379",
         "GEMINI_API_KEY": "AIzaSyBzAWVNrg0aGansNx2ILyXMHq6oe7UjCCU"

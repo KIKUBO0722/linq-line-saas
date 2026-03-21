@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import {
   Bot, Save, Sparkles, Brain, Shield, TrendingUp,
-  Plus, Trash2, ArrowRight, MessageCircleReply,
+  Plus, Trash2, ArrowRight, MessageCircleReply, HandMetal,
 } from 'lucide-react';
+import { api } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -58,12 +59,18 @@ export default function AiPage() {
   // Handoff keywords
   const [newHandoff, setNewHandoff] = useState('');
 
+  // Greeting messages
+  const [greetings, setGreetings] = useState<any[]>([]);
+  const [greetingForm, setGreetingForm] = useState<{ type: string; name: string; text: string } | null>(null);
+  const [savingGreeting, setSavingGreeting] = useState(false);
+
   useEffect(() => {
     fetch(`${API_BASE}/api/v1/ai/config`, { credentials: 'include' })
       .then((r) => r.json())
       .then(setConfig)
       .catch(() => {})
       .finally(() => setLoading(false));
+    api.greetings.list().then(setGreetings).catch(() => {});
   }, []);
 
   // Listen for AI Copilot fill events
@@ -268,6 +275,7 @@ export default function AiPage() {
           <TabsTrigger value="keyword-rules">キーワード応答</TabsTrigger>
           <TabsTrigger value="knowledge">ナレッジベース</TabsTrigger>
           <TabsTrigger value="generate">AI生成ツール</TabsTrigger>
+          <TabsTrigger value="greetings">あいさつメッセージ</TabsTrigger>
         </TabsList>
 
         {/* Tab 1: Auto-reply config */}
@@ -595,6 +603,160 @@ export default function AiPage() {
                   </pre>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 5: Greeting Messages */}
+        <TabsContent value="greetings" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">あいさつメッセージ設定</CardTitle>
+              <CardDescription>
+                友だち追加時に自動送信されるメッセージを設定します。新規・再フォロー・ブロック解除の3種類を個別に設定できます。
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Greeting types */}
+              {[
+                { type: 'new_follow', label: '新規友だち追加', desc: '初めて友だち追加した人へ送信' },
+                { type: 're_follow', label: '再フォロー（ブロック解除後）', desc: 'ブロック解除して再フォローした人へ送信' },
+              ].map((gt) => {
+                const existing = greetings.find((g) => g.type === gt.type);
+                const isEditing = greetingForm?.type === gt.type;
+
+                return (
+                  <div key={gt.type} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <h4 className="text-sm font-semibold">{gt.label}</h4>
+                        <p className="text-xs text-muted-foreground">{gt.desc}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {existing && (
+                          <Switch
+                            checked={existing.isActive}
+                            onCheckedChange={async (checked) => {
+                              await api.greetings.update(existing.id, { isActive: checked });
+                              setGreetings((prev) =>
+                                prev.map((g) => (g.id === existing.id ? { ...g, isActive: checked } : g)),
+                              );
+                            }}
+                          />
+                        )}
+                        {!isEditing && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setGreetingForm({
+                                type: gt.type,
+                                name: existing?.name || gt.label,
+                                text: existing?.messages?.[0]?.text || '',
+                              })
+                            }
+                          >
+                            {existing ? '編集' : '作成'}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {existing && !isEditing && (
+                      <div className="bg-muted/50 rounded p-3 mt-2">
+                        <p className="text-sm whitespace-pre-wrap">
+                          {existing.messages?.[0]?.text || '(メッセージ未設定)'}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge variant={existing.isActive ? 'default' : 'secondary'}>
+                            {existing.isActive ? '有効' : '無効'}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive h-7 text-xs"
+                            onClick={async () => {
+                              if (!confirm('このあいさつメッセージを削除しますか？')) return;
+                              await api.greetings.delete(existing.id);
+                              setGreetings((prev) => prev.filter((g) => g.id !== existing.id));
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            削除
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {isEditing && (
+                      <div className="space-y-3 mt-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">管理名</Label>
+                          <Input
+                            value={greetingForm.name}
+                            onChange={(e) => setGreetingForm({ ...greetingForm, name: e.target.value })}
+                            placeholder="例: 新規友だちあいさつ"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">メッセージ本文</Label>
+                          <Textarea
+                            value={greetingForm.text}
+                            onChange={(e) => setGreetingForm({ ...greetingForm, text: e.target.value })}
+                            placeholder="友だち追加ありがとうございます！&#10;ご質問やご予約はこちらからお気軽にどうぞ。"
+                            rows={4}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            disabled={savingGreeting || !greetingForm.text.trim()}
+                            onClick={async () => {
+                              setSavingGreeting(true);
+                              try {
+                                const messages = [{ type: 'text', text: greetingForm.text }];
+                                if (existing) {
+                                  const updated = await api.greetings.update(existing.id, {
+                                    name: greetingForm.name,
+                                    messages,
+                                  });
+                                  setGreetings((prev) =>
+                                    prev.map((g) => (g.id === existing.id ? updated : g)),
+                                  );
+                                } else {
+                                  const created = await api.greetings.create({
+                                    type: greetingForm.type,
+                                    name: greetingForm.name,
+                                    messages,
+                                  });
+                                  setGreetings((prev) => [...prev, created]);
+                                }
+                                setGreetingForm(null);
+                              } catch {
+                                alert('保存に失敗しました');
+                              } finally {
+                                setSavingGreeting(false);
+                              }
+                            }}
+                          >
+                            <Save className="h-4 w-4 mr-1" />
+                            {savingGreeting ? '保存中...' : '保存'}
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setGreetingForm(null)}>
+                            キャンセル
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              <Separator />
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>あいさつメッセージが設定されていない場合、AI設定のウェルカムメッセージが代わりに送信されます。</p>
+                <p>あいさつメッセージはLINEのPush APIで送信されるため、配信数にカウントされます。</p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

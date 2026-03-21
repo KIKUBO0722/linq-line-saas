@@ -26,6 +26,7 @@ export const friends = pgTable(
     acquisitionSource: varchar('acquisition_source', { length: 50 }),
     profileSyncedAt: timestamp('profile_synced_at', { withTimezone: true }),
     lastReadAt: timestamp('last_read_at', { withTimezone: true }),
+    chatStatus: varchar('chat_status', { length: 20 }).notNull().default('unread'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [

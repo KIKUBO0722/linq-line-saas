@@ -20,6 +20,7 @@ import { TemplatesModule } from './modules/templates/templates.module';
 import { SegmentsModule } from './modules/segments/segments.module';
 import { CouponsModule } from './modules/coupons/coupons.module';
 import { ReservationsModule } from './modules/reservations/reservations.module';
+import { GreetingsModule } from './modules/greetings/greetings.module';
 import { validateEnv } from './config/env.validation';
 
 @Module({
@@ -48,6 +49,7 @@ import { validateEnv } from './config/env.validation';
     SegmentsModule,
     CouponsModule,
     ReservationsModule,
+    GreetingsModule,
   ],
 })
 export class AppModule {}

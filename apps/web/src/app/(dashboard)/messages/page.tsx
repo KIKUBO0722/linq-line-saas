@@ -112,6 +112,7 @@ export default function MessagesPage() {
   const [broadcastContent, setBroadcastContent] = useState('');
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'unread' | 'confirmed'>('all');
   const [loadingFriends, setLoadingFriends] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [scheduledAt, setScheduledAt] = useState('');
@@ -440,7 +441,7 @@ export default function MessagesPage() {
             <div className="flex h-[600px]">
               {/* Friends sidebar */}
               <div className="w-72 border-r flex flex-col">
-                <div className="p-3 border-b">
+                <div className="p-3 border-b space-y-2">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -451,6 +452,26 @@ export default function MessagesPage() {
                       className="pl-9"
                     />
                   </div>
+                  <div className="flex gap-1">
+                    {[
+                      { value: 'all' as const, label: '全て' },
+                      { value: 'unread' as const, label: '未確認' },
+                      { value: 'confirmed' as const, label: '確認済み' },
+                    ].map((f) => (
+                      <button
+                        key={f.value}
+                        onClick={() => setStatusFilter(f.value)}
+                        className={cn(
+                          'text-[11px] px-2 py-0.5 rounded-full border transition-colors',
+                          statusFilter === f.value
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'text-muted-foreground border-border hover:bg-muted',
+                        )}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <ScrollArea className="flex-1">
                   {loadingFriends ? (
@@ -460,10 +481,22 @@ export default function MessagesPage() {
                   ) : friends.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-8">友だちがいません</p>
                   ) : (
-                    friends.map((friend) => (
+                    friends
+                      .filter((f) => {
+                        if (statusFilter === 'unread') return f.chatStatus === 'unread' || hasUnread(f.id);
+                        if (statusFilter === 'confirmed') return f.chatStatus === 'confirmed';
+                        return true;
+                      })
+                      .map((friend) => (
                       <button
                         key={friend.id}
-                        onClick={() => setSelectedFriend(friend)}
+                        onClick={() => {
+                          setSelectedFriend(friend);
+                          if (friend.chatStatus === 'unread') {
+                            api.friends.updateChatStatus(friend.id, 'confirmed').catch(() => {});
+                            setFriends((prev) => prev.map((f) => f.id === friend.id ? { ...f, chatStatus: 'confirmed' } : f));
+                          }
+                        }}
                         className={cn(
                           'w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/50 transition-colors',
                           selectedFriend?.id === friend.id && 'bg-muted'

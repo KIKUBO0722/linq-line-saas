@@ -120,7 +120,26 @@
       "Bash(curl -s -X POST http://localhost:3601/api/v1/auth/signup -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"admin@linq.jp\"\",\"\"password\"\":\"\"linq2026\"\"}')",
       "Bash(curl -s -X POST http://localhost:3601/api/v1/auth/signup -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"admin@linq.jp\"\",\"\"password\"\":\"\"linq2026\"\",\"\"name\"\":\"\"管理者\"\",\"\"tenantName\"\":\"\"テストサロンA\"\"}')",
       "Bash(node -e \"const postgres = require\\(''postgres''\\); const sql = postgres\\(''postgresql://postgres:iom4tH0M8hbKyNOq@db.xukshmqcfsqtubfaduii.supabase.co:5432/postgres''\\); sql.unsafe\\(\"\"UPDATE tenants SET name = ''テストサロンA'' WHERE name LIKE ''%X%g%''\"\"\\).then\\(r => { console.log\\(''Updated:'', r.count\\); return sql.unsafe\\(\"\"SELECT name FROM tenants\"\"\\); }\\).then\\(r => { console.log\\(''Tenants:'', JSON.stringify\\(r\\)\\); sql.end\\(\\); }\\).catch\\(e => { console.error\\(e.message\\); sql.end\\(\\); }\\)\")",
-      "Bash(where.exe gh:*)"
+      "Bash(where.exe gh:*)",
+      "Bash(npx --package pg -c \"node -e \"\"const { Pool } = require\\(''pg''\\); const pool = new Pool\\({ connectionString: ''postgresql://postgres:iom4tH0M8hbKyNOq@db.xukshmqcfsqtubfaduii.supabase.co:5432/postgres'' }\\); pool.query\\(''SELECT id, bot_name, channel_id FROM line_accounts LIMIT 5''\\).then\\(r => { console.log\\(JSON.stringify\\(r.rows, null, 2\\)\\); pool.end\\(\\); }\\);\"\"\")",
+      "mcp__2efe1002-fe16-4faa-b231-2769016abe8b__execute_sql",
+      "Bash(find /c/dev/LINEsupport/node_modules -path *postgres* -name *.d.ts -o -name README*)",
+      "Bash(curl -s http://localhost:3601/api/v1/accounts)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:Bor9fgAkIvhNiJ4T@db.xukshmqcfsqtubfaduii.supabase.co:5432/postgres\" SESSION_SECRET=\"line-saas-dev-session-secret-2026\" ENCRYPTION_KEY=\"a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6\" API_URL=\"https://linq-line-saas.onrender.com\" WEB_URL=\"http://localhost:3600\" API_PORT=\"3601\" GEMINI_API_KEY=\"AIzaSyBzAWVNrg0aGansNx2ILyXMHq6oe7UjCCU\" node dist/main.js)",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(curl -s -c /tmp/cookies.txt http://localhost:3601/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"\"email\"\":\"\"admin@linq.jp\"\",\"\"password\"\":\"\"admin123\"\"}')",
+      "Bash(curl -s -b /tmp/cookies.txt http://localhost:3601/api/v1/messages/unread-summary)",
+      "Bash(curl -s -c /tmp/cookies.txt http://localhost:3601/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"\"email\"\":\"\"admin@linq.jp\"\",\"\"password\"\":\"\"password123\"\"}')",
+      "Bash(curl -s -b \"connect.sid=s%3A...\" http://localhost:3601/api/v1/messages/unread-summary)",
+      "Bash(curl -s http://localhost:3601/api/v1/messages/unread-summary)",
+      "Bash(PGPASSWORD=\"Bor9fgAkIvhNiJ4T\" psql \"postgresql://postgres:Bor9fgAkIvhNiJ4T@db.xukshmqcfsqtubfaduii.supabase.co:5432/postgres\" -c \"ALTER TABLE friends ADD COLUMN IF NOT EXISTS last_read_at timestamp with time zone;\")",
+      "Bash(npx tsx -e \":*)",
+      "Bash(NEXT_PUBLIC_API_URL=\"http://localhost:3601\" node node_modules/next/dist/bin/next dev --turbopack -p 3600)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3600)",
+      "Bash(curl -s http://localhost:3601/api/v1/messages/unread-summary -H \"Cookie: connect.sid=test\")",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //PID 37720 //F)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:Bor9fgAkIvhNiJ4T@db.xukshmqcfsqtubfaduii.supabase.co:5432/postgres\" SESSION_SECRET=\"line-saas-dev-session-secret-2026\" ENCRYPTION_KEY=\"a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6\" API_URL=\"https://linq-line-saas.onrender.com\" WEB_URL=\"http://localhost:3600\" API_PORT=\"3601\" GEMINI_API_KEY=\"AIzaSyBzAWVNrg0aGansNx2ILyXMHq6oe7UjCCU\" node dist/src/main.js)"
     ]
   }
 }
