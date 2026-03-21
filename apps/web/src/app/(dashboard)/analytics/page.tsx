@@ -277,7 +277,7 @@ export default function AnalyticsPage() {
                     日付を選択して「取得」をクリックしてください
                   </p>
                   <p className="text-xs text-muted-foreground/60 mt-1">
-                    LINE APIの仕様上、当日のデータは取得できません
+                    LINE Insight APIの仕様上、前日以前のデータのみ取得可能です
                   </p>
                 </div>
               ) : (

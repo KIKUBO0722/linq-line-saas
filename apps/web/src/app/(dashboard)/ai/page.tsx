@@ -238,7 +238,7 @@ export default function AiPage() {
             <Bot className="h-8 w-8 text-purple-600" />
             <div>
               <p className="font-medium text-sm">AI自動応答</p>
-              <p className="text-xs text-muted-foreground">Reply API使用で費用0円</p>
+              <p className="text-xs text-muted-foreground">LINEへの自動返信は追加費用なし</p>
             </div>
           </CardContent>
         </Card>

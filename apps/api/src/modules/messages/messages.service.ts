@@ -1,5 +1,5 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import { eq, and, desc, lte, isNotNull } from 'drizzle-orm';
+import { eq, and, desc, gt, lte, isNotNull } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { messages, friends, lineAccounts } from '@line-saas/db';
 import { LineService } from '../line/line.service';
@@ -20,6 +20,59 @@ export class MessagesService {
       .where(and(eq(messages.tenantId, tenantId), eq(messages.friendId, friendId)))
       .orderBy(desc(messages.createdAt))
       .limit(100);
+  }
+
+  /**
+   * Mark a friend's messages as read by updating lastReadAt.
+   */
+  async markAsRead(tenantId: string, friendId: string) {
+    await this.db
+      .update(friends)
+      .set({ lastReadAt: new Date() })
+      .where(and(eq(friends.id, friendId), eq(friends.tenantId, tenantId)));
+  }
+
+  /**
+   * Get unread summary: count inbound messages after lastReadAt per friend.
+   * totalUnread = total unread message count across all friends.
+   */
+  async getUnreadSummary(tenantId: string) {
+    const allFriends = await this.db
+      .select({ id: friends.id, lastReadAt: friends.lastReadAt })
+      .from(friends)
+      .where(eq(friends.tenantId, tenantId));
+
+    let totalUnread = 0;
+    const unreadFriends: Array<{ friendId: string; unreadCount: number; lastMessage: any; createdAt: string }> = [];
+
+    for (const friend of allFriends) {
+      const conditions = [
+        eq(messages.tenantId, tenantId),
+        eq(messages.friendId, friend.id),
+        eq(messages.direction, 'inbound'),
+      ];
+      if (friend.lastReadAt) {
+        conditions.push(gt(messages.createdAt, friend.lastReadAt));
+      }
+
+      const inboundMsgs = await this.db
+        .select()
+        .from(messages)
+        .where(and(...conditions))
+        .orderBy(desc(messages.createdAt));
+
+      if (inboundMsgs.length > 0) {
+        totalUnread += inboundMsgs.length;
+        unreadFriends.push({
+          friendId: friend.id,
+          unreadCount: inboundMsgs.length,
+          lastMessage: inboundMsgs[0].content,
+          createdAt: inboundMsgs[0].createdAt?.toISOString() || '',
+        });
+      }
+    }
+
+    return { totalUnread, unreadFriends };
   }
 
   async sendToFriend(tenantId: string, friendId: string, text: string) {

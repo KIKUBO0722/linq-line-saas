@@ -42,6 +42,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function ReservationsPage() {
+  const [tab, setTab] = useState('reservations');
   const [slots, setSlots] = useState<Slot[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -255,7 +256,7 @@ export default function ReservationsPage() {
         <p className="text-sm text-muted-foreground">予約メニューの管理と予約の受付・確認</p>
       </div>
 
-      <Tabs defaultValue="reservations">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="reservations">予約一覧</TabsTrigger>
           <TabsTrigger value="slots">メニュー管理</TabsTrigger>

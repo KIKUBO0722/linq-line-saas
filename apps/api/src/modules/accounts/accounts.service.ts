@@ -1,5 +1,5 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { Injectable, Inject, ForbiddenException } from '@nestjs/common';
+import { eq, and } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { lineAccounts } from '@line-saas/db';
 import { ConfigService } from '@nestjs/config';
@@ -39,5 +39,20 @@ export class AccountsService {
   async findById(id: string) {
     const [account] = await this.db.select().from(lineAccounts).where(eq(lineAccounts.id, id)).limit(1);
     return account;
+  }
+
+  async delete(tenantId: string, id: string) {
+    const [account] = await this.db
+      .select()
+      .from(lineAccounts)
+      .where(and(eq(lineAccounts.id, id), eq(lineAccounts.tenantId, tenantId)))
+      .limit(1);
+
+    if (!account) {
+      throw new ForbiddenException('アカウントが見つかりません');
+    }
+
+    await this.db.delete(lineAccounts).where(and(eq(lineAccounts.id, id), eq(lineAccounts.tenantId, tenantId)));
+    return { success: true };
   }
 }

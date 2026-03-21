@@ -11,6 +11,17 @@ export class MessagesController {
     private readonly billingService: BillingService,
   ) {}
 
+  @Get('unread-summary')
+  async unreadSummary(@Req() req: any) {
+    return this.messagesService.getUnreadSummary(req.tenantId);
+  }
+
+  @Post('read/:friendId')
+  async markAsRead(@Req() req: any, @Param('friendId') friendId: string) {
+    await this.messagesService.markAsRead(req.tenantId, friendId);
+    return { success: true };
+  }
+
   @Get('conversation/:friendId')
   async conversation(@Req() req: any, @Param('friendId') friendId: string) {
     return this.messagesService.getConversation(req.tenantId, friendId);

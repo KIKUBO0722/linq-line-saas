@@ -69,7 +69,7 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string | null })
   );
 }
 
-function NavAccordion({ group, pathname }: { group: NavGroup; pathname: string | null }) {
+function NavAccordion({ group, pathname, badge, onBadgeClear }: { group: NavGroup; pathname: string | null; badge?: number; onBadgeClear?: () => void }) {
   const childActive = group.items.some(
     (i) => pathname === i.href || pathname?.startsWith(i.href + '/'),
   );
@@ -80,10 +80,20 @@ function NavAccordion({ group, pathname }: { group: NavGroup; pathname: string |
     if (childActive) setOpen(true);
   }, [childActive]);
 
+  function handleToggle() {
+    const willOpen = !open;
+    setOpen(willOpen);
+    // Clear parent badge when expanding
+    if (willOpen && onBadgeClear) onBadgeClear();
+  }
+
+  // Badge is hidden when accordion is open (child badges take over)
+  const showParentBadge = !open && badge !== undefined && badge > 0;
+
   return (
     <div>
       <button
-        onClick={() => setOpen(!open)}
+        onClick={handleToggle}
         className={cn(
           'flex items-center gap-2.5 px-3 py-2 rounded-md text-[13px] font-medium transition-colors w-full',
           childActive ? 'text-white' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200',
@@ -91,12 +101,19 @@ function NavAccordion({ group, pathname }: { group: NavGroup; pathname: string |
       >
         <group.icon className="h-4 w-4 shrink-0" />
         <span className="flex-1 text-left">{group.label}</span>
+        {showParentBadge && (
+          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white px-1">
+            {badge > 99 ? '99+' : badge}
+          </span>
+        )}
         <ChevronDown className={cn('h-3 w-3 transition-transform duration-200', open && 'rotate-180')} />
       </button>
       {open && (
         <div className="ml-4 pl-2.5 border-l border-slate-700/50 space-y-0.5 mt-0.5 mb-1">
           {group.items.map((item) => {
             const active = pathname === item.href || pathname?.startsWith(item.href + '/');
+            // Show badge on "チャット" sub-item
+            const itemBadge = item.href === '/messages' ? badge : undefined;
             return (
               <Link
                 key={item.href}
@@ -109,7 +126,12 @@ function NavAccordion({ group, pathname }: { group: NavGroup; pathname: string |
                 )}
               >
                 <item.icon className="h-3.5 w-3.5 shrink-0" />
-                {item.name}
+                <span className="flex-1">{item.name}</span>
+                {itemBadge !== undefined && itemBadge > 0 && (
+                  <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white px-1">
+                    {itemBadge > 99 ? '99+' : itemBadge}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -126,6 +148,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [user, setUser] = useState<any>(null);
   const [tenant, setTenant] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     api.auth.me()
@@ -137,6 +160,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .catch(() => router.push('/login'))
       .finally(() => setLoading(false));
   }, [router]);
+
+  const isOnMessages = pathname?.startsWith('/messages') ?? false;
+
+  // Poll for unread messages every 15 seconds (only when NOT on messages page)
+  useEffect(() => {
+    if (!user || isOnMessages) return;
+    let mounted = true;
+    function checkUnread() {
+      api.messages
+        .unreadSummary()
+        .then((data) => {
+          if (mounted) setUnreadCount(data.totalUnread ?? 0);
+        })
+        .catch(() => {});
+    }
+    checkUnread();
+    const interval = setInterval(checkUnread, 15000);
+    return () => { mounted = false; clearInterval(interval); };
+  }, [user, isOnMessages]);
+
+  // Clear sidebar badge when navigating to messages page
+  useEffect(() => {
+    if (isOnMessages) setUnreadCount(0);
+  }, [isOnMessages]);
 
   if (loading) {
     return (
@@ -169,7 +216,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <nav className="flex flex-col gap-0.5 py-2">
             {navigation.map((entry) =>
               isGroup(entry) ? (
-                <NavAccordion key={entry.label} group={entry} pathname={pathname} />
+                <NavAccordion key={entry.label} group={entry} pathname={pathname} badge={entry.label === 'メッセージ' ? unreadCount : undefined} onBadgeClear={entry.label === 'メッセージ' ? () => {} : undefined} />
               ) : (
                 <NavLink key={entry.href} item={entry} pathname={pathname} />
               ),

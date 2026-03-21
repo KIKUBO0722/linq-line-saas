@@ -25,6 +25,7 @@ export const friends = pgTable(
     trafficSourceId: uuid('traffic_source_id'),
     acquisitionSource: varchar('acquisition_source', { length: 50 }),
     profileSyncedAt: timestamp('profile_synced_at', { withTimezone: true }),
+    lastReadAt: timestamp('last_read_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [

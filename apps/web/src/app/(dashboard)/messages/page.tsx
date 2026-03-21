@@ -145,15 +145,64 @@ export default function MessagesPage() {
       .finally(() => setLoadingFriends(false));
   }, [search]);
 
+  // Unread tracking via API
+  const [unreadFriendIds, setUnreadFriendIds] = useState<Set<string>>(new Set());
+
+  // Fetch unread summary on mount and every 15s (exclude currently selected friend)
+  useEffect(() => {
+    let mounted = true;
+    function fetchUnread() {
+      api.messages.unreadSummary().then(data => {
+        if (mounted) {
+          const ids = new Set(data.unreadFriends.map((f: any) => f.friendId));
+          // Don't show badge for the friend currently being viewed
+          if (selectedFriend) ids.delete(selectedFriend.id);
+          setUnreadFriendIds(ids);
+        }
+      }).catch(() => {});
+    }
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 15000);
+    return () => { mounted = false; clearInterval(interval); };
+  }, [selectedFriend]);
+
   useEffect(() => {
     if (!selectedFriend) return;
     setLoadingMessages(true);
+    // Mark as read in DB and fetch conversation
+    api.messages.markAsRead(selectedFriend.id).catch(() => {});
     api.messages
       .conversation(selectedFriend.id)
-      .then(setMessages)
+      .then((msgs) => {
+        setMessages(msgs);
+        // Mark this friend as read locally
+        setUnreadFriendIds(prev => {
+          const next = new Set(prev);
+          next.delete(selectedFriend.id);
+          return next;
+        });
+      })
       .catch(() => {})
       .finally(() => setLoadingMessages(false));
   }, [selectedFriend]);
+
+  // Poll current conversation every 5 seconds
+  useEffect(() => {
+    if (!selectedFriend) return;
+    const interval = setInterval(() => {
+      api.messages
+        .conversation(selectedFriend.id)
+        .then((msgs) => {
+          setMessages(prev => msgs.length !== prev.length ? msgs : prev);
+        })
+        .catch(() => {});
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [selectedFriend]);
+
+  function hasUnread(friendId: string): boolean {
+    return unreadFriendIds.has(friendId);
+  }
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -428,11 +477,18 @@ export default function MessagesPage() {
                             <Users className="h-4 w-4" />
                           </AvatarFallback>
                         </Avatar>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {friend.displayName || '名前未設定'}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium truncate">
+                              {friend.displayName || '名前未設定'}
+                            </p>
+                            {hasUnread(friend.id) && (
+                              <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shrink-0">
+                                !
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">
                             {friend.isFollowing ? 'フォロー中' : 'ブロック'}
                           </p>
                         </div>

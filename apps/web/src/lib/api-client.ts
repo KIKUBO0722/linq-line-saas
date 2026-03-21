@@ -49,9 +49,13 @@ export const api = {
     list: () => fetchApi<any[]>('/api/v1/accounts'),
     create: (data: { channelId: string; channelSecret: string; channelAccessToken: string; botName?: string }) =>
       fetchApi('/api/v1/accounts', { method: 'POST', body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      fetchApi(`/api/v1/accounts/${id}`, { method: 'DELETE' }),
   },
   messages: {
     conversation: (friendId: string) => fetchApi<any[]>(`/api/v1/messages/conversation/${friendId}`),
+    unreadSummary: () => fetchApi<{ totalUnread: number; unreadFriends: Array<{ friendId: string; unreadCount: number; lastMessage: any; createdAt: string }> }>('/api/v1/messages/unread-summary'),
+    markAsRead: (friendId: string) => fetchApi<{ success: boolean }>(`/api/v1/messages/read/${friendId}`, { method: 'POST' }),
     send: (data: { friendId: string; text: string }) =>
       fetchApi('/api/v1/messages/send', { method: 'POST', body: JSON.stringify(data) }),
     broadcast: (data: { text: string; scheduledAt?: string }) =>

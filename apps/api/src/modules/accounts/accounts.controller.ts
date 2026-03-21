@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, Req, UseGuards } from '@nestjs/common';
 import { AccountsService } from './accounts.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 
@@ -18,5 +18,10 @@ export class AccountsController {
     @Body() body: { channelId: string; channelSecret: string; channelAccessToken: string; botName?: string },
   ) {
     return this.accountsService.create(req.tenantId, body);
+  }
+
+  @Delete(':id')
+  async delete(@Req() req: any, @Param('id') id: string) {
+    return this.accountsService.delete(req.tenantId, id);
   }
 }

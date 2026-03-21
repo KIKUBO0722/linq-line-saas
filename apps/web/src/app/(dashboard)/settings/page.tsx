@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Settings, Plus, Check, Copy, CreditCard, Zap, Users, MessageSquare, RefreshCw, Shield, Mail } from 'lucide-react';
+import { Settings, Plus, Check, Copy, CreditCard, Zap, Users, MessageSquare, RefreshCw, Shield, Mail, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,15 +73,20 @@ export default function SettingsPage() {
       setChannelAccessToken('');
       setBotName('');
     } catch (err) {
-      alert('Failed to create account');
+      alert('LINE公式アカウントの接続に失敗しました。入力内容を確認してください。');
     } finally {
       setSaving(false);
     }
   }
 
+  const RENDER_API_URL = 'https://linq-line-saas.onrender.com';
+
+  function getWebhookUrl(account: any) {
+    return `${RENDER_API_URL}/webhook/${account.id}`;
+  }
+
   function copyWebhookUrl(account: any) {
-    const url = `${window.location.origin.replace(':3000', ':3601').replace(':3600', ':3601')}/webhook/${account.id}`;
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(getWebhookUrl(account));
     setCopiedId(account.id);
     setTimeout(() => setCopiedId(null), 2000);
   }
@@ -173,7 +178,7 @@ export default function SettingsPage() {
                             <TableHead>Bot名</TableHead>
                             <TableHead>Channel ID</TableHead>
                             <TableHead>Webhook URL</TableHead>
-                            <TableHead>ステータス</TableHead>
+                            <TableHead>ステータス / 操作</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -184,7 +189,7 @@ export default function SettingsPage() {
                               <TableCell>
                                 <div className="flex items-center gap-2">
                                   <code className="text-xs font-mono truncate max-w-[280px]">
-                                    {`${typeof window !== 'undefined' ? window.location.origin.replace(':3000', ':3601').replace(':3600', ':3601') : ''}/webhook/${account.id}`}
+                                    {getWebhookUrl(account)}
                                   </code>
                                   <Button
                                     variant="ghost"
@@ -200,7 +205,28 @@ export default function SettingsPage() {
                                   </Button>
                                 </div>
                               </TableCell>
-                              <TableCell><Badge>接続済み</Badge></TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Badge>接続済み</Badge>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={async () => {
+                                      if (!confirm(`「${account.botName || 'LINE Bot'}」を削除しますか？\nWebhookも無効になります。`)) return;
+                                      try {
+                                        await api.accounts.delete(account.id);
+                                        setAccounts((prev) => prev.filter((a: any) => a.id !== account.id));
+                                      } catch (err: any) {
+                                        alert(err.message || '削除に失敗しました');
+                                      }
+                                    }}
+                                    title="アカウントを削除"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -607,13 +633,13 @@ export default function SettingsPage() {
                     </select>
                   </div>
                 </div>
-                <Button type="submit" disabled={inviting} className="gap-2">
+                <Button type="submit" disabled className="gap-2">
                   <Plus className="h-4 w-4" />
-                  {inviting ? '処理中...' : '招待を送信'}
+                  招待を送信
                 </Button>
               </form>
               <p className="text-[11px] text-muted-foreground mt-3">
-                ※ 招待されたメンバーには、登録用のメールが送信されます（近日公開予定）
+                ※ 招待機能は近日公開予定です
               </p>
             </CardContent>
           </Card>
