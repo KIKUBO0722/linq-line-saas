@@ -751,6 +751,83 @@ export default function MessagesPage() {
                   </div>
                 )}
               </div>
+
+              {/* Right side panel - friend details */}
+              {selectedFriend && (
+                <div className="w-64 border-l flex flex-col bg-muted/30">
+                  <div className="p-3 border-b">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">友だち詳細</h4>
+                  </div>
+                  <ScrollArea className="flex-1">
+                    <div className="p-3 space-y-4">
+                      {/* Profile */}
+                      <div className="text-center">
+                        <Avatar className="h-14 w-14 mx-auto mb-2">
+                          {selectedFriend.pictureUrl ? (
+                            <AvatarImage src={selectedFriend.pictureUrl} alt="" />
+                          ) : null}
+                          <AvatarFallback><Users className="h-6 w-6" /></AvatarFallback>
+                        </Avatar>
+                        <p className="text-sm font-medium">{selectedFriend.displayName || '名前未設定'}</p>
+                        {selectedFriend.statusMessage && (
+                          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{selectedFriend.statusMessage}</p>
+                        )}
+                      </div>
+
+                      {/* Status info */}
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">ステータス</span>
+                          <span className={selectedFriend.isFollowing ? 'text-green-600' : 'text-red-500'}>
+                            {selectedFriend.isFollowing ? 'フォロー中' : 'ブロック'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">対応状況</span>
+                          <span>{selectedFriend.chatStatus === 'confirmed' ? '確認済み' : '未確認'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">スコア</span>
+                          <span>{selectedFriend.score ?? 0}</span>
+                        </div>
+                        {selectedFriend.followedAt && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">友だち追加</span>
+                            <span>{new Date(selectedFriend.followedAt).toLocaleDateString('ja-JP')}</span>
+                          </div>
+                        )}
+                        {selectedFriend.language && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">言語</span>
+                            <span>{selectedFriend.language}</span>
+                          </div>
+                        )}
+                        {selectedFriend.acquisitionSource && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">流入元</span>
+                            <span>{selectedFriend.acquisitionSource}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Custom fields */}
+                      {selectedFriend.customFields && Object.keys(selectedFriend.customFields).length > 0 && (
+                        <div>
+                          <h5 className="text-[11px] font-semibold text-muted-foreground mb-1">カスタム情報</h5>
+                          <div className="space-y-1 text-xs">
+                            {Object.entries(selectedFriend.customFields).map(([key, val]) => (
+                              <div key={key} className="flex justify-between">
+                                <span className="text-muted-foreground">{key}</span>
+                                <span className="truncate ml-2 max-w-[100px]">{String(val)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
             </div>
           </Card>
         </TabsContent>
@@ -963,6 +1040,31 @@ export default function MessagesPage() {
                       {sending ? '配信中...' : '一斉配信する'}
                     </>
                   )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={sending || !broadcastContent.trim()}
+                  onClick={async () => {
+                    if (friends.length === 0) {
+                      alert('テスト送信先の友だちがいません');
+                      return;
+                    }
+                    const testFriend = friends.find((f) => f.isFollowing) || friends[0];
+                    if (!confirm(`「${testFriend.displayName || 'テストユーザー'}」にテスト送信しますか？`)) return;
+                    try {
+                      const result = await api.messages.testSend({
+                        friendIds: [testFriend.id],
+                        message: broadcastContent,
+                      });
+                      alert(`テスト送信完了（${result.sent}件送信）`);
+                    } catch (err: any) {
+                      alert(err.message || 'テスト送信に失敗しました');
+                    }
+                  }}
+                >
+                  <Zap className="h-4 w-4 mr-1" />
+                  テスト送信
                 </Button>
               </div>
             </CardContent>

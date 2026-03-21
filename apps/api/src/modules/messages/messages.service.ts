@@ -408,4 +408,40 @@ export class MessagesService {
 
     return { processed };
   }
+
+  async testSend(tenantId: string, friendIds: string[], text: string) {
+    const accounts = await this.db
+      .select()
+      .from(lineAccounts)
+      .where(and(eq(lineAccounts.tenantId, tenantId), eq(lineAccounts.isActive, true)));
+
+    if (accounts.length === 0) return { sent: 0 };
+
+    const account = accounts[0];
+    const credentials = {
+      channelSecret: account.channelSecret,
+      channelAccessToken: account.channelAccessToken,
+    };
+
+    let sent = 0;
+    for (const friendId of friendIds) {
+      const [friend] = await this.db
+        .select()
+        .from(friends)
+        .where(eq(friends.id, friendId))
+        .limit(1);
+      if (!friend?.lineUserId) continue;
+
+      try {
+        await this.lineService.pushMessage(credentials, friend.lineUserId, [
+          { type: 'text', text },
+        ]);
+        sent++;
+      } catch (error: any) {
+        this.logger.error(`Test send failed for ${friendId}: ${error.message}`);
+      }
+    }
+
+    return { sent };
+  }
 }

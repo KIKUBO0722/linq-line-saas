@@ -66,6 +66,8 @@ export const api = {
       fetchApi('/api/v1/messages/send-message', { method: 'POST', body: JSON.stringify(data) }),
     broadcastMessage: (data: { message: any }) =>
       fetchApi('/api/v1/messages/broadcast-message', { method: 'POST', body: JSON.stringify(data) }),
+    testSend: (data: { friendIds: string[]; message: string }) =>
+      fetchApi<{ sent: number }>('/api/v1/messages/test-send', { method: 'POST', body: JSON.stringify(data) }),
   },
   forms: {
     list: () => fetchApi<any[]>('/api/v1/forms'),

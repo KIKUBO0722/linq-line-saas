@@ -137,4 +137,12 @@ export class MessagesController {
     await this.billingService.incrementUsage(req.tenantId, 'messagesSent', 1);
     return result;
   }
+
+  @Post('test-send')
+  async testSend(
+    @Req() req: any,
+    @Body() body: { friendIds: string[]; message: string },
+  ) {
+    return this.messagesService.testSend(req.tenantId, body.friendIds, body.message);
+  }
 }
