@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: linq-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: API_URL
+        sync: false
+      - key: WEB_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
