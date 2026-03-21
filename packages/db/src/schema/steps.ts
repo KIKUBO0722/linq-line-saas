@@ -22,6 +22,8 @@ export const stepMessages = pgTable('step_messages', {
     .references(() => stepScenarios.id, { onDelete: 'cascade' }),
   delayMinutes: integer('delay_minutes').notNull().default(0),
   condition: jsonb('condition'),
+  branchTrue: integer('branch_true'),
+  branchFalse: integer('branch_false'),
   messageContent: jsonb('message_content').notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

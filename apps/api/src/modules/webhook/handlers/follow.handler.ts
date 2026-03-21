@@ -4,6 +4,7 @@ import { DRIZZLE, type DrizzleDB } from '../../../database/database.module';
 import { FriendsService } from '../../friends/friends.service';
 import { LineService } from '../../line/line.service';
 import { StepsService } from '../../steps/steps.service';
+import { AiService } from '../../ai/ai.service';
 import { lineAccounts, stepScenarios } from '@line-saas/db';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class FollowHandler {
     private readonly friendsService: FriendsService,
     private readonly lineService: LineService,
     private readonly stepsService: StepsService,
+    private readonly aiService: AiService,
   ) {}
 
   async handle(
@@ -46,7 +48,26 @@ export class FollowHandler {
       language: profile?.language,
       isFollowing: true,
       followedAt: new Date(),
+      acquisitionSource: 'follow',
     });
+
+    // Update engagement score (+5 for following/re-following)
+    if (friend?.id) {
+      await this.friendsService.updateScore(friend.id, 5);
+    }
+
+    // Send welcome message if configured
+    try {
+      const aiConfig = await this.aiService.getConfig(account.tenantId);
+      if (aiConfig?.welcomeMessage) {
+        await this.lineService.pushMessage(credentials, userId, [
+          { type: 'text', text: aiConfig.welcomeMessage },
+        ]);
+        this.logger.log(`Sent welcome message to ${userId}`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to send welcome message: ${error}`);
+    }
 
     // Auto-enroll in active "follow" trigger scenarios
     try {

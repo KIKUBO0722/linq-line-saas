@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { tags, friendTags } from '@line-saas/db';
 
@@ -30,6 +30,17 @@ export class TagsService {
   }
 
   async removeFromFriend(friendId: string, tagId: string) {
-    await this.db.delete(friendTags).where(eq(friendTags.friendId, friendId));
+    await this.db
+      .delete(friendTags)
+      .where(and(eq(friendTags.friendId, friendId), eq(friendTags.tagId, tagId)));
+  }
+
+  async listForFriend(friendId: string) {
+    const rows = await this.db
+      .select({ tag: tags })
+      .from(friendTags)
+      .innerJoin(tags, eq(friendTags.tagId, tags.id))
+      .where(eq(friendTags.friendId, friendId));
+    return rows.map((r) => r.tag);
   }
 }

@@ -1,13 +1,24 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { eq } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { plans, subscriptions, usageRecords, tenants } from '@line-saas/db';
+import Stripe from 'stripe';
 
 @Injectable()
 export class BillingService {
   private readonly logger = new Logger(BillingService.name);
+  private stripe: Stripe | null = null;
 
-  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: DrizzleDB,
+    private readonly config: ConfigService,
+  ) {
+    const key = this.config.get<string>('STRIPE_SECRET_KEY');
+    if (key) {
+      this.stripe = new Stripe(key, { apiVersion: '2025-03-31.basil' as any });
+    }
+  }
 
   async listPlans() {
     return this.db.select().from(plans).where(eq(plans.isActive, true)).orderBy(plans.sortOrder);
@@ -19,10 +30,21 @@ export class BillingService {
       .from(subscriptions)
       .where(eq(subscriptions.tenantId, tenantId))
       .limit(1);
-    return sub;
+
+    if (!sub) return null;
+
+    // Join plan name
+    const [plan] = await this.db.select().from(plans).where(eq(plans.id, sub.planId)).limit(1);
+    return { ...sub, planName: plan?.name || 'unknown' };
   }
 
   async createSubscription(tenantId: string, planId: string) {
+    // Cancel existing subscription if any
+    await this.db
+      .update(subscriptions)
+      .set({ status: 'cancelled' })
+      .where(eq(subscriptions.tenantId, tenantId));
+
     const [sub] = await this.db
       .insert(subscriptions)
       .values({
@@ -33,10 +55,106 @@ export class BillingService {
         currentPeriodEnd: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
       })
       .returning();
+
+    // Update tenant status
+    await this.db.update(tenants).set({ status: 'active' }).where(eq(tenants.id, tenantId));
+
     return sub;
   }
 
+  async createCheckoutSession(tenantId: string, planId: string) {
+    if (!this.stripe) {
+      // Fallback: create subscription directly without payment
+      return { fallback: true, subscription: await this.createSubscription(tenantId, planId) };
+    }
+
+    const [plan] = await this.db.select().from(plans).where(eq(plans.id, planId)).limit(1);
+    if (!plan) throw new Error('Plan not found');
+
+    if (plan.priceMonthly === 0) {
+      // Free plan: no Stripe checkout needed
+      return { fallback: true, subscription: await this.createSubscription(tenantId, planId) };
+    }
+
+    const session = await this.stripe.checkout.sessions.create({
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'jpy',
+            product_data: {
+              name: `LinQ ${plan.name.charAt(0).toUpperCase() + plan.name.slice(1)} プラン`,
+              description: `友だち${plan.friendLimit}人・配信${plan.messageLimit}通/月`,
+            },
+            unit_amount: plan.priceMonthly,
+            recurring: { interval: 'month' },
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: { tenantId, planId },
+      success_url: `${this.config.get('WEB_URL')}/settings?billing=success`,
+      cancel_url: `${this.config.get('WEB_URL')}/settings?billing=cancel`,
+    });
+
+    return { checkoutUrl: session.url };
+  }
+
+  async handleStripeWebhook(event: Stripe.Event) {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const tenantId = session.metadata?.tenantId;
+        const planId = session.metadata?.planId;
+        if (tenantId && planId) {
+          await this.db
+            .update(subscriptions)
+            .set({ status: 'cancelled' })
+            .where(eq(subscriptions.tenantId, tenantId));
+
+          await this.db.insert(subscriptions).values({
+            tenantId,
+            planId,
+            stripeSubscriptionId: session.subscription as string,
+            status: 'active',
+            currentPeriodStart: new Date(),
+            currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          });
+
+          await this.db.update(tenants).set({ status: 'active' }).where(eq(tenants.id, tenantId));
+          this.logger.log(`Subscription activated for tenant ${tenantId}`);
+        }
+        break;
+      }
+      case 'customer.subscription.deleted': {
+        const sub = event.data.object as Stripe.Subscription;
+        await this.db
+          .update(subscriptions)
+          .set({ status: 'cancelled' })
+          .where(eq(subscriptions.stripeSubscriptionId, sub.id));
+        this.logger.log(`Subscription cancelled: ${sub.id}`);
+        break;
+      }
+    }
+  }
+
   async cancelSubscription(tenantId: string) {
+    const [sub] = await this.db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.tenantId, tenantId))
+      .limit(1);
+
+    // Cancel on Stripe if applicable
+    if (sub?.stripeSubscriptionId && this.stripe) {
+      try {
+        await this.stripe.subscriptions.cancel(sub.stripeSubscriptionId);
+      } catch (err) {
+        this.logger.warn(`Stripe cancellation failed: ${err}`);
+      }
+    }
+
     await this.db
       .update(subscriptions)
       .set({ status: 'cancelled' })
@@ -44,13 +162,39 @@ export class BillingService {
   }
 
   async getUsage(tenantId: string) {
-    const period = new Date().toISOString().slice(0, 7); // yyyy-mm
+    const period = new Date().toISOString().slice(0, 7);
     const [usage] = await this.db
       .select()
       .from(usageRecords)
       .where(eq(usageRecords.tenantId, tenantId))
       .limit(1);
-    return usage || { messagesSent: 0, aiTokensUsed: 0, friendsCount: 0, period };
+
+    // Get plan limits
+    const [sub] = await this.db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.tenantId, tenantId))
+      .limit(1);
+
+    let limits: any = {};
+    if (sub) {
+      const [plan] = await this.db.select().from(plans).where(eq(plans.id, sub.planId)).limit(1);
+      if (plan) {
+        limits = {
+          messagesLimit: plan.messageLimit,
+          friendsLimit: plan.friendLimit,
+          aiTokensLimit: plan.aiTokenLimit === -1 ? null : plan.aiTokenLimit,
+        };
+      }
+    }
+
+    return {
+      messagesSent: usage?.messagesSent || 0,
+      aiTokensUsed: usage?.aiTokensUsed || 0,
+      friendsCount: usage?.friendsCount || 0,
+      period: usage?.period || period,
+      ...limits,
+    };
   }
 
   async incrementUsage(tenantId: string, field: 'messagesSent' | 'aiTokensUsed', amount: number) {
@@ -74,6 +218,20 @@ export class BillingService {
         [field]: amount,
       });
     }
+  }
+
+  async checkLimit(tenantId: string, field: 'messagesSent' | 'aiTokensUsed'): Promise<{ allowed: boolean; current: number; limit: number }> {
+    const usage = await this.getUsage(tenantId);
+    const limitKey = field === 'messagesSent' ? 'messagesLimit' : 'aiTokensLimit';
+    const limit = usage[limitKey];
+    const current = field === 'messagesSent' ? usage.messagesSent : usage.aiTokensUsed;
+
+    // -1 or null means unlimited
+    if (limit === null || limit === undefined || limit === -1) {
+      return { allowed: true, current, limit: -1 };
+    }
+
+    return { allowed: current < limit, current, limit };
   }
 
   async seedPlans() {

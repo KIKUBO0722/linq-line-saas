@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, jsonb, boolean, timestamp, bigserial, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, jsonb, boolean, timestamp, bigserial, index, integer } from 'drizzle-orm/pg-core';
 import { tenants } from './tenants';
 import { lineAccounts } from './line-accounts';
 import { friends } from './friends';
@@ -57,6 +57,19 @@ export const messages = pgTable(
   ],
 );
 
+export const richMenuGroups = pgTable('rich_menu_groups', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  tenantId: uuid('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'cascade' }),
+  lineAccountId: uuid('line_account_id')
+    .notNull()
+    .references(() => lineAccounts.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: varchar('description', { length: 500 }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const richMenus = pgTable('rich_menus', {
   id: uuid('id').defaultRandom().primaryKey(),
   tenantId: uuid('tenant_id')
@@ -73,5 +86,26 @@ export const richMenus = pgTable('rich_menus', {
   imageUrl: varchar('image_url', { length: 512 }),
   isDefault: boolean('is_default').notNull().default(false),
   isActive: boolean('is_active').notNull().default(true),
+  groupId: uuid('group_id').references(() => richMenuGroups.id, { onDelete: 'set null' }),
+  tabIndex: integer('tab_index'),
+  lineAliasId: varchar('line_alias_id', { length: 255 }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const trackedUrls = pgTable('tracked_urls', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  originalUrl: varchar('original_url', { length: 2000 }).notNull(),
+  shortCode: varchar('short_code', { length: 50 }).notNull().unique(),
+  messageId: uuid('message_id'),
+  clickCount: integer('click_count').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const urlClicks = pgTable('url_clicks', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  trackedUrlId: uuid('tracked_url_id').notNull().references(() => trackedUrls.id, { onDelete: 'cascade' }),
+  friendId: uuid('friend_id').references(() => friends.id, { onDelete: 'set null' }),
+  clickedAt: timestamp('clicked_at', { withTimezone: true }).defaultNow().notNull(),
+  userAgent: varchar('user_agent', { length: 500 }),
 });

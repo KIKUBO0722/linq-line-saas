@@ -12,6 +12,7 @@ export const aiConfigs = pgTable('ai_configs', {
   temperature: integer('temperature').notNull().default(7),
   maxTokens: integer('max_tokens').notNull().default(1024),
   knowledgeBase: jsonb('knowledge_base').default([]),
+  welcomeMessage: varchar('welcome_message', { length: 2000 }),
   autoReplyEnabled: boolean('auto_reply_enabled').notNull().default(false),
   handoffKeywords: jsonb('handoff_keywords').default([]),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

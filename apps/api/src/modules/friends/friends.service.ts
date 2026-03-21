@@ -13,6 +13,7 @@ interface UpsertFriendDto {
   language?: string;
   isFollowing: boolean;
   followedAt?: Date;
+  acquisitionSource?: string;
 }
 
 @Injectable()
@@ -59,6 +60,7 @@ export class FriendsService {
         language: dto.language,
         isFollowing: dto.isFollowing,
         followedAt: dto.followedAt,
+        acquisitionSource: dto.acquisitionSource,
         profileSyncedAt: new Date(),
       })
       .returning();
@@ -96,5 +98,45 @@ export class FriendsService {
   async findById(id: string) {
     const [friend] = await this.db.select().from(friends).where(eq(friends.id, id)).limit(1);
     return friend;
+  }
+
+  async updateScore(friendId: string, delta: number) {
+    await this.db
+      .update(friends)
+      .set({ score: sql`${friends.score} + ${delta}` })
+      .where(eq(friends.id, friendId));
+  }
+
+  async updateCustomFields(friendId: string, fields: Record<string, any>) {
+    const friend = await this.findById(friendId);
+    if (!friend) return null;
+    const existing = (friend.customFields as Record<string, any>) || {};
+    const merged = { ...existing, ...fields };
+    // Remove keys explicitly set to null
+    for (const key of Object.keys(merged)) {
+      if (merged[key] === null) delete merged[key];
+    }
+    await this.db
+      .update(friends)
+      .set({ customFields: merged })
+      .where(eq(friends.id, friendId));
+    return merged;
+  }
+
+  async getCustomFieldDefinitions(tenantId: string) {
+    // Get distinct keys from customFields across all friends for this tenant
+    const result = await this.db
+      .select({ customFields: friends.customFields })
+      .from(friends)
+      .where(eq(friends.tenantId, tenantId));
+    const keys = new Set<string>();
+    for (const row of result) {
+      if (row.customFields && typeof row.customFields === 'object') {
+        for (const key of Object.keys(row.customFields as Record<string, any>)) {
+          keys.add(key);
+        }
+      }
+    }
+    return Array.from(keys);
   }
 }

@@ -13,7 +13,7 @@ export class FormsController {
   }
 
   @Post()
-  async create(@Req() req: any, @Body() body: { name: string; description?: string; fields: any[]; thankYouMessage?: string }) {
+  async create(@Req() req: any, @Body() body: { name: string; description?: string; fields: any[]; thankYouMessage?: string; tagOnSubmitId?: string }) {
     return this.formsService.create(req.tenantId, body);
   }
 

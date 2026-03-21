@@ -6,6 +6,7 @@ import {
   stepMessages,
   stepEnrollments,
   friends,
+  friendTags,
   messages,
   lineAccounts,
 } from '@line-saas/db';
@@ -74,7 +75,14 @@ export class StepsService {
   // Step messages CRUD
   async addStepMessage(
     scenarioId: string,
-    data: { delayMinutes: number; messageContent: any; sortOrder: number; condition?: any },
+    data: {
+      delayMinutes: number;
+      messageContent: any;
+      sortOrder: number;
+      condition?: any;
+      branchTrue?: number | null;
+      branchFalse?: number | null;
+    },
   ) {
     const [step] = await this.db
       .insert(stepMessages)
@@ -83,8 +91,16 @@ export class StepsService {
     return step;
   }
 
-  async updateStepMessage(id: string, data: Partial<typeof stepMessages.$inferInsert>) {
-    await this.db.update(stepMessages).set(data).where(eq(stepMessages.id, id));
+  async updateStepMessage(
+    id: string,
+    data: Partial<typeof stepMessages.$inferInsert>,
+  ) {
+    const [updated] = await this.db
+      .update(stepMessages)
+      .set(data)
+      .where(eq(stepMessages.id, id))
+      .returning();
+    return updated;
   }
 
   async deleteStepMessage(id: string) {
@@ -143,6 +159,43 @@ export class StepsService {
     return { processed: dueEnrollments.length };
   }
 
+  private async evaluateCondition(
+    condition: any,
+    friendId: string,
+    friendRecord: any,
+  ): Promise<boolean> {
+    if (!condition || !condition.type) return true;
+
+    switch (condition.type) {
+      case 'tag_check': {
+        const ft = await this.db
+          .select()
+          .from(friendTags)
+          .where(
+            and(
+              eq(friendTags.friendId, friendId),
+              eq(friendTags.tagId, condition.tagId),
+            ),
+          )
+          .limit(1);
+        return ft.length > 0;
+      }
+      case 'score_check': {
+        const score = friendRecord?.score ?? 0;
+        const op = condition.operator || '>=';
+        const value = Number(condition.value) || 0;
+        if (op === '>=') return score >= value;
+        if (op === '<=') return score <= value;
+        if (op === '>') return score > value;
+        if (op === '<') return score < value;
+        if (op === '==') return score === value;
+        return true;
+      }
+      default:
+        return true;
+    }
+  }
+
   private async processEnrollmentStep(enrollment: typeof stepEnrollments.$inferSelect) {
     // Get scenario steps
     const steps = await this.db
@@ -183,31 +236,72 @@ export class StepsService {
 
     if (!account) return;
 
-    // Send the message
-    const messageContent = currentStep.messageContent as any;
-    const lineMessages = [{ type: 'text' as const, text: messageContent.text || messageContent }];
+    // Evaluate condition if present
+    const condition = currentStep.condition as any;
+    let nextIndex: number;
 
-    await this.lineService.pushMessage(
-      { channelSecret: account.channelSecret, channelAccessToken: account.channelAccessToken },
-      friend.lineUserId,
-      lineMessages,
-    );
+    if (condition && condition.type) {
+      const conditionResult = await this.evaluateCondition(condition, friend.id, friend);
 
-    // Store sent message
-    await this.db.insert(messages).values({
-      tenantId: friend.tenantId,
-      lineAccountId: account.id,
-      friendId: friend.id,
-      direction: 'outbound',
-      messageType: 'text',
-      content: messageContent,
-      sendType: 'push',
-      status: 'sent',
-      sentAt: new Date(),
-    });
+      if (conditionResult) {
+        // Condition is true: send the message, then branch to branchTrue or next
+        const messageContent = currentStep.messageContent as any;
+        const lineMessages = [{ type: 'text' as const, text: messageContent.text || messageContent }];
+
+        await this.lineService.pushMessage(
+          { channelSecret: account.channelSecret, channelAccessToken: account.channelAccessToken },
+          friend.lineUserId,
+          lineMessages,
+        );
+
+        await this.db.insert(messages).values({
+          tenantId: friend.tenantId,
+          lineAccountId: account.id,
+          friendId: friend.id,
+          direction: 'outbound',
+          messageType: 'text',
+          content: messageContent,
+          sendType: 'push',
+          status: 'sent',
+          sentAt: new Date(),
+        });
+
+        nextIndex = currentStep.branchTrue != null
+          ? currentStep.branchTrue
+          : enrollment.currentStepIndex + 1;
+      } else {
+        // Condition is false: skip this message, jump to branchFalse or next
+        nextIndex = currentStep.branchFalse != null
+          ? currentStep.branchFalse
+          : enrollment.currentStepIndex + 1;
+      }
+    } else {
+      // No condition: send normally
+      const messageContent = currentStep.messageContent as any;
+      const lineMessages = [{ type: 'text' as const, text: messageContent.text || messageContent }];
+
+      await this.lineService.pushMessage(
+        { channelSecret: account.channelSecret, channelAccessToken: account.channelAccessToken },
+        friend.lineUserId,
+        lineMessages,
+      );
+
+      await this.db.insert(messages).values({
+        tenantId: friend.tenantId,
+        lineAccountId: account.id,
+        friendId: friend.id,
+        direction: 'outbound',
+        messageType: 'text',
+        content: messageContent,
+        sendType: 'push',
+        status: 'sent',
+        sentAt: new Date(),
+      });
+
+      nextIndex = enrollment.currentStepIndex + 1;
+    }
 
     // Advance to next step or complete
-    const nextIndex = enrollment.currentStepIndex + 1;
     if (nextIndex >= steps.length) {
       await this.db
         .update(stepEnrollments)
@@ -228,7 +322,7 @@ export class StepsService {
     }
 
     this.logger.log(
-      `Step ${enrollment.currentStepIndex + 1}/${steps.length} sent to friend ${friend.id}`,
+      `Step ${enrollment.currentStepIndex + 1}/${steps.length} processed for friend ${friend.id}`,
     );
   }
 }

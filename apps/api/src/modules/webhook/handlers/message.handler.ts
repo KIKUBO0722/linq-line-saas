@@ -4,6 +4,8 @@ import { messages, friends, lineAccounts } from '@line-saas/db';
 import { eq, and } from 'drizzle-orm';
 import { AiService } from '../../ai/ai.service';
 import { LineService } from '../../line/line.service';
+import { FriendsService } from '../../friends/friends.service';
+import { BillingService } from '../../billing/billing.service';
 
 @Injectable()
 export class MessageHandler {
@@ -13,6 +15,8 @@ export class MessageHandler {
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     private readonly aiService: AiService,
     private readonly lineService: LineService,
+    private readonly friendsService: FriendsService,
+    private readonly billingService: BillingService,
   ) {}
 
   async handle(
@@ -25,12 +29,38 @@ export class MessageHandler {
 
     this.logger.log(`Message from ${userId}: ${event.message?.type}`);
 
-    // Find the friend
-    const [friend] = await this.db
+    // Find the friend, auto-register if not exists
+    let [friend] = await this.db
       .select()
       .from(friends)
       .where(and(eq(friends.lineAccountId, account.id), eq(friends.lineUserId, userId)))
       .limit(1);
+
+    if (!friend) {
+      this.logger.log(`Auto-registering friend: ${userId}`);
+      let profile: any = null;
+      try {
+        profile = await this.lineService.getProfile(credentials, userId);
+      } catch (error) {
+        this.logger.warn(`Failed to get profile for ${userId}: ${error}`);
+      }
+      friend = await this.friendsService.upsertFriend({
+        tenantId: account.tenantId,
+        lineAccountId: account.id,
+        lineUserId: userId,
+        displayName: profile?.displayName || 'LINE User',
+        pictureUrl: profile?.pictureUrl,
+        statusMessage: profile?.statusMessage,
+        language: profile?.language,
+        isFollowing: true,
+        followedAt: new Date(),
+      });
+    }
+
+    // Update engagement score (+1 for sending a message)
+    if (friend?.id) {
+      await this.friendsService.updateScore(friend.id, 1);
+    }
 
     // Store inbound message
     await this.db.insert(messages).values({
@@ -49,6 +79,13 @@ export class MessageHandler {
     // AI auto-reply for text messages
     if (event.message?.type === 'text' && friend && event.replyToken) {
       const userText = event.message.text;
+
+      // Check AI token limit before processing
+      const aiCheck = await this.billingService.checkLimit(account.tenantId, 'aiTokensUsed');
+      if (!aiCheck.allowed) {
+        this.logger.warn(`AI token limit reached for tenant ${account.tenantId}`);
+        return;
+      }
 
       try {
         const aiResult = await this.aiService.generateAutoReply(
@@ -75,6 +112,9 @@ export class MessageHandler {
             status: 'sent',
             sentAt: new Date(),
           });
+
+          // Track AI token usage
+          await this.billingService.incrementUsage(account.tenantId, 'aiTokensUsed', 1);
 
           this.logger.log(`AI replied to ${userId} (${aiResult.tokensUsed} tokens)`);
         }

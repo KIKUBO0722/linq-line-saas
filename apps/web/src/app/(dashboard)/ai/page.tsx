@@ -1,7 +1,27 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Bot, Save, Sparkles } from 'lucide-react';
+import {
+  Bot, Save, Sparkles, Brain, Shield, TrendingUp,
+  Plus, Trash2, ArrowRight, MessageCircleReply,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
+
+interface KeywordRule {
+  keyword: string;
+  response: string;
+  matchType: 'exact' | 'contains';
+}
 
 export default function AiPage() {
   const [config, setConfig] = useState<any>({
@@ -9,35 +29,102 @@ export default function AiPage() {
     systemPrompt: '',
     knowledgeBase: [],
     handoffKeywords: [],
+    keywordRules: [],
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Message generation
   const [genPurpose, setGenPurpose] = useState('');
   const [genTone, setGenTone] = useState('フレンドリー');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [generating, setGenerating] = useState(false);
+
+  // Knowledge base
   const [newKbTitle, setNewKbTitle] = useState('');
   const [newKbContent, setNewKbContent] = useState('');
 
+  // Scenario generation
+  const [scenarioDesc, setScenarioDesc] = useState('');
+  const [scenarioResult, setScenarioResult] = useState<any>(null);
+  const [generatingScenario, setGeneratingScenario] = useState(false);
+
+  // Keyword rules (merged from auto-reply)
+  const [newKeyword, setNewKeyword] = useState('');
+  const [newResponse, setNewResponse] = useState('');
+  const [newMatchType, setNewMatchType] = useState<'exact' | 'contains'>('contains');
+
+  // Handoff keywords
+  const [newHandoff, setNewHandoff] = useState('');
+
   useEffect(() => {
-    fetch('http://localhost:3001/api/v1/ai/config', { credentials: 'include' })
+    fetch(`${API_BASE}/api/v1/ai/config`, { credentials: 'include' })
       .then((r) => r.json())
       .then(setConfig)
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Listen for AI Copilot fill events
+  useEffect(() => {
+    function handleAiFill(e: Event) {
+      const { type, data } = (e as CustomEvent).detail;
+      if (type === 'update_ai_config' && data) {
+        if (data.systemPrompt) setConfig((prev: any) => ({ ...prev, systemPrompt: data.systemPrompt }));
+        if (data.welcomeMessage) setConfig((prev: any) => ({ ...prev, welcomeMessage: data.welcomeMessage }));
+        if (data.knowledgeBase && Array.isArray(data.knowledgeBase)) {
+          setConfig((prev: any) => ({
+            ...prev,
+            knowledgeBase: [...(prev.knowledgeBase || []), ...data.knowledgeBase],
+          }));
+        }
+        if (data.keywordRules && Array.isArray(data.keywordRules)) {
+          setConfig((prev: any) => ({
+            ...prev,
+            keywordRules: [...(prev.keywordRules || []), ...data.keywordRules],
+          }));
+        }
+        if (data.handoffKeywords && Array.isArray(data.handoffKeywords)) {
+          setConfig((prev: any) => ({
+            ...prev,
+            handoffKeywords: [...new Set([...(prev.handoffKeywords || []), ...data.handoffKeywords])],
+          }));
+        }
+      }
+    }
+    window.addEventListener('linq-ai-fill', handleAiFill);
+    return () => window.removeEventListener('linq-ai-fill', handleAiFill);
   }, []);
 
   async function handleSave() {
     setSaving(true);
     try {
-      await fetch('http://localhost:3001/api/v1/ai/config', {
+      const res = await fetch(`${API_BASE}/api/v1/ai/config`, {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
+        body: JSON.stringify({
+          welcomeMessage: config.welcomeMessage || '',
+          autoReplyEnabled: config.autoReplyEnabled,
+          systemPrompt: config.systemPrompt || '',
+          knowledgeBase: config.knowledgeBase || [],
+          handoffKeywords: config.handoffKeywords || [],
+          keywordRules: config.keywordRules || [],
+        }),
       });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch {}
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(`保存に失敗しました: ${err.message || res.status}`);
+      } else {
+        const updated = await res.json();
+        setConfig(updated);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      }
+    } catch {
+      alert('保存に失敗しました。ネットワークエラーです。');
+    }
     setSaving(false);
   }
 
@@ -45,7 +132,7 @@ export default function AiPage() {
     setGenerating(true);
     setSuggestions([]);
     try {
-      const res = await fetch('http://localhost:3001/api/v1/ai/generate-message', {
+      const res = await fetch(`${API_BASE}/api/v1/ai/generate-message`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -55,6 +142,23 @@ export default function AiPage() {
       setSuggestions(data.suggestions || []);
     } catch {}
     setGenerating(false);
+  }
+
+  async function handleGenerateScenario() {
+    if (!scenarioDesc.trim()) return;
+    setGeneratingScenario(true);
+    setScenarioResult(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/ai/suggest-scenario`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: scenarioDesc }),
+      });
+      const data = await res.json();
+      setScenarioResult(data);
+    } catch {}
+    setGeneratingScenario(false);
   }
 
   function addKnowledgeItem() {
@@ -67,118 +171,434 @@ export default function AiPage() {
     setNewKbContent('');
   }
 
+  function addKeywordRule() {
+    if (!newKeyword.trim() || !newResponse.trim()) return;
+    setConfig((prev: any) => ({
+      ...prev,
+      keywordRules: [...(prev.keywordRules || []), {
+        keyword: newKeyword.trim(),
+        response: newResponse.trim(),
+        matchType: newMatchType,
+      }],
+    }));
+    setNewKeyword('');
+    setNewResponse('');
+  }
+
+  function removeKeywordRule(index: number) {
+    setConfig((prev: any) => ({
+      ...prev,
+      keywordRules: (prev.keywordRules || []).filter((_: any, i: number) => i !== index),
+    }));
+  }
+
+  function addHandoffKeyword() {
+    const kw = newHandoff.trim();
+    if (!kw || (config.handoffKeywords || []).includes(kw)) return;
+    setConfig((prev: any) => ({
+      ...prev,
+      handoffKeywords: [...(prev.handoffKeywords || []), kw],
+    }));
+    setNewHandoff('');
+  }
+
+  function removeHandoffKeyword(kw: string) {
+    setConfig((prev: any) => ({
+      ...prev,
+      handoffKeywords: (prev.handoffKeywords || []).filter((k: string) => k !== kw),
+    }));
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-24">
+        <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="p-6 max-w-5xl mx-auto space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">AI設定</h1>
-          <p className="text-gray-500 mt-1">AI自動応答・コンテンツ生成の設定</p>
+          <h1 className="text-2xl font-bold">AI・自動化</h1>
+          <p className="text-sm text-muted-foreground">自動応答・キーワード応答・コンテンツ生成</p>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
-        >
+        <Button onClick={handleSave} disabled={saving} className="gap-1.5">
           <Save className="h-4 w-4" />
           {saved ? '保存しました' : saving ? '保存中...' : '設定を保存'}
-        </button>
+        </Button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <Bot className="h-6 w-6 text-purple-600" />
-            <h2 className="text-lg font-semibold text-gray-900">AI自動応答</h2>
-          </div>
-          <button
-            onClick={() => setConfig((p: any) => ({ ...p, autoReplyEnabled: !p.autoReplyEnabled }))}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${config.autoReplyEnabled ? 'bg-green-500' : 'bg-gray-300'}`}
-          >
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${config.autoReplyEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-          </button>
-        </div>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">AIの性格・口調</label>
-            <textarea
-              value={config.systemPrompt || ''}
-              onChange={(e) => setConfig((p: any) => ({ ...p, systemPrompt: e.target.value }))}
-              rows={4}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-              placeholder="例: あなたは田中ビューティーサロンのAIアシスタントです。丁寧で親しみやすい口調で対応してください。"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">スタッフ引き継ぎキーワード</label>
-            <input
-              type="text"
-              value={(config.handoffKeywords || []).join(', ')}
-              onChange={(e) => setConfig((p: any) => ({ ...p, handoffKeywords: e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean) }))}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="クレーム, 返金, 予約変更"
-            />
-            <p className="text-xs text-gray-400 mt-1">これらを含むメッセージはAIが応答せずスタッフに引き継ぎます</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">ナレッジベース</h2>
-        <p className="text-sm text-gray-500 mb-4">AIが回答に使用するビジネス情報</p>
-        {(config.knowledgeBase || []).map((item: any, index: number) => (
-          <div key={index} className="border border-gray-200 rounded-lg p-4 mb-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-medium text-gray-900">{item.title}</span>
-              <button onClick={() => setConfig((p: any) => ({ ...p, knowledgeBase: p.knowledgeBase.filter((_: any, i: number) => i !== index) }))} className="text-red-500 hover:text-red-700 text-sm">削除</button>
+      {/* Feature overview */}
+      <div className="grid grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="flex items-center gap-3 py-4">
+            <Bot className="h-8 w-8 text-purple-600" />
+            <div>
+              <p className="font-medium text-sm">AI自動応答</p>
+              <p className="text-xs text-muted-foreground">Reply API使用で費用0円</p>
             </div>
-            <p className="text-sm text-gray-600 whitespace-pre-wrap">{item.content}</p>
-          </div>
-        ))}
-        <div className="border-t pt-4 mt-4 space-y-3">
-          <input type="text" value={newKbTitle} onChange={(e) => setNewKbTitle(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="カテゴリ名 (例: メニュー・料金)" />
-          <textarea value={newKbContent} onChange={(e) => setNewKbContent(e.target.value)} rows={3} className="w-full px-4 py-2 border border-gray-300 rounded-lg resize-none" placeholder="内容を入力..." />
-          <button onClick={addKnowledgeItem} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm">+ 追加</button>
-        </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 py-4">
+            <MessageCircleReply className="h-8 w-8 text-emerald-600" />
+            <div>
+              <p className="font-medium text-sm">キーワード応答</p>
+              <p className="text-xs text-muted-foreground">定型文で即時返答</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 py-4">
+            <Sparkles className="h-8 w-8 text-amber-600" />
+            <div>
+              <p className="font-medium text-sm">コンテンツ生成</p>
+              <p className="text-xs text-muted-foreground">3パターン提案</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Sparkles className="h-6 w-6 text-amber-500" />
-          <h2 className="text-lg font-semibold text-gray-900">AIメッセージ生成</h2>
-        </div>
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">目的</label>
-            <input type="text" value={genPurpose} onChange={(e) => setGenPurpose(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="例: バレンタインキャンペーン告知" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">トーン</label>
-            <select value={genTone} onChange={(e) => setGenTone(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg">
-              <option>フレンドリー</option>
-              <option>ビジネスライク</option>
-              <option>カジュアル</option>
-              <option>丁寧・フォーマル</option>
-            </select>
-          </div>
-        </div>
-        <button onClick={handleGenerate} disabled={!genPurpose || generating} className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50">
-          <Sparkles className="h-4 w-4" />
-          {generating ? '生成中...' : 'メッセージを生成'}
-        </button>
-        {suggestions.length > 0 && (
-          <div className="mt-4 space-y-3">
-            <p className="text-sm font-medium text-gray-700">提案メッセージ:</p>
-            {suggestions.map((s, i) => (
-              <div key={i} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                <div className="flex items-start justify-between">
-                  <p className="text-sm text-gray-800 whitespace-pre-wrap flex-1">{s}</p>
-                  <button onClick={() => navigator.clipboard.writeText(s)} className="ml-3 text-xs text-blue-600 hover:text-blue-800">コピー</button>
+      <Tabs defaultValue="auto-reply" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="auto-reply">自動応答設定</TabsTrigger>
+          <TabsTrigger value="keyword-rules">キーワード応答</TabsTrigger>
+          <TabsTrigger value="knowledge">ナレッジベース</TabsTrigger>
+          <TabsTrigger value="generate">AI生成ツール</TabsTrigger>
+        </TabsList>
+
+        {/* Tab 1: Auto-reply config */}
+        <TabsContent value="auto-reply" className="space-y-4">
+          {/* Welcome message */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <MessageCircleReply className="h-5 w-5 text-green-600" />
+                <div>
+                  <CardTitle className="text-base">あいさつメッセージ</CardTitle>
+                  <CardDescription>友だち追加時に自動送信されるメッセージ</CardDescription>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Textarea
+                value={config.welcomeMessage || ''}
+                onChange={(e) => setConfig((p: any) => ({ ...p, welcomeMessage: e.target.value }))}
+                rows={3}
+                placeholder="例: 友だち追加ありがとうございます！&#10;ご予約やお問い合わせはこちらからどうぞ。"
+              />
+              <p className="text-xs text-muted-foreground">空欄の場合、あいさつメッセージは送信されません</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Bot className="h-5 w-5 text-purple-600" />
+                  <div>
+                    <CardTitle className="text-base">AI自動応答</CardTitle>
+                    <CardDescription>受信メッセージにAIが自動返答します</CardDescription>
+                  </div>
+                </div>
+                <Switch
+                  checked={config.autoReplyEnabled}
+                  onCheckedChange={(checked) => setConfig((p: any) => ({ ...p, autoReplyEnabled: checked }))}
+                />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>AIの性格・口調（システムプロンプト）</Label>
+                <Textarea
+                  value={config.systemPrompt || ''}
+                  onChange={(e) => setConfig((p: any) => ({ ...p, systemPrompt: e.target.value }))}
+                  rows={4}
+                  placeholder="例: あなたは田中ビューティーサロンのAIアシスタントです。丁寧で親しみやすい口調で対応してください。"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Handoff keywords */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Shield className="h-5 w-5 text-amber-500" />
+                <div>
+                  <CardTitle className="text-base">スタッフ引き継ぎキーワード</CardTitle>
+                  <CardDescription>これらを含むメッセージはAIが応答せず、スタッフ対応を促します</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {(config.handoffKeywords || []).length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {(config.handoffKeywords || []).map((kw: string) => (
+                    <Badge key={kw} variant="secondary" className="gap-1.5 pr-1.5">
+                      {kw}
+                      <button
+                        onClick={() => removeHandoffKeyword(kw)}
+                        className="hover:text-destructive transition-colors"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Input
+                  value={newHandoff}
+                  onChange={(e) => setNewHandoff(e.target.value)}
+                  placeholder="例: クレーム、解約、返金"
+                  className="max-w-[250px]"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); addHandoffKeyword(); }
+                  }}
+                />
+                <Button size="sm" variant="outline" onClick={addHandoffKeyword} disabled={!newHandoff.trim()}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 2: Keyword rules */}
+        <TabsContent value="keyword-rules" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <MessageCircleReply className="h-5 w-5 text-emerald-600" />
+                <div>
+                  <CardTitle className="text-base">キーワード応答ルール</CardTitle>
+                  <CardDescription>特定キーワードに定型文で応答（AI応答より優先）</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {(config.keywordRules || []).length > 0 && (
+                <div className="space-y-2">
+                  {(config.keywordRules || []).map((rule: KeywordRule, i: number) => (
+                    <div key={i} className="flex items-start gap-3 border border-border rounded-lg p-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="outline" className="text-xs">
+                            {rule.matchType === 'exact' ? '完全一致' : '部分一致'}
+                          </Badge>
+                          <span className="text-sm font-medium">&ldquo;{rule.keyword}&rdquo;</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <ArrowRight className="h-3 w-3" />
+                          <span className="line-clamp-2">{rule.response}</span>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="ghost" onClick={() => removeKeywordRule(i)} className="text-destructive hover:text-destructive shrink-0">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <Separator />
+
+              <div className="space-y-3">
+                <p className="text-sm font-medium">ルール追加</p>
+                <div className="flex gap-2">
+                  <Input
+                    value={newKeyword}
+                    onChange={(e) => setNewKeyword(e.target.value)}
+                    placeholder="キーワード（例: 営業時間）"
+                    className="max-w-[200px]"
+                  />
+                  <select
+                    value={newMatchType}
+                    onChange={(e) => setNewMatchType(e.target.value as 'exact' | 'contains')}
+                    className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="contains">部分一致</option>
+                    <option value="exact">完全一致</option>
+                  </select>
+                </div>
+                <Textarea
+                  value={newResponse}
+                  onChange={(e) => setNewResponse(e.target.value)}
+                  placeholder="応答メッセージ（例: 営業時間は10:00〜19:00です。）"
+                  rows={2}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={addKeywordRule}
+                  disabled={!newKeyword.trim() || !newResponse.trim()}
+                  className="gap-1.5"
+                >
+                  <Plus className="h-4 w-4" />
+                  ルール追加
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 3: Knowledge base */}
+        <TabsContent value="knowledge" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Brain className="h-5 w-5 text-blue-600" />
+                <div>
+                  <CardTitle className="text-base">ナレッジベース</CardTitle>
+                  <CardDescription>AIが回答に使用するビジネス情報（{(config.knowledgeBase || []).length}件）</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {(config.knowledgeBase || []).map((item: any, index: number) => (
+                <div key={index} className="pb-3 border-b last:border-b-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium">{item.title}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive"
+                      onClick={() => setConfig((p: any) => ({ ...p, knowledgeBase: p.knowledgeBase.filter((_: any, i: number) => i !== index) }))}
+                    >
+                      削除
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground whitespace-pre-wrap line-clamp-3">{item.content}</p>
+                </div>
+              ))}
+              <Separator />
+              <div className="space-y-3">
+                <Input
+                  type="text"
+                  value={newKbTitle}
+                  onChange={(e) => setNewKbTitle(e.target.value)}
+                  placeholder="カテゴリ名（例: メニュー・料金）"
+                />
+                <Textarea
+                  value={newKbContent}
+                  onChange={(e) => setNewKbContent(e.target.value)}
+                  rows={2}
+                  placeholder="内容を入力..."
+                />
+                <Button variant="outline" size="sm" onClick={addKnowledgeItem} disabled={!newKbTitle.trim() || !newKbContent.trim()} className="gap-1.5">
+                  <Plus className="h-4 w-4" />
+                  追加
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 4: AI generation tools */}
+        <TabsContent value="generate" className="space-y-4">
+          {/* Message generation */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Sparkles className="h-5 w-5 text-amber-600" />
+                <div>
+                  <CardTitle className="text-base">メッセージ生成</CardTitle>
+                  <CardDescription>目的とトーンを指定して配信メッセージを3パターン生成</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-3">
+                <div className="flex-1 space-y-2">
+                  <Label>目的</Label>
+                  <Input
+                    type="text"
+                    value={genPurpose}
+                    onChange={(e) => setGenPurpose(e.target.value)}
+                    placeholder="例: バレンタインキャンペーン告知"
+                  />
+                </div>
+                <div className="w-44 space-y-2">
+                  <Label>トーン</Label>
+                  <select
+                    value={genTone}
+                    onChange={(e) => setGenTone(e.target.value)}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                  >
+                    <option>フレンドリー</option>
+                    <option>ビジネスライク</option>
+                    <option>カジュアル</option>
+                    <option>丁寧・フォーマル</option>
+                  </select>
+                </div>
+              </div>
+              <Button onClick={handleGenerate} disabled={!genPurpose || generating} className="gap-1.5">
+                <Sparkles className="h-4 w-4" />
+                {generating ? '生成中...' : 'メッセージを生成'}
+              </Button>
+              {suggestions.length > 0 && (
+                <div className="space-y-2 pt-2">
+                  <p className="text-xs font-medium text-muted-foreground">提案メッセージ:</p>
+                  {suggestions.map((s, i) => (
+                    <div key={i} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                      <p className="text-sm flex-1 whitespace-pre-wrap">{s}</p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-primary shrink-0"
+                        onClick={() => navigator.clipboard.writeText(s)}
+                      >
+                        コピー
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Scenario suggestion */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <TrendingUp className="h-5 w-5 text-green-600" />
+                <div>
+                  <CardTitle className="text-base">シナリオ提案</CardTitle>
+                  <CardDescription>ビジネスの説明からステップ配信シナリオを自動生成</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Textarea
+                value={scenarioDesc}
+                onChange={(e) => setScenarioDesc(e.target.value)}
+                rows={3}
+                placeholder="例: 美容サロンで、友だち追加した新規客に7日間かけて来店予約を促したい。初回クーポンあり。"
+              />
+              <Button
+                onClick={handleGenerateScenario}
+                disabled={!scenarioDesc.trim() || generatingScenario}
+                className="gap-1.5"
+              >
+                <Brain className="h-4 w-4" />
+                {generatingScenario ? 'シナリオ生成中...' : 'シナリオを生成'}
+              </Button>
+              {scenarioResult && (
+                <div className="pt-4 border-t">
+                  <h3 className="text-sm font-medium text-green-800 mb-2">提案シナリオ</h3>
+                  <pre className="text-xs text-green-700 whitespace-pre-wrap bg-green-50 p-3 rounded-md">
+                    {typeof scenarioResult === 'string' ? scenarioResult : JSON.stringify(scenarioResult, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

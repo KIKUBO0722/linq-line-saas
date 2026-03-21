@@ -22,6 +22,8 @@ export const friends = pgTable(
     customFields: jsonb('custom_fields').default({}),
     followedAt: timestamp('followed_at', { withTimezone: true }),
     unfollowedAt: timestamp('unfollowed_at', { withTimezone: true }),
+    trafficSourceId: uuid('traffic_source_id'),
+    acquisitionSource: varchar('acquisition_source', { length: 50 }),
     profileSyncedAt: timestamp('profile_synced_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },

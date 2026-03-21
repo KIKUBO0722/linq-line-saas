@@ -1,0 +1,1 @@
+ALTER TABLE "ai_configs" ADD COLUMN "welcome_message" varchar(2000);

@@ -45,6 +45,14 @@ export class StepsController {
     return this.stepsService.addStepMessage(scenarioId, body);
   }
 
+  @Patch('messages/:id')
+  async updateStep(
+    @Param('id') id: string,
+    @Body() body: { condition?: any; branchTrue?: number | null; branchFalse?: number | null; delayMinutes?: number; messageContent?: any },
+  ) {
+    return this.stepsService.updateStepMessage(id, body);
+  }
+
   @Delete('messages/:id')
   async deleteStep(@Param('id') id: string) {
     await this.stepsService.deleteStepMessage(id);

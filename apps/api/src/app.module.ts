@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { DatabaseModule } from './database/database.module';
 import { WebhookModule } from './modules/webhook/webhook.module';
 import { LineModule } from './modules/line/line.module';
@@ -14,6 +15,11 @@ import { TagsModule } from './modules/tags/tags.module';
 import { ReferralModule } from './modules/referral/referral.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { MessagesModule } from './modules/messages/messages.module';
+import { RichMenusModule } from './modules/rich-menus/rich-menus.module';
+import { TemplatesModule } from './modules/templates/templates.module';
+import { SegmentsModule } from './modules/segments/segments.module';
+import { CouponsModule } from './modules/coupons/coupons.module';
+import { ReservationsModule } from './modules/reservations/reservations.module';
 import { validateEnv } from './config/env.validation';
 
 @Module({
@@ -22,6 +28,7 @@ import { validateEnv } from './config/env.validation';
       isGlobal: true,
       validate: validateEnv,
     }),
+    ScheduleModule.forRoot(),
     DatabaseModule,
     LineModule,
     AuthModule,
@@ -36,6 +43,11 @@ import { validateEnv } from './config/env.validation';
     MessagesModule,
     WebhookModule,
     FriendsModule,
+    RichMenusModule,
+    TemplatesModule,
+    SegmentsModule,
+    CouponsModule,
+    ReservationsModule,
   ],
 })
 export class AppModule {}
