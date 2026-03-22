@@ -15,10 +15,10 @@ interface FormField {
 
 export default function PublicFormPage() {
   const { id } = useParams();
-  const [form, setForm] = useState<any>(null);
+  const [form, setForm] = useState<{ name: string; description?: string; thankYouMessage?: string; fields: FormField[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -27,11 +27,17 @@ export default function PublicFormPage() {
 
   useEffect(() => {
     // Check if LIFF is available
-    if (typeof window !== 'undefined' && (window as any).liff) {
-      const liff = (window as any).liff;
+    interface LiffApi {
+      init: (config: { liffId: string }) => Promise<void>;
+      isLoggedIn: () => boolean;
+      getProfile: () => Promise<{ userId: string; displayName: string }>;
+    }
+    const win = window as unknown as { liff?: LiffApi };
+    if (typeof window !== 'undefined' && win.liff) {
+      const liff = win.liff;
       liff.init({ liffId: '' }).then(() => {
         if (liff.isLoggedIn()) {
-          liff.getProfile().then((profile: any) => {
+          liff.getProfile().then((profile) => {
             setFriendId(profile.userId);
           });
         }
@@ -65,14 +71,14 @@ export default function PublicFormPage() {
         body: JSON.stringify({ friendId, answers }),
       });
       setSubmitted(true);
-    } catch (err: any) {
-      alert(err.message || '送信に失敗しました');
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : '送信に失敗しました');
     } finally {
       setSubmitting(false);
     }
   }
 
-  function updateAnswer(label: string, value: any) {
+  function updateAnswer(label: string, value: string | string[]) {
     setAnswers((prev) => ({ ...prev, [label]: value }));
   }
 
@@ -219,14 +225,14 @@ export default function PublicFormPage() {
                       <label key={oi} className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={(answers[field.label] || []).includes(opt)}
+                          checked={Array.isArray(answers[field.label]) && (answers[field.label] as string[]).includes(opt)}
                           onChange={(e) => {
-                            const current = answers[field.label] || [];
+                            const current = Array.isArray(answers[field.label]) ? (answers[field.label] as string[]) : [];
                             updateAnswer(
                               field.label,
                               e.target.checked
                                 ? [...current, opt]
-                                : current.filter((v: string) => v !== opt),
+                                : current.filter((v) => v !== opt),
                             );
                           }}
                           className="rounded text-blue-600"

@@ -9,6 +9,7 @@ import {
   Smartphone, Layers, ArrowLeftRight,
 } from 'lucide-react';
 import { api } from '@/lib/api-client';
+import type { RichMenu, RichMenuGroup, RichMenuArea, RichMenuSize, LineAccount } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -92,15 +93,19 @@ interface TabConfig {
   menuSize: 'full' | 'half';
 }
 
+interface RichMenuGroupWithMenus extends RichMenuGroup {
+  menus?: RichMenu[];
+}
+
 type EditorView = 'list' | 'create' | 'edit' | 'create-group';
 
 export default function RichMenusPage() {
-  const [menus, setMenus] = useState<any[]>([]);
-  const [groups, setGroups] = useState<any[]>([]);
-  const [accounts, setAccounts] = useState<any[]>([]);
+  const [menus, setMenus] = useState<RichMenu[]>([]);
+  const [groups, setGroups] = useState<RichMenuGroupWithMenus[]>([]);
+  const [accounts, setAccounts] = useState<LineAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<EditorView>('list');
-  const [editingMenu, setEditingMenu] = useState<any>(null);
+  const [editingMenu, setEditingMenu] = useState<RichMenu | null>(null);
   const [mainTab, setMainTab] = useState<'single' | 'groups'>('single');
 
   // Single menu editor state
@@ -287,18 +292,18 @@ export default function RichMenusPage() {
     setView('create-group');
   }
 
-  function startEdit(menu: any) {
+  function startEdit(menu: RichMenu) {
     setEditingMenu(menu);
     setName(menu.name);
     setChatBarText(menu.chatBarText || 'メニュー');
     setAccountId(menu.lineAccountId);
-    const size = menu.size as any;
-    setMenuSize(size?.height > 1000 ? 'full' : 'half');
-    const menuAreas = (menu.areas as any[]) || [];
+    const size = menu.size;
+    setMenuSize(size?.height && size.height > 1000 ? 'full' : 'half');
+    const menuAreas = menu.areas || [];
     setAreas(
-      menuAreas.map((a: any, i: number) => ({
+      menuAreas.map((a: RichMenuArea, i: number) => ({
         bounds: a.bounds,
-        action: a.action || { type: 'message', text: '' },
+        action: a.action ? { ...a.action, type: a.action.type as AreaConfig['action']['type'] } : { type: 'message' as const, text: '' },
         label: `エリア${i + 1}`,
       })),
     );
@@ -325,25 +330,25 @@ export default function RichMenusPage() {
     const mappedAreas = areas.map((a) => ({ bounds: a.bounds, action: a.action }));
 
     try {
-      let menu: any;
+      let menu: RichMenu;
       if (view === 'edit' && editingMenu) {
-        menu = await api.richMenus.update(editingMenu.id, { name, chatBarText, size, areas: mappedAreas });
+        menu = await api.richMenus.update(editingMenu.id, { name, chatBarText, size, areas: mappedAreas }) as RichMenu;
       } else {
-        menu = await api.richMenus.create({ lineAccountId, name, chatBarText, size, areas: mappedAreas });
+        menu = await api.richMenus.create({ lineAccountId, name, chatBarText, size, areas: mappedAreas }) as RichMenu;
       }
 
       if (imageFile && menu.id) {
         setUploading(true);
         try { await api.richMenus.uploadImage(menu.id, imageFile); }
-        catch (err: any) { toast.error(`メニューは作成されましたが、画像アップロードに失敗しました: ${err.message}`); }
+        catch (err: unknown) { toast.error(`メニューは作成されましたが、画像アップロードに失敗しました: ${err instanceof Error ? err.message : 'エラー'}`); }
         setUploading(false);
       }
 
       await loadData();
       resetEditor();
       setView('list');
-    } catch (err: any) {
-      toast.error(err.message || '保存に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : '保存に失敗しました');
     } finally {
       setSaving(false);
     }
@@ -356,7 +361,7 @@ export default function RichMenusPage() {
       await api.richMenus.createGroup({
         lineAccountId,
         name: groupName,
-        description: groupDesc || undefined,
+        description: groupDesc || null,
         tabs: tabs.map((tab) => ({
           name: tab.name,
           chatBarText: tab.chatBarText,
@@ -367,8 +372,8 @@ export default function RichMenusPage() {
       await loadData();
       resetEditor();
       setView('list');
-    } catch (err: any) {
-      toast.error(err.message || 'タブグループの保存に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'タブグループの保存に失敗しました');
     } finally {
       setSaving(false);
     }
@@ -379,7 +384,7 @@ export default function RichMenusPage() {
     try {
       await api.richMenus.delete(id);
       setMenus((prev) => prev.filter((m) => m.id !== id));
-    } catch (err: any) { toast.error(err.message || '削除に失敗しました'); }
+    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : '削除に失敗しました'); }
   }
 
   async function handleDeleteGroup(id: string) {
@@ -387,21 +392,21 @@ export default function RichMenusPage() {
     try {
       await api.richMenus.deleteGroup(id);
       setGroups((prev) => prev.filter((g) => g.id !== id));
-    } catch (err: any) { toast.error(err.message || '削除に失敗しました'); }
+    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : '削除に失敗しました'); }
   }
 
   async function handleSetDefault(id: string) {
     try {
       await api.richMenus.setDefault(id);
       setMenus((prev) => prev.map((m) => ({ ...m, isDefault: m.id === id })));
-    } catch (err: any) { toast.error(err.message || 'デフォルト設定に失敗しました'); }
+    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'デフォルト設定に失敗しました'); }
   }
 
   async function handleSetGroupDefault(groupId: string) {
     try {
       await api.richMenus.setGroupDefault(groupId);
       await loadData();
-    } catch (err: any) { toast.error(err.message || 'デフォルト設定に失敗しました'); }
+    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'デフォルト設定に失敗しました'); }
   }
 
   async function handleAiGenerate(targetAreas: AreaConfig[], setTargetAreas: (a: AreaConfig[]) => void) {
@@ -1047,13 +1052,13 @@ export default function RichMenusPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               {singleMenus.map((menu) => {
-                const menuAreas = (menu.areas as any[]) || [];
-                const menuSz = menu.size as any;
-                const isHalf = menuSz?.height < 1000;
+                const menuAreas = menu.areas || [];
+                const menuSz = menu.size;
+                const isHalf = menuSz ? menuSz.height < 1000 : false;
                 return (
                   <Card key={menu.id} className="overflow-hidden">
                     <div className="relative bg-muted border-b" style={{ height: isHalf ? 60 : 100 }}>
-                      {menuAreas.map((area: any, i: number) => {
+                      {menuAreas.map((area: RichMenuArea, i: number) => {
                         const sw = menuSz?.width || 2500;
                         const sh = menuSz?.height || 1686;
                         return (
@@ -1135,10 +1140,10 @@ export default function RichMenusPage() {
                     </CardHeader>
                     <CardContent>
                       <div className="flex gap-3 overflow-x-auto pb-2">
-                        {groupMenus.map((menu: any, i: number) => {
-                          const menuAreas = (menu.areas as any[]) || [];
-                          const menuSz = menu.size as any;
-                          const isHalf = menuSz?.height < 1000;
+                        {groupMenus.map((menu: RichMenu, i: number) => {
+                          const menuAreas = menu.areas || [];
+                          const menuSz = menu.size;
+                          const isHalf = menuSz ? menuSz.height < 1000 : false;
                           return (
                             <div key={menu.id} className="min-w-[200px] rounded-lg border overflow-hidden">
                               <div className="bg-muted/50 px-2 py-1.5 border-b flex items-center justify-between">
@@ -1146,7 +1151,7 @@ export default function RichMenusPage() {
                                 <Badge variant="outline" className="text-[10px]">タブ{i + 1}</Badge>
                               </div>
                               <div className="relative bg-muted" style={{ height: isHalf ? 40 : 60 }}>
-                                {menuAreas.map((area: any, j: number) => {
+                                {menuAreas.map((area: RichMenuArea, j: number) => {
                                   const sw = menuSz?.width || 2500;
                                   const sh = menuSz?.height || 1686;
                                   return (

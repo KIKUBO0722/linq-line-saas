@@ -13,13 +13,13 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
 interface ActionResult {
   type: string;
   id: string;
-  details?: any;
+  details?: Record<string, unknown>;
 }
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
-  action?: { type: string; data: any } | null;
+  action?: { type: string; data: Record<string, unknown> } | null;
   actionResult?: ActionResult | null;
   confirmed?: boolean; // true = accepted, false = rolled back, undefined = pending
 }

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 import { Ticket, Plus, Trash2, Copy, Check, X } from 'lucide-react';
 import { api } from '@/lib/api-client';
+import type { Coupon } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -18,20 +19,6 @@ import {
 } from '@/components/ui/table';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageSkeleton } from '@/components/ui/skeleton';
-
-interface Coupon {
-  id: string;
-  name: string;
-  code: string;
-  discountType: string;
-  discountValue: number;
-  description?: string;
-  expiresAt?: string;
-  maxUses?: number;
-  usedCount: number;
-  isActive: boolean;
-  createdAt: string;
-}
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -47,7 +34,7 @@ function formatDiscount(type: string, value: number): string {
   return `${value.toLocaleString()}円`;
 }
 
-function formatDate(dateStr?: string): string {
+function formatDate(dateStr: string | null): string {
   if (!dateStr) return '-';
   return new Date(dateStr).toLocaleDateString('ja-JP');
 }
@@ -123,20 +110,21 @@ export default function CouponsPage() {
     if (!formName.trim() || !formCode.trim() || !formDiscountValue) return;
     setCreating(true);
     try {
-      const coupon = await api.coupons.create({
+      const coupon = (await api.coupons.create({
         name: formName.trim(),
         code: formCode.trim().toUpperCase(),
         discountType: formDiscountType,
         discountValue: Number(formDiscountValue),
-        description: formDescription.trim() || undefined,
-        expiresAt: formExpiresAt || undefined,
-        maxUses: formMaxUses ? Number(formMaxUses) : undefined,
-      }) as Coupon;
+        description: formDescription.trim() || null,
+        expiresAt: formExpiresAt || null,
+        maxUses: formMaxUses ? Number(formMaxUses) : null,
+        isActive: true,
+      })) as Coupon;
       setCoupons((prev) => [coupon, ...prev]);
       resetForm();
       setShowCreate(false);
-    } catch (err: any) {
-      toast.error(err.message || 'クーポンの作成に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'クーポンの作成に失敗しました');
     } finally {
       setCreating(false);
     }
@@ -146,8 +134,8 @@ export default function CouponsPage() {
     try {
       const updated = await api.coupons.toggle(id, isActive) as Partial<Coupon>;
       setCoupons((prev) => prev.map((c) => (c.id === id ? { ...c, ...updated } : c)));
-    } catch (err: any) {
-      toast.error(err.message || 'ステータスの変更に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'ステータスの変更に失敗しました');
     }
   }
 
@@ -156,8 +144,8 @@ export default function CouponsPage() {
     try {
       await api.coupons.delete(id);
       setCoupons((prev) => prev.filter((c) => c.id !== id));
-    } catch (err: any) {
-      toast.error(err.message || 'クーポンの削除に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'クーポンの削除に失敗しました');
     }
   }
 

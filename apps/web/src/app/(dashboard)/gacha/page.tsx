@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 import { Dices, Plus, Trash2, Gift, Trophy, Settings2, Play, ChevronLeft } from 'lucide-react';
 import { api } from '@/lib/api-client';
+import type { GachaCampaign, GachaDraw, GachaPrize, GachaStyle, PrizeType } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -15,11 +16,11 @@ import { EmptyState } from '@/components/ui/empty-state';
 type View = 'list' | 'create' | 'detail';
 
 export default function GachaPage() {
-  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [campaigns, setCampaigns] = useState<GachaCampaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>('list');
-  const [selected, setSelected] = useState<any>(null);
-  const [draws, setDraws] = useState<any[]>([]);
+  const [selected, setSelected] = useState<GachaCampaign | null>(null);
+  const [draws, setDraws] = useState<GachaDraw[]>([]);
 
   // Create form
   const [name, setName] = useState('');
@@ -42,7 +43,7 @@ export default function GachaPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  async function openDetail(campaign: any) {
+  async function openDetail(campaign: GachaCampaign) {
     try {
       const detail = await api.gacha.getCampaign(campaign.id);
       setSelected(detail);
@@ -57,7 +58,7 @@ export default function GachaPage() {
   async function handleCreate() {
     setCreating(true);
     try {
-      const c = await api.gacha.createCampaign({ name, description: desc, maxDrawsPerUser: maxDraws, style });
+      const c = await api.gacha.createCampaign({ name, description: desc, maxDrawsPerUser: maxDraws, style: style as GachaStyle });
       setCampaigns((prev) => [c, ...prev]);
       setName(''); setDesc(''); setMaxDraws(1); setStyle('capsule');
       toast.success('ガチャキャンペーンを作成しました');
@@ -75,11 +76,11 @@ export default function GachaPage() {
       const prize = await api.gacha.addPrize(selected.id, {
         name: prizeName.trim(),
         weight: prizeWeight,
-        prizeType,
-        winMessage: prizeMessage || undefined,
+        prizeType: prizeType as PrizeType,
+        winMessage: prizeMessage || null,
         maxQuantity: prizeMaxQty,
       });
-      setSelected((prev: any) => ({ ...prev, prizes: [...(prev.prizes || []), prize] }));
+      setSelected((prev) => prev ? { ...prev, prizes: [...(prev.prizes || []), prize as GachaPrize] } : prev);
       setPrizeName(''); setPrizeWeight(1); setPrizeType('message'); setPrizeMessage(''); setPrizeMaxQty(0);
       toast.success('景品を追加しました');
     } catch {
@@ -90,10 +91,10 @@ export default function GachaPage() {
   async function handleDeletePrize(prizeId: string) {
     try {
       await api.gacha.deletePrize(prizeId);
-      setSelected((prev: any) => ({
+      setSelected((prev) => prev ? {
         ...prev,
-        prizes: prev.prizes.filter((p: any) => p.id !== prizeId),
-      }));
+        prizes: (prev.prizes || []).filter((p) => p.id !== prizeId),
+      } : prev);
       toast.success('景品を削除しました');
     } catch {
       toast.error('削除に失敗しました');
@@ -103,7 +104,7 @@ export default function GachaPage() {
   async function handleTestDraw() {
     if (!selected) return;
     try {
-      const result = await api.gacha.draw(selected.id);
+      const result = await api.gacha.draw(selected.id) as GachaDraw & { error?: string };
       if (result.error) {
         toast.error(result.error);
       } else {
@@ -121,7 +122,7 @@ export default function GachaPage() {
   // --- Detail view ---
   if (view === 'detail' && selected) {
     const prizes = selected.prizes || [];
-    const totalWeight = prizes.reduce((s: number, p: any) => s + p.weight, 0);
+    const totalWeight = prizes.reduce((s: number, p: GachaPrize) => s + p.weight, 0);
 
     return (
       <div className="p-6 max-w-4xl mx-auto space-y-6">
@@ -165,7 +166,7 @@ export default function GachaPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {prizes.map((p: any) => (
+                  {prizes.map((p: GachaPrize) => (
                     <TableRow key={p.id}>
                       <TableCell>
                         <span className="font-medium text-sm">{p.name}</span>
@@ -238,8 +239,8 @@ export default function GachaPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {draws.slice(0, 50).map((d: any) => {
-                    const prize = prizes.find((p: any) => p.id === d.prizeId);
+                  {draws.slice(0, 50).map((d: GachaDraw) => {
+                    const prize = prizes.find((p: GachaPrize) => p.id === d.prizeId);
                     return (
                       <TableRow key={d.id}>
                         <TableCell className="text-xs">{new Date(d.drawnAt).toLocaleString('ja-JP')}</TableCell>

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 import { FileText, Plus, Trash2, Eye, ChevronLeft, GripVertical, X, Copy, Check, ExternalLink, Tag } from 'lucide-react';
 import { api } from '@/lib/api-client';
+import type { Form, FormResponse, Tag as TagType } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,11 +28,11 @@ interface FormField {
 }
 
 export default function FormsPage() {
-  const [forms, setForms] = useState<any[]>([]);
+  const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'list' | 'create' | 'responses'>('list');
-  const [selectedForm, setSelectedForm] = useState<any>(null);
-  const [responses, setResponses] = useState<any[]>([]);
+  const [selectedForm, setSelectedForm] = useState<Form | null>(null);
+  const [responses, setResponses] = useState<FormResponse[]>([]);
 
   // Create form state
   const [formName, setFormName] = useState('');
@@ -42,7 +43,7 @@ export default function FormsPage() {
   ]);
   const [saving, setSaving] = useState(false);
   const [tagOnSubmitId, setTagOnSubmitId] = useState<string>('');
-  const [availableTags, setAvailableTags] = useState<any[]>([]);
+  const [availableTags, setAvailableTags] = useState<TagType[]>([]);
 
   useEffect(() => {
     loadForms();
@@ -111,8 +112,8 @@ export default function FormsPage() {
       setTagOnSubmitId('');
       setView('list');
       loadForms();
-    } catch (err: any) {
-      toast.error(err.message || '作成に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : '作成に失敗しました');
     } finally {
       setSaving(false);
     }
@@ -123,12 +124,12 @@ export default function FormsPage() {
     try {
       await api.forms.delete(id);
       setForms((prev) => prev.filter((f) => f.id !== id));
-    } catch (err: any) {
-      toast.error(err.message || '削除に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : '削除に失敗しました');
     }
   }
 
-  async function viewResponses(form: any) {
+  async function viewResponses(form: Form) {
     setSelectedForm(form);
     try {
       const data = await api.forms.getResponses(form.id);
@@ -200,11 +201,11 @@ export default function FormsPage() {
                   <TableRow key={resp.id}>
                     <TableCell className="text-sm">{i + 1}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {new Date(resp.createdAt).toLocaleDateString('ja-JP')}
+                      {new Date(resp.submittedAt).toLocaleDateString('ja-JP')}
                     </TableCell>
                     <TableCell className="text-sm">
                       <pre className="text-xs bg-muted p-2 rounded-md max-w-[500px] overflow-auto">
-                        {JSON.stringify(resp.data, null, 2)}
+                        {JSON.stringify(resp.answers, null, 2)}
                       </pre>
                     </TableCell>
                   </TableRow>
@@ -477,9 +478,9 @@ export default function FormsPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1.5 flex-wrap">
-                      {(Array.isArray(form.fields) ? form.fields : []).map((field: any, i: number) => (
+                      {(Array.isArray(form.fields) ? form.fields : []).map((field, i) => (
                         <Badge key={i} variant="outline">
-                          {field.label || field.name}
+                          {field.label}
                           {field.required && <span className="text-destructive ml-1">*</span>}
                         </Badge>
                       ))}

@@ -14,7 +14,7 @@ type LineMessage =
   | { type: 'text'; text: string }
   | { type: 'image'; originalContentUrl: string; previewImageUrl?: string }
   | { type: 'template'; altText?: string; template: TemplateMessage }
-  | { type: 'flex'; altText?: string; contents: any };
+  | { type: 'flex'; altText?: string; contents: Record<string, unknown> };
 
 interface TemplateMessage {
   type: 'buttons' | 'carousel' | 'confirm';
@@ -176,10 +176,25 @@ export function LinePreview({ messages, botName = 'LinQ Bot' }: LinePreviewProps
 /**
  * テンプレートデータからLINEメッセージ形式に変換するヘルパー
  */
+interface MessageData {
+  thumbnailImageUrl?: string;
+  thumbnailUrl?: string;
+  title?: string;
+  text?: string;
+  actions?: TemplateAction[];
+  columns?: Array<{
+    thumbnailImageUrl?: string;
+    thumbnailUrl?: string;
+    title?: string;
+    text?: string;
+    actions?: TemplateAction[];
+  }>;
+}
+
 export function templateToLineMessages(
   messageType: string,
   content: string,
-  messageData: any,
+  messageData: MessageData | null | undefined,
 ): LineMessage[] {
   if (messageType === 'text' || !messageData) {
     return [{ type: 'text', text: content }];
@@ -203,7 +218,7 @@ export function templateToLineMessages(
       type: 'template',
       template: {
         type: 'carousel',
-        columns: (messageData.columns || []).map((col: any) => ({
+        columns: (messageData.columns || []).map((col) => ({
           thumbnailImageUrl: col.thumbnailImageUrl || col.thumbnailUrl,
           title: col.title,
           text: col.text || '',

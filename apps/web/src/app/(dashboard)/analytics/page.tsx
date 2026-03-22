@@ -14,6 +14,43 @@ import {
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import { api } from '@/lib/api-client';
+import type {
+  ConversionGoalType, ConversionGoal, ConversionEvent,
+  TrackedUrl, UrlClick, TrafficSource,
+} from '@/lib/types';
+
+// --- Analytics page local types ---
+interface UsageData {
+  messagesSent?: number;
+  messagesLimit?: number;
+  aiTokensUsed?: number;
+  aiTokensLimit?: number;
+  friendsLimit?: number;
+}
+
+interface DailyCount {
+  date: string;
+  count: number;
+}
+
+interface DeliveryEntry {
+  accountId: string;
+  botName?: string;
+  status?: string;
+  error?: string;
+  broadcast?: number;
+  apiBroadcast?: number;
+  apiPush?: number;
+  apiReply?: number;
+  apiMulticast?: number;
+  autoResponse?: number;
+  welcomeResponse?: number;
+  chat?: number;
+}
+
+interface TrafficSourceWithCount extends TrafficSource {
+  actualFriendCount?: number;
+}
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { PageSkeleton } from '@/components/ui/skeleton';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
@@ -24,24 +61,42 @@ import { Input } from '@/components/ui/input';
 import { EmptyState } from '@/components/ui/empty-state';
 
 export default function AnalyticsPage() {
-  const [stats, setStats] = useState<any>(null);
-  const [usage, setUsage] = useState<any>(null);
-  const [daily, setDaily] = useState<any>(null);
-  const [broadcasts, setBroadcasts] = useState<any[]>([]);
-  const [delivery, setDelivery] = useState<any[]>([]);
-  const [trafficSources, setTrafficSources] = useState<any[]>([]);
+  // The analytics overview API returns a different shape than AnalyticsOverview type
+  const [stats, setStats] = useState<{
+    friends?: { total?: number };
+    messages?: { outbound?: number; inbound?: number };
+    events?: { total?: number };
+  } | null>(null);
+  const [usage, setUsage] = useState<UsageData | null>(null);
+  // The daily API returns a different shape with dailyOutbound/dailyInbound/dailyFriends arrays
+  const [daily, setDaily] = useState<{
+    dailyOutbound?: DailyCount[];
+    dailyInbound?: DailyCount[];
+    dailyFriends?: DailyCount[];
+  } | null>(null);
+  // Broadcasts endpoint returns messages with status, scheduledAt, sentAt, createdAt
+  const [broadcasts, setBroadcasts] = useState<Array<{
+    id: string;
+    content: { text?: string; [key: string]: unknown };
+    status: string;
+    sentAt: string | null;
+    scheduledAt: string | null;
+    createdAt: string;
+  }>>([]);
+  const [delivery, setDelivery] = useState<DeliveryEntry[]>([]);
+  const [trafficSources, setTrafficSources] = useState<TrafficSourceWithCount[]>([]);
   const [showSourceForm, setShowSourceForm] = useState(false);
   const [sourceName, setSourceName] = useState('');
   const [sourceUtmSource, setSourceUtmSource] = useState('');
   const [sourceUtmMedium, setSourceUtmMedium] = useState('');
   const [sourceUtmCampaign, setSourceUtmCampaign] = useState('');
   const [creatingSrc, setCreatingSrc] = useState(false);
-  const [trackedUrls, setTrackedUrls] = useState<any[]>([]);
-  const [selectedUrl, setSelectedUrl] = useState<any>(null);
-  const [urlClicks, setUrlClicks] = useState<any[]>([]);
-  const [cvGoals, setCvGoals] = useState<any[]>([]);
-  const [selectedGoal, setSelectedGoal] = useState<any>(null);
-  const [goalEvents, setGoalEvents] = useState<any[]>([]);
+  const [trackedUrls, setTrackedUrls] = useState<TrackedUrl[]>([]);
+  const [selectedUrl, setSelectedUrl] = useState<TrackedUrl | null>(null);
+  const [urlClicks, setUrlClicks] = useState<UrlClick[]>([]);
+  const [cvGoals, setCvGoals] = useState<ConversionGoal[]>([]);
+  const [selectedGoal, setSelectedGoal] = useState<ConversionGoal | null>(null);
+  const [goalEvents, setGoalEvents] = useState<ConversionEvent[]>([]);
   const [showGoalForm, setShowGoalForm] = useState(false);
   const [newGoalName, setNewGoalName] = useState('');
   const [newGoalType, setNewGoalType] = useState('custom');
@@ -49,11 +104,39 @@ export default function AnalyticsPage() {
   const [newUrl, setNewUrl] = useState('');
   const [creatingUrl, setCreatingUrl] = useState(false);
   const [showUrlForm, setShowUrlForm] = useState(false);
-  const [cohort, setCohort] = useState<any>(null);
-  const [kpi, setKpi] = useState<any>(null);
-  const [ctr, setCtr] = useState<any>(null);
-  const [segmentData, setSegmentData] = useState<any[]>([]);
-  const [bestSendTime, setBestSendTime] = useState<any>(null);
+  // Cohort API returns an array of rows directly
+  const [cohort, setCohort] = useState<Array<{
+    cohortWeek: string;
+    cohortSize: number;
+    retention?: Array<{ week: number; rate: number }>;
+  }> | null>(null);
+  // KPI API returns a different shape
+  const [kpi, setKpi] = useState<{
+    totalFriends: number;
+    newFriends?: { current: number; change?: number };
+    messagesSent?: { current: number; change?: number };
+    responses?: { current: number; change?: number };
+  } | null>(null);
+  // CTR API returns summary + daily data
+  const [ctr, setCtr] = useState<{
+    summary?: { totalClicks: number; totalSent: number; overallCtr: number; totalTrackedUrls: number };
+    daily?: Array<{ date: string; clicks: number; urls: number }>;
+  } | null>(null);
+  // Segment API returns tag-based engagement data
+  const [segmentData, setSegmentData] = useState<Array<{
+    tagId: string;
+    tagName: string;
+    tagColor?: string;
+    friendCount: number;
+    outboundMessages: number;
+    inboundMessages: number;
+    responseRate: number;
+  }>>([]);
+  // Best send time API returns bestHours + hourly data
+  const [bestSendTime, setBestSendTime] = useState<{
+    bestHours?: Array<{ hour: number; responseRate: number; sentCount: number; responseCount: number }>;
+    hourly?: Array<{ hour: number; responseRate: number; sentCount: number }>;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [deliveryDate, setDeliveryDate] = useState(() => {
     const d = new Date();
@@ -78,18 +161,18 @@ export default function AnalyticsPage() {
       api.analytics.bestSendTime().catch(() => null),
     ])
       .then(([s, u, d, b, ts, urls, goals, ch, k, ct, seg, bst]) => {
-        setStats(s);
-        setUsage(u);
-        setDaily(d);
-        setBroadcasts(Array.isArray(b) ? b : []);
-        setTrafficSources(Array.isArray(ts) ? ts : []);
+        setStats(s as typeof stats);
+        setUsage(u as typeof usage);
+        setDaily(d as typeof daily);
+        setBroadcasts(Array.isArray(b) ? (b as typeof broadcasts) : []);
+        setTrafficSources(Array.isArray(ts) ? (ts as TrafficSourceWithCount[]) : []);
         setTrackedUrls(Array.isArray(urls) ? urls : []);
         setCvGoals(Array.isArray(goals) ? goals : []);
-        setCohort(ch);
-        setKpi(k);
-        setCtr(ct);
-        setSegmentData(Array.isArray(seg) ? seg : []);
-        setBestSendTime(bst);
+        setCohort(ch as typeof cohort);
+        setKpi(k as typeof kpi);
+        setCtr(ct as typeof ctr);
+        setSegmentData(Array.isArray(seg) ? (seg as typeof segmentData) : []);
+        setBestSendTime(bst as typeof bestSendTime);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -99,7 +182,7 @@ export default function AnalyticsPage() {
     try {
       const dateStr = deliveryDate.replace(/-/g, '');
       const data = await api.analytics.delivery(dateStr);
-      setDelivery(Array.isArray(data) ? data : []);
+      setDelivery(Array.isArray(data) ? (data as unknown as DeliveryEntry[]) : []);
     } catch {
       setDelivery([]);
     } finally {
@@ -297,7 +380,7 @@ export default function AnalyticsPage() {
                   </TableHeader>
                   <TableBody>
                     {broadcasts.map((b) => {
-                      const text = (b.content as any)?.text || JSON.stringify(b.content);
+                      const text = b.content?.text || JSON.stringify(b.content);
                       return (
                         <TableRow key={b.id}>
                           <TableCell>
@@ -426,14 +509,14 @@ export default function AnalyticsPage() {
                         utmMedium: sourceUtmMedium.trim() || undefined,
                         utmCampaign: sourceUtmCampaign.trim() || undefined,
                       });
-                      setTrafficSources((prev) => [...prev, { ...(src as any), actualFriendCount: 0 }]);
+                      setTrafficSources((prev) => [...prev, { ...(src as TrafficSource), actualFriendCount: 0 }]);
                       setSourceName('');
                       setSourceUtmSource('');
                       setSourceUtmMedium('');
                       setSourceUtmCampaign('');
                       setShowSourceForm(false);
-                    } catch (err: any) {
-                      toast.error(err.message || '作成に失敗しました');
+                    } catch (err: unknown) {
+                      toast.error(err instanceof Error ? err.message : '作成に失敗しました');
                     } finally {
                       setCreatingSrc(false);
                     }
@@ -550,8 +633,8 @@ export default function AnalyticsPage() {
                                 try {
                                   await api.analytics.deleteTrafficSource(src.id);
                                   setTrafficSources((prev) => prev.filter((s) => s.id !== src.id));
-                                } catch (err: any) {
-                                  toast.error(err.message || '削除に失敗しました');
+                                } catch (err: unknown) {
+                                  toast.error(err instanceof Error ? err.message : '削除に失敗しました');
                                 }
                               }}
                               className="text-destructive hover:text-destructive"
@@ -644,7 +727,7 @@ export default function AnalyticsPage() {
                     onClick={async () => {
                       setCreatingGoal(true);
                       try {
-                        const goal = await api.conversions.createGoal({ name: newGoalName.trim(), type: newGoalType });
+                        const goal = await api.conversions.createGoal({ name: newGoalName.trim(), type: newGoalType as ConversionGoalType });
                         setCvGoals((prev) => [goal, ...prev]);
                         setNewGoalName('');
                         setShowGoalForm(false);
@@ -1021,14 +1104,14 @@ export default function AnalyticsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {cohort.map((row: any, i: number) => (
+                      {cohort.map((row, i) => (
                         <tr key={i} className="border-t">
                           <td className="py-2 pr-4 text-muted-foreground whitespace-nowrap">
                             {new Date(row.cohortWeek).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}〜
                           </td>
                           <td className="text-center py-2 px-2 font-medium">{row.cohortSize}</td>
                           {[0, 1, 2, 3, 4].map(w => {
-                            const r = row.retention?.find((x: any) => x.week === w);
+                            const r = row.retention?.find((x) => x.week === w);
                             const rate = r?.rate ?? null;
                             return (
                               <td key={w} className="text-center py-2 px-2">
@@ -1094,7 +1177,7 @@ export default function AnalyticsPage() {
                 <div className="h-[280px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart
-                      data={ctr.daily.map((d: any) => ({
+                      data={ctr.daily.map((d: { date: string; clicks: number; urls: number }) => ({
                         date: new Date(d.date).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }),
                         クリック: d.clicks,
                         URL数: d.urls,
@@ -1136,7 +1219,7 @@ export default function AnalyticsPage() {
                   <div className="h-[300px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
-                        data={segmentData.map((s: any) => ({
+                        data={segmentData.map((s) => ({
                           name: s.tagName.length > 8 ? s.tagName.slice(0, 8) + '…' : s.tagName,
                           友だち数: s.friendCount,
                           応答率: s.responseRate,
@@ -1167,7 +1250,7 @@ export default function AnalyticsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {segmentData.map((s: any) => (
+                      {segmentData.map((s) => (
                         <TableRow key={s.tagId}>
                           <TableCell>
                             <span className="inline-flex items-center gap-1.5">
@@ -1200,7 +1283,7 @@ export default function AnalyticsPage() {
           {/* Best hours highlight */}
           {bestSendTime?.bestHours && bestSendTime.bestHours.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {bestSendTime.bestHours.map((h: any, i: number) => (
+              {bestSendTime.bestHours.map((h: { hour: number; responseRate: number; sentCount: number; responseCount: number }, i: number) => (
                 <Card key={i} className={i === 0 ? 'border-green-300 bg-green-50/50 dark:bg-green-950/20' : ''}>
                   <CardContent className="pt-5 pb-4">
                     <div className="flex items-start justify-between mb-1">
@@ -1231,7 +1314,7 @@ export default function AnalyticsPage() {
                 <div className="h-[320px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={bestSendTime.hourly.map((h: any) => ({
+                      data={bestSendTime.hourly.map((h: { hour: number; responseRate: number; sentCount: number }) => ({
                         時間: `${h.hour}時`,
                         応答率: h.responseRate,
                         配信数: h.sentCount,
@@ -1243,7 +1326,7 @@ export default function AnalyticsPage() {
                       <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" unit="%" />
                       <Tooltip
                         contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
-                        formatter={(value: any, name: any) => [
+                        formatter={(value, name) => [
                           name === '応答率' ? `${value}%` : value,
                           name,
                         ]}
@@ -1253,8 +1336,8 @@ export default function AnalyticsPage() {
                         radius={[4, 4, 0, 0]}
                         fill="#06C755"
                       >
-                        {bestSendTime.hourly.map((h: any, idx: number) => {
-                          const isBest = bestSendTime.bestHours?.some((b: any) => b.hour === h.hour);
+                        {bestSendTime.hourly.map((h: { hour: number; responseRate: number; sentCount: number }, idx: number) => {
+                          const isBest = bestSendTime.bestHours?.some((b) => b.hour === h.hour);
                           return <Cell key={idx} fill={isBest ? '#06C755' : '#94a3b8'} fillOpacity={isBest ? 1 : 0.4} />;
                         })}
                       </Bar>
@@ -1366,7 +1449,7 @@ function UsageBar({ label, used, limit, icon }: { label: string; used: number; l
   );
 }
 
-function DailyChart({ outbound, inbound, days }: { outbound: any[]; inbound: any[]; days: number }) {
+function DailyChart({ outbound, inbound, days }: { outbound: DailyCount[]; inbound: DailyCount[]; days: number }) {
   const dateMap = new Map<string, { out: number; in: number }>();
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date();
@@ -1411,7 +1494,7 @@ function DailyChart({ outbound, inbound, days }: { outbound: any[]; inbound: any
   );
 }
 
-function FriendsChart({ data, days }: { data: any[]; days: number }) {
+function FriendsChart({ data, days }: { data: DailyCount[]; days: number }) {
   const dateMap = new Map<string, number>();
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date();

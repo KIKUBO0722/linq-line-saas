@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 import { Filter, Plus, Trash2, Send, Eye, Users, Ban } from 'lucide-react';
 import { api } from '@/lib/api-client';
+import type { Segment, Tag } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,25 +17,9 @@ import {
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageSkeleton } from '@/components/ui/skeleton';
 
-interface TagItem {
-  id: string;
-  name: string;
-  color?: string;
-}
-
-interface Segment {
-  id: string;
-  name: string;
-  description?: string;
-  tagIds: string[];
-  matchType: string;
-  excludeTagIds: string[];
-  createdAt: string;
-}
-
 export default function SegmentsPage() {
   const [segments, setSegments] = useState<Segment[]>([]);
-  const [tags, setTags] = useState<TagItem[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Create form
@@ -48,7 +33,7 @@ export default function SegmentsPage() {
 
   // Preview
   const [previewSegmentId, setPreviewSegmentId] = useState<string | null>(null);
-  const [previewData, setPreviewData] = useState<{ count: number; friends: any[] } | null>(null);
+  const [previewData, setPreviewData] = useState<{ count: number; friends: Array<{ id: string; displayName?: string | null; lineUserId?: string }> } | null>(null);
   const [previewing, setPreviewing] = useState(false);
 
   // Broadcast
@@ -74,7 +59,7 @@ export default function SegmentsPage() {
       if (data.tagNames && data.tagNames.length > 0 && tags.length > 0) {
         const matchedIds = data.tagNames
           .map((name) => tags.find((t) => t.name === name))
-          .filter((t): t is TagItem => t != null)
+          .filter((t): t is Tag => t != null)
           .map((t) => t.id);
         if (matchedIds.length > 0) {
           setSelectedTagIds(matchedIds);
@@ -139,8 +124,8 @@ export default function SegmentsPage() {
       setMatchType('any');
       setExcludeTagIds([]);
       setShowCreate(false);
-    } catch (err: any) {
-      toast.error(err.message || 'セグメントの作成に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'セグメントの作成に失敗しました');
     } finally {
       setCreating(false);
     }
@@ -151,8 +136,8 @@ export default function SegmentsPage() {
     try {
       await api.segments.delete(id);
       setSegments((prev) => prev.filter((s) => s.id !== id));
-    } catch (err: any) {
-      toast.error(err.message || 'セグメントの削除に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'セグメントの削除に失敗しました');
     }
   }
 
@@ -167,8 +152,8 @@ export default function SegmentsPage() {
     try {
       const data = await api.segments.preview(id);
       setPreviewData(data);
-    } catch (err: any) {
-      toast.error(err.message || 'プレビューの取得に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'プレビューの取得に失敗しました');
       setPreviewSegmentId(null);
     } finally {
       setPreviewing(false);
@@ -180,12 +165,12 @@ export default function SegmentsPage() {
     if (!confirm('このセグメントにメッセージを配信しますか？')) return;
     setBroadcasting(true);
     try {
-      const result: any = await api.segments.broadcast(id, { message: broadcastMessage.trim() });
+      const result = await api.segments.broadcast(id, { message: broadcastMessage.trim() }) as { recipientCount: number };
       toast(`${result.recipientCount}人に配信しました`);
       setBroadcastSegmentId(null);
       setBroadcastMessage('');
-    } catch (err: any) {
-      toast.error(err.message || '配信に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : '配信に失敗しました');
     } finally {
       setBroadcasting(false);
     }
@@ -471,7 +456,7 @@ export default function SegmentsPage() {
                 <p className="text-sm font-medium">{previewData.count}人がマッチ</p>
                 {previewData.friends.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {previewData.friends.map((f: any) => (
+                    {previewData.friends.map((f) => (
                       <Badge key={f.id} variant="secondary" className="text-xs">
                         {f.displayName || f.lineUserId}
                       </Badge>

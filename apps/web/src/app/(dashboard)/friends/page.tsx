@@ -4,7 +4,22 @@ import { toast } from 'sonner';
 
 import { useEffect, useState, useCallback } from 'react';
 import { Users, Search, Tag, Plus, X, MessageSquare, ChevronDown, Sparkles, Download, Upload, Save, Trash2, Clock, ArrowDownLeft, ArrowUpRight, UserPlus, UserMinus } from 'lucide-react';
+import type { Friend, Tag as TagType, TimelineEvent as TimelineEventType } from '@/lib/types';
 import { api } from '@/lib/api-client';
+
+interface FriendWithTags extends Friend {
+  tags?: TagType[];
+}
+
+interface TimelineEventData {
+  id?: string;
+  type: string;
+  timestamp?: string;
+  data?: {
+    content?: string | { text?: string; type?: string; [key: string]: unknown };
+    [key: string]: unknown;
+  };
+}
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -17,37 +32,49 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { PageSkeleton } from '@/components/ui/skeleton';
 
 export default function FriendsPage() {
-  const [friends, setFriends] = useState<any[]>([]);
+  const [friends, setFriends] = useState<FriendWithTags[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<any>(null);
+  const [selected, setSelected] = useState<FriendWithTags | null>(null);
 
-  const [tags, setTags] = useState<any[]>([]);
+  const [tags, setTags] = useState<TagType[]>([]);
   const [showTags, setShowTags] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState('#3B82F6');
   const [creatingTag, setCreatingTag] = useState(false);
-  const [friendTags, setFriendTags] = useState<any[]>([]);
+  const [friendTags, setFriendTags] = useState<TagType[]>([]);
   const [loadingFriendTags, setLoadingFriendTags] = useState(false);
   const [showTagPicker, setShowTagPicker] = useState(false);
 
   // AI analysis
-  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
+  interface AiAnalysisResult {
+    analysis: string;
+    tags?: string[];
+    score?: number;
+    nextAction?: string;
+  }
+  const [aiAnalysis, setAiAnalysis] = useState<AiAnalysisResult | null>(null);
   const [analyzingAi, setAnalyzingAi] = useState(false);
 
   // CSV import
   const [showImport, setShowImport] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<any>(null);
+  interface ImportResult {
+    imported?: number;
+    updated?: number;
+    tagsCreated?: number;
+    errors?: string[];
+  }
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
   // Timeline
-  const [timeline, setTimeline] = useState<any[]>([]);
+  const [timeline, setTimeline] = useState<TimelineEventData[]>([]);
   const [timelineTotal, setTimelineTotal] = useState(0);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
 
   // Custom fields
-  const [customFields, setCustomFields] = useState<Record<string, any>>({});
+  const [customFields, setCustomFields] = useState<Record<string, string>>({});
   const [newFieldKey, setNewFieldKey] = useState('');
   const [newFieldValue, setNewFieldValue] = useState('');
   const [showAddField, setShowAddField] = useState(false);
@@ -85,7 +112,7 @@ export default function FriendsPage() {
       loadFriendTags(selected.id);
       setShowTagPicker(false);
       setAiAnalysis(null);
-      setCustomFields((selected.customFields as Record<string, any>) || {});
+      setCustomFields((selected.customFields as Record<string, string>) || {});
       setShowAddField(false);
       setEditingFieldKey(null);
       setShowTimeline(false);
@@ -123,8 +150,8 @@ export default function FriendsPage() {
       await api.friends.assignTag(selected.id, tagId);
       await loadFriendTags(selected.id);
       setShowTagPicker(false);
-    } catch (err: any) {
-      toast.error(err.message || 'タグの割り当てに失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'タグの割り当てに失敗しました');
     }
   }
 
@@ -133,8 +160,8 @@ export default function FriendsPage() {
     try {
       await api.friends.removeTag(selected.id, tagId);
       await loadFriendTags(selected.id);
-    } catch (err: any) {
-      toast.error(err.message || 'タグの削除に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'タグの削除に失敗しました');
     }
   }
 
@@ -147,8 +174,8 @@ export default function FriendsPage() {
       setNewFieldKey('');
       setNewFieldValue('');
       setShowAddField(false);
-    } catch (err: any) {
-      toast.error(err.message || 'カスタムフィールドの追加に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'カスタムフィールドの追加に失敗しました');
     } finally {
       setSavingFields(false);
     }
@@ -161,8 +188,8 @@ export default function FriendsPage() {
       await api.friends.updateCustomFields(selected.id, { [key]: value });
       setCustomFields({ ...customFields, [key]: value });
       setEditingFieldKey(null);
-    } catch (err: any) {
-      toast.error(err.message || 'カスタムフィールドの更新に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'カスタムフィールドの更新に失敗しました');
     } finally {
       setSavingFields(false);
     }
@@ -176,8 +203,8 @@ export default function FriendsPage() {
       const updated = { ...customFields };
       delete updated[key];
       setCustomFields(updated);
-    } catch (err: any) {
-      toast.error(err.message || 'カスタムフィールドの削除に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'カスタムフィールドの削除に失敗しました');
     } finally {
       setSavingFields(false);
     }
@@ -219,11 +246,11 @@ export default function FriendsPage() {
     if (!newTagName.trim()) return;
     setCreatingTag(true);
     try {
-      const tag = await api.tags.create({ name: newTagName, color: newTagColor });
+      const tag = await api.tags.create({ name: newTagName, color: newTagColor }) as TagType;
       setTags((prev) => [...prev, tag]);
       setNewTagName('');
-    } catch (err: any) {
-      toast.error(err.message || 'タグの作成に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'タグの作成に失敗しました');
     } finally { setCreatingTag(false); }
   }
 
@@ -259,8 +286,8 @@ export default function FriendsPage() {
       setFriends(updated);
       const updatedTags = await api.tags.list();
       setTags(updatedTags);
-    } catch (err: any) {
-      setImportResult({ errors: [err.message || 'インポートに失敗しました'] });
+    } catch (err: unknown) {
+      setImportResult({ errors: [err instanceof Error ? err.message : 'インポートに失敗しました'] });
     } finally {
       setImporting(false);
     }
@@ -339,13 +366,13 @@ export default function FriendsPage() {
             {importResult && (
               <div className="text-xs space-y-1 border rounded p-3">
                 <p className="font-medium">結果:</p>
-                {importResult.imported > 0 && <p className="text-green-600">新規登録: {importResult.imported}件</p>}
-                {importResult.updated > 0 && <p className="text-blue-600">更新: {importResult.updated}件</p>}
-                {importResult.tagsCreated > 0 && <p className="text-purple-600">タグ作成: {importResult.tagsCreated}件</p>}
-                {importResult.errors?.length > 0 && (
+                {(importResult.imported ?? 0) > 0 && <p className="text-green-600">新規登録: {importResult.imported}件</p>}
+                {(importResult.updated ?? 0) > 0 && <p className="text-blue-600">更新: {importResult.updated}件</p>}
+                {(importResult.tagsCreated ?? 0) > 0 && <p className="text-purple-600">タグ作成: {importResult.tagsCreated}件</p>}
+                {(importResult.errors?.length ?? 0) > 0 && (
                   <div className="text-red-500 mt-1">
                     <p>エラー:</p>
-                    {importResult.errors.map((e: string, i: number) => <p key={i}>• {e}</p>)}
+                    {importResult.errors?.map((e: string, i: number) => <p key={i}>• {e}</p>)}
                   </div>
                 )}
               </div>
@@ -449,7 +476,7 @@ export default function FriendsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {friends.map((f: any) => (
+                  {friends.map((f) => (
                     <TableRow
                       key={f.id}
                       onClick={() => setSelected(f)}
@@ -475,7 +502,7 @@ export default function FriendsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          {(f.tags || []).map((t: any) => (
+                          {(f.tags || []).map((t) => (
                             <span
                               key={t.id}
                               className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium text-white"
@@ -614,7 +641,7 @@ export default function FriendsPage() {
                   </div>
                 ) : friendTags.length > 0 ? (
                   <div className="flex gap-1 flex-wrap">
-                    {friendTags.map((t: any) => (
+                    {friendTags.map((t) => (
                       <span
                         key={t.id}
                         className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium text-white"
@@ -778,9 +805,9 @@ export default function FriendsPage() {
                         <p className="text-xs font-medium text-purple-700">{aiAnalysis.nextAction}</p>
                       </div>
                     )}
-                    {aiAnalysis.tags?.length > 0 && (
+                    {(aiAnalysis.tags?.length ?? 0) > 0 && (
                       <div className="flex gap-1 flex-wrap pt-1">
-                        {aiAnalysis.tags.map((t: string, i: number) => (
+                        {aiAnalysis.tags?.map((t: string, i: number) => (
                           <Badge key={i} variant="secondary" className="text-[10px]">{t}</Badge>
                         ))}
                       </div>
@@ -822,8 +849,8 @@ export default function FriendsPage() {
                       <p className="text-xs text-center text-muted-foreground py-4">アクティビティがありません</p>
                     ) : (
                       <>
-                        {timeline.map((event: any) => (
-                          <TimelineEvent key={event.id} event={event} />
+                        {timeline.map((event) => (
+                          <TimelineEventItem key={event.id} event={event} />
                         ))}
                         {timelineTotal > timeline.length && (
                           <p className="text-[11px] text-center text-muted-foreground pt-2">
@@ -852,7 +879,7 @@ export default function FriendsPage() {
   );
 }
 
-function TimelineEvent({ event }: { event: any }) {
+function TimelineEventItem({ event }: { event: TimelineEventData }) {
   const time = event.timestamp
     ? new Date(event.timestamp).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     : '';

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 import { Link2, Plus, BarChart3, Gift, Users, ChevronLeft, Copy, Check } from 'lucide-react';
 import { api } from '@/lib/api-client';
+import type { ReferralProgram, ReferralStats, ReferralConversion } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,27 +14,6 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { EmptyState } from '@/components/ui/empty-state';
-
-interface ReferralProgram {
-  id: string;
-  name: string;
-  description?: string;
-  rewardType: string;
-  rewardValue: string;
-  isActive: boolean;
-}
-
-interface ReferralConversion {
-  id: string;
-  code: string;
-  createdAt: string;
-}
-
-interface ReferralStats {
-  totalCodes: number;
-  totalConversions: number;
-  recentConversions: ReferralConversion[];
-}
 
 export default function ReferralPage() {
   const [programs, setPrograms] = useState<ReferralProgram[]>([]);

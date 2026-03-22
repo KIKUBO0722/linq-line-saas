@@ -4,7 +4,24 @@ import { toast } from 'sonner';
 
 import { useEffect, useState, useRef } from 'react';
 import { Send, MessageSquare, Users, Search, Radio, FileStack, Clock, CalendarClock, Image as ImageIcon, Video, Code2, Plus, X, Zap, Sparkles } from 'lucide-react';
+import type { Friend, Message, MessageContent, MessageTemplate } from '@/lib/types';
 import { api } from '@/lib/api-client';
+
+interface LineMessagePayload {
+  type: string;
+  text?: string;
+  altText?: string;
+  originalContentUrl?: string;
+  previewImageUrl?: string;
+  contents?: unknown;
+  quickReply?: {
+    items: Array<{
+      type: 'action';
+      action: { type: string; label: string; text: string };
+    }>;
+  };
+  [key: string]: unknown;
+}
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,7 +38,7 @@ function TemplatePicker({
   onSelect: (content: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [templates, setTemplates] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [loaded, setLoaded] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -49,7 +66,7 @@ function TemplatePicker({
   }, [open]);
 
   // Group templates by category
-  const grouped = templates.reduce<Record<string, any[]>>((acc, t) => {
+  const grouped = templates.reduce<Record<string, MessageTemplate[]>>((acc, t) => {
     const cat = t.category || '未分類';
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(t);
@@ -84,7 +101,7 @@ function TemplatePicker({
                 <p className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   {category}
                 </p>
-                {items.map((t: any) => (
+                {items.map((t) => (
                   <button
                     key={t.id}
                     className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors truncate"
@@ -108,9 +125,9 @@ function TemplatePicker({
 
 export default function MessagesPage() {
   const [tab, setTab] = useState<'chat' | 'broadcast'>('chat');
-  const [friends, setFriends] = useState<any[]>([]);
-  const [selectedFriend, setSelectedFriend] = useState<any>(null);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [content, setContent] = useState('');
   const [broadcastContent, setBroadcastContent] = useState('');
   const [sending, setSending] = useState(false);
@@ -162,7 +179,7 @@ export default function MessagesPage() {
     function fetchUnread() {
       api.messages.unreadSummary().then(data => {
         if (mounted) {
-          const ids = new Set(data.unreadFriends.map((f: any) => f.friendId));
+          const ids = new Set(data.unreadFriends.map((f) => f.friendId));
           // Don't show badge for the friend currently being viewed
           if (selectedFriend) ids.delete(selectedFriend.id);
           setUnreadFriendIds(ids);
@@ -234,7 +251,7 @@ export default function MessagesPage() {
     if (!selectedFriend) return;
     setSending(true);
     try {
-      let message: any;
+      let message: LineMessagePayload;
       switch (messageType) {
         case 'text':
           if (!content.trim()) return;
@@ -276,9 +293,18 @@ export default function MessagesPage() {
         ...prev,
         {
           id: Date.now().toString(),
-          direction: 'outbound',
+          tenantId: '',
+          lineAccountId: '',
+          friendId: selectedFriend.id,
+          direction: 'outbound' as const,
           messageType: message.type,
-          content: message,
+          content: message as MessageContent,
+          lineMessageId: null,
+          sendType: null,
+          status: 'sent',
+          scheduledAt: null,
+          sentAt: new Date().toISOString(),
+          error: null,
           createdAt: new Date().toISOString(),
         },
       ]);
@@ -288,8 +314,8 @@ export default function MessagesPage() {
       setFlexJson('');
       setQuickReplyItems([]);
       setShowQuickReply(false);
-    } catch (err: any) {
-      toast(err.message || '\u9001\u4FE1\u306B\u5931\u6557\u3057\u307E\u3057\u305F');
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : '\u9001\u4FE1\u306B\u5931\u6557\u3057\u307E\u3057\u305F');
     } finally {
       setSending(false);
     }
@@ -318,7 +344,7 @@ export default function MessagesPage() {
         }
       }
 
-      let message: any;
+      let message: LineMessagePayload;
       switch (broadcastType) {
         case 'text':
           if (!broadcastContent.trim()) return;
@@ -363,8 +389,8 @@ export default function MessagesPage() {
       setBroadcastQuickReplyItems([]);
       setShowBroadcastQuickReply(false);
       toast('\u4E00\u6589\u914D\u4FE1\u304C\u5B8C\u4E86\u3057\u307E\u3057\u305F');
-    } catch (err: any) {
-      toast(err.message || '\u914D\u4FE1\u306B\u5931\u6557\u3057\u307E\u3057\u305F');
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : '\u914D\u4FE1\u306B\u5931\u6557\u3057\u307E\u3057\u305F');
     } finally {
       setSending(false);
     }
@@ -372,15 +398,15 @@ export default function MessagesPage() {
 
   const isScheduled = scheduledAt && new Date(scheduledAt) > new Date();
 
-  function renderMessageContent(msg: any) {
-    const c = msg.content as any;
+  function renderMessageContent(msg: Message) {
+    const c = msg.content as MessageContent;
     const type = msg.messageType || c?.type || 'text';
     switch (type) {
       case 'image':
         return (
           <div>
             <img
-              src={c.originalContentUrl || c.previewImageUrl}
+              src={(c.originalContentUrl as string) || (c.previewImageUrl as string)}
               alt=""
               className="max-w-full rounded-lg max-h-48 object-cover"
             />
@@ -716,9 +742,9 @@ export default function MessagesPage() {
                         onClick={async () => {
                           setAiSuggestLoading(true);
                           try {
-                            const recentMessages = messages.slice(-10).map((m: any) => ({
+                            const recentMessages = messages.slice(-10).map((m) => ({
                               role: m.direction === 'inbound' ? 'user' : 'assistant',
-                              content: m.content?.text || m.content?.toString?.() || '',
+                              content: (m.content as MessageContent)?.text || '',
                             }));
                             const result = await api.ai.chatSuggest({
                               friendId: selectedFriend.id,
@@ -1131,8 +1157,8 @@ export default function MessagesPage() {
                         message: broadcastContent,
                       });
                       toast.success(`テスト送信完了（${result.sent}件送信）`);
-                    } catch (err: any) {
-                      toast.error(err.message || 'テスト送信に失敗しました');
+                    } catch (err: unknown) {
+                      toast.error(err instanceof Error ? err.message : 'テスト送信に失敗しました');
                     }
                   }}
                 >

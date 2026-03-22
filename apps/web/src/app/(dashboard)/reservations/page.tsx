@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 import { CalendarCheck, Plus, Trash2, Clock, User, Bell, Settings, Link } from 'lucide-react';
 import { api } from '@/lib/api-client';
+import type { ReservationSlot, Reservation, CalendarIntegration } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -17,24 +18,8 @@ import {
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageSkeleton } from '@/components/ui/skeleton';
 
-interface Slot {
-  id: string;
-  name: string;
-  duration: number;
-  description?: string;
-  isActive: boolean;
-}
-
-interface Reservation {
-  id: string;
-  slotId: string;
-  friendId?: string;
-  guestName?: string;
-  date: string;
-  startTime: string;
-  status: string;
-  note?: string;
-  createdAt: string;
+// Extended reservation type with computed slot fields from the API response
+interface ReservationWithSlot extends Reservation {
   slotName: string;
   slotDuration: number;
 }
@@ -47,8 +32,8 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function ReservationsPage() {
   const [tab, setTab] = useState('reservations');
-  const [slots, setSlots] = useState<Slot[]>([]);
-  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [slots, setSlots] = useState<ReservationSlot[]>([]);
+  const [reservations, setReservations] = useState<ReservationWithSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [slotsLoading, setSlotsLoading] = useState(true);
 
@@ -72,7 +57,7 @@ export default function ReservationsPage() {
   const [resReminderMinutes, setResReminderMinutes] = useState('');
 
   // Google Calendar
-  const [calendarIntegration, setCalendarIntegration] = useState<any>(null);
+  const [calendarIntegration, setCalendarIntegration] = useState<CalendarIntegration | null>(null);
   const [calendarId, setCalendarId] = useState('');
   const [serviceAccountKey, setServiceAccountKey] = useState('');
   const [savingCalendar, setSavingCalendar] = useState(false);
@@ -116,7 +101,7 @@ export default function ReservationsPage() {
 
   async function loadCalendarIntegration() {
     try {
-      const data = await api.reservations.getCalendarIntegration();
+      const data = await api.reservations.getCalendarIntegration() as CalendarIntegration | null;
       setCalendarIntegration(data);
       if (data?.calendarId) setCalendarId(data.calendarId);
     } catch {
@@ -133,11 +118,11 @@ export default function ReservationsPage() {
         calendarId: calendarId.trim(),
         serviceAccountKey: serviceAccountKey.trim(),
       });
-      setCalendarIntegration(result);
+      setCalendarIntegration(result as CalendarIntegration);
       setServiceAccountKey('');
       toast.success('Googleカレンダー連携を保存しました');
-    } catch (err: any) {
-      toast.error(err.message || '保存に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : '保存に失敗しました');
     } finally {
       setSavingCalendar(false);
     }
@@ -146,9 +131,11 @@ export default function ReservationsPage() {
   async function handleDisableCalendar() {
     try {
       await api.reservations.disableCalendarIntegration();
-      setCalendarIntegration({ ...calendarIntegration, isActive: false });
-    } catch (err: any) {
-      toast.error(err.message || '無効化に失敗しました');
+      if (calendarIntegration) {
+        setCalendarIntegration({ ...calendarIntegration, isActive: false });
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : '無効化に失敗しました');
     }
   }
 
@@ -159,7 +146,7 @@ export default function ReservationsPage() {
       if (filterDate) params.date = filterDate;
       if (filterStatus) params.status = filterStatus;
       const data = await api.reservations.list(Object.keys(params).length > 0 ? params : undefined);
-      setReservations(Array.isArray(data) ? data : []);
+      setReservations(Array.isArray(data) ? data as ReservationWithSlot[] : []);
     } catch {
       setReservations([]);
     } finally {
@@ -181,13 +168,13 @@ export default function ReservationsPage() {
         duration: parseInt(slotDuration, 10),
         description: slotDescription.trim() || undefined,
       });
-      setSlots((prev) => [...prev, slot as Slot]);
+      setSlots((prev) => [...prev, slot as ReservationSlot]);
       setSlotName('');
       setSlotDuration('30');
       setSlotDescription('');
       setShowSlotForm(false);
-    } catch (err: any) {
-      toast.error(err.message || 'メニューの作成に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'メニューの作成に失敗しました');
     } finally {
       setCreatingSlot(false);
     }
@@ -199,8 +186,8 @@ export default function ReservationsPage() {
       await api.reservations.deleteSlot(id);
       setSlots((prev) => prev.filter((s) => s.id !== id));
       loadReservations();
-    } catch (err: any) {
-      toast.error(err.message || 'メニューの削除に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'メニューの削除に失敗しました');
     }
   }
 
@@ -225,8 +212,8 @@ export default function ReservationsPage() {
       setResReminderMinutes('');
       setShowReservationForm(false);
       loadReservations();
-    } catch (err: any) {
-      toast.error(err.message || '予約の作成に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : '予約の作成に失敗しました');
     } finally {
       setCreatingRes(false);
     }
@@ -238,8 +225,8 @@ export default function ReservationsPage() {
       setReservations((prev) =>
         prev.map((r) => (r.id === id ? { ...r, status } : r)),
       );
-    } catch (err: any) {
-      toast.error(err.message || 'ステータスの更新に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'ステータスの更新に失敗しました');
     }
   }
 
@@ -248,8 +235,8 @@ export default function ReservationsPage() {
     try {
       await api.reservations.delete(id);
       setReservations((prev) => prev.filter((r) => r.id !== id));
-    } catch (err: any) {
-      toast.error(err.message || '予約の削除に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : '予約の削除に失敗しました');
     }
   }
 

@@ -8,6 +8,7 @@ import {
   Send, FileText, Menu, Settings, UserPlus, Bell, ChevronRight, GitBranch,
 } from 'lucide-react';
 import { api } from '@/lib/api-client';
+import type { Friend, AnalyticsOverview, UsageRecord } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,29 +29,9 @@ interface SetupItem {
   done: boolean;
 }
 
-interface Friend {
-  id: string;
-  displayName?: string;
-  pictureUrl?: string;
-  isFollowing: boolean;
-  createdAt?: string;
-}
-
 interface Account {
   id: string;
   name?: string;
-}
-
-interface OverviewStats {
-  friends?: { total: number };
-  messages?: { sent: number; aiReplies: number };
-  steps?: { active: number };
-}
-
-interface UsageInfo {
-  plan?: string;
-  messageCount?: number;
-  messageLimit?: number;
 }
 
 interface AiConfig {
@@ -84,8 +65,8 @@ interface WizardResult {
 export default function OverviewPage() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [stats, setStats] = useState<OverviewStats | null>(null);
-  const [usage, setUsage] = useState<UsageInfo | null>(null);
+  const [stats, setStats] = useState<AnalyticsOverview | null>(null);
+  const [usage, setUsage] = useState<UsageRecord | null>(null);
   const [aiConfig, setAiConfig] = useState<AiConfig | null>(null);
   const [recentFriends, setRecentFriends] = useState<Friend[]>([]);
 
@@ -189,7 +170,7 @@ export default function OverviewPage() {
     }
   }
 
-  const friendCount = stats?.friends?.total ?? friends.length;
+  const friendCount = stats?.totalFriends ?? friends.length;
   const hasAccount = accounts.length > 0;
   const hasWelcome = !!aiConfig?.welcomeMessage;
   const hasAiEnabled = !!aiConfig?.autoReplyEnabled;
@@ -495,7 +476,7 @@ export default function OverviewPage() {
             },
             {
               label: '配信数（今月）',
-              value: stats?.messages?.sent ?? 0,
+              value: stats?.messagesSent ?? 0,
               icon: Send,
               color: 'text-blue-600',
               bg: 'from-blue-50 to-indigo-50',
@@ -504,7 +485,7 @@ export default function OverviewPage() {
             },
             {
               label: 'AI応答',
-              value: stats?.messages?.aiReplies ?? 0,
+              value: 0,
               icon: Bot,
               color: 'text-purple-600',
               bg: 'from-purple-50 to-violet-50',
@@ -513,7 +494,7 @@ export default function OverviewPage() {
             },
             {
               label: 'ステップ稼働',
-              value: stats?.steps?.active ?? 0,
+              value: 0,
               icon: GitBranch,
               color: 'text-orange-600',
               bg: 'from-orange-50 to-amber-50',

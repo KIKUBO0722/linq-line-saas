@@ -23,8 +23,8 @@ export default function LoginPage() {
     try {
       await api.auth.login({ email, password });
       router.push('/overview');
-    } catch (err: any) {
-      setError(err.message || 'ログインに失敗しました');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'ログインに失敗しました');
     } finally {
       setLoading(false);
     }

@@ -45,8 +45,8 @@ export default function ExitPopupsPage() {
         title: title.trim(),
         message: message.trim(),
         ctaText: ctaText.trim(),
-        couponCode: couponCode.trim() || undefined,
-        couponLabel: couponLabel.trim() || undefined,
+        couponCode: couponCode.trim() || null,
+        couponLabel: couponLabel.trim() || null,
         triggerType,
         delaySeconds,
       });

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 import { FileStack, Plus, Pencil, Trash2, X, Check, Copy, ClipboardCheck, ChevronDown, ChevronUp, Image as ImageIcon, Eye } from 'lucide-react';
 import { LinePreview, templateToLineMessages } from '@/components/line-preview';
+import type { MessageContent } from '@/lib/types';
 import { api } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -104,16 +105,25 @@ function newCarouselColumn(): CarouselColumn {
   return { text: '', actions: [newAction()] };
 }
 
-function parseContentToForm(content: string): { templateType: TemplateType; parsed: any } {
+interface ParsedTemplateData {
+  type?: string;
+  thumbnailImageUrl?: string;
+  title?: string;
+  text?: string;
+  actions?: TemplateAction[];
+  columns?: CarouselColumn[];
+}
+
+function parseContentToForm(content: string): { templateType: TemplateType; parsed: ParsedTemplateData | undefined } {
   try {
     const data = JSON.parse(content);
     if (data.type === 'buttons' || data.type === 'confirm' || data.type === 'carousel') {
-      return { templateType: data.type, parsed: data };
+      return { templateType: data.type, parsed: data as ParsedTemplateData };
     }
   } catch {
     // plain text
   }
-  return { templateType: 'text', parsed: null };
+  return { templateType: 'text', parsed: undefined };
 }
 
 // Action editor component
@@ -178,9 +188,9 @@ function TemplatePreview({
 }: {
   templateType: TemplateType;
   textContent?: string;
-  buttonsData?: { thumbnailImageUrl?: string; title?: string; text: string; actions: TemplateAction[] };
-  confirmData?: { text: string; actions: [TemplateAction, TemplateAction] };
-  carouselData?: { columns: CarouselColumn[] };
+  buttonsData?: ParsedTemplateData;
+  confirmData?: ParsedTemplateData;
+  carouselData?: ParsedTemplateData;
 }) {
   if (templateType === 'text') {
     return (
@@ -203,7 +213,7 @@ function TemplatePreview({
           <p className="text-xs text-muted-foreground">{buttonsData.text || '...'}</p>
         </div>
         <div className="border-t divide-y">
-          {buttonsData.actions.filter(a => a.label).map((a, i) => (
+          {(buttonsData.actions ?? []).filter(a => a.label).map((a, i) => (
             <div key={i} className="text-center py-2 text-xs text-blue-500 font-medium">{a.label}</div>
           ))}
         </div>
@@ -218,7 +228,7 @@ function TemplatePreview({
           <p className="text-xs">{confirmData.text || '...'}</p>
         </div>
         <div className="border-t grid grid-cols-2 divide-x">
-          {confirmData.actions.filter(a => a.label).map((a, i) => (
+          {(confirmData.actions ?? []).filter(a => a.label).map((a, i) => (
             <div key={i} className="text-center py-2 text-xs text-blue-500 font-medium">{a.label}</div>
           ))}
         </div>
@@ -229,7 +239,7 @@ function TemplatePreview({
   if (templateType === 'carousel' && carouselData) {
     return (
       <div className="flex gap-2 overflow-x-auto pb-2">
-        {carouselData.columns.map((col, i) => (
+        {(carouselData.columns ?? []).map((col, i) => (
           <div key={i} className="rounded-lg border overflow-hidden min-w-[200px] max-w-[200px] shrink-0">
             {col.thumbnailImageUrl && (
               <div className="h-24 bg-muted">
@@ -272,9 +282,9 @@ function TemplateForm({
 }: {
   initialType: TemplateType;
   initialTextContent: string;
-  initialButtonsData?: any;
-  initialConfirmData?: any;
-  initialCarouselData?: any;
+  initialButtonsData?: ParsedTemplateData;
+  initialConfirmData?: ParsedTemplateData;
+  initialCarouselData?: ParsedTemplateData;
   name: string;
   setName: (v: string) => void;
   category: string;
@@ -298,7 +308,7 @@ function TemplateForm({
   // Confirm state
   const [cfmText, setCfmText] = useState(initialConfirmData?.text || '');
   const [cfmActions, setCfmActions] = useState<[TemplateAction, TemplateAction]>(
-    initialConfirmData?.actions || [
+    (initialConfirmData?.actions as [TemplateAction, TemplateAction] | undefined) || [
       { type: 'message', label: 'はい', text: 'はい' },
       { type: 'message', label: 'いいえ', text: 'いいえ' },
     ],
@@ -738,7 +748,7 @@ export default function TemplatesPage() {
     try {
       // Detect message type from content
       let messageType = 'text';
-      let messageData: any = null;
+      let messageData: MessageContent | null = null;
       try {
         const parsed = JSON.parse(content);
         if (parsed.type === 'buttons' || parsed.type === 'carousel' || parsed.type === 'confirm') {
@@ -752,15 +762,15 @@ export default function TemplatesPage() {
         content: messageType === 'text' ? content.trim() : newName.trim(),
         category: newCategory || undefined,
         messageType,
-        messageData,
+        messageData: messageData ?? undefined,
       }) as Template;
       setTemplates((prev) => [template, ...prev]);
       setNewName('');
       setNewCategory('');
       setAiTextContent('');
       setShowCreate(false);
-    } catch (err: any) {
-      toast.error(err.message || 'テンプレートの作成に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'テンプレートの作成に失敗しました');
     } finally {
       setCreating(false);
     }
@@ -770,7 +780,7 @@ export default function TemplatesPage() {
     if (!editName.trim() || !content.trim()) return;
     try {
       let messageType = 'text';
-      let messageData: any = null;
+      let messageData: MessageContent | null = null;
       try {
         const parsed = JSON.parse(content);
         if (parsed.type === 'buttons' || parsed.type === 'carousel' || parsed.type === 'confirm') {
@@ -784,14 +794,14 @@ export default function TemplatesPage() {
         content: messageType === 'text' ? content.trim() : editName.trim(),
         category: editCategory || undefined,
         messageType,
-        messageData,
+        messageData: messageData ?? undefined,
       }) as Partial<Template>;
       setTemplates((prev) =>
         prev.map((t) => (t.id === id ? { ...t, ...updated } : t)),
       );
       setEditingId(null);
-    } catch (err: any) {
-      toast.error(err.message || 'テンプレートの更新に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'テンプレートの更新に失敗しました');
     }
   }
 
@@ -800,8 +810,8 @@ export default function TemplatesPage() {
     try {
       await api.templates.delete(id);
       setTemplates((prev) => prev.filter((t) => t.id !== id));
-    } catch (err: any) {
-      toast.error(err.message || 'テンプレートの削除に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'テンプレートの削除に失敗しました');
     }
   }
 

@@ -8,6 +8,7 @@ import {
   Plus, Trash2, ArrowRight, MessageCircleReply, HandMetal,
 } from 'lucide-react';
 import { api } from '@/lib/api-client';
+import type { AiConfig, AiSuggestedStep, GreetingMessage } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,8 +27,28 @@ interface KeywordRule {
   matchType: 'exact' | 'contains';
 }
 
+interface KnowledgeItem {
+  title: string;
+  content: string;
+}
+
+interface AiPageConfig {
+  autoReplyEnabled: boolean;
+  systemPrompt: string;
+  knowledgeBase: KnowledgeItem[];
+  handoffKeywords: string[];
+  keywordRules: KeywordRule[];
+  welcomeMessage?: string;
+}
+
+interface ScenarioSuggestion {
+  name?: string;
+  description?: string;
+  steps?: AiSuggestedStep[];
+}
+
 export default function AiPage() {
-  const [config, setConfig] = useState<any>({
+  const [config, setConfig] = useState<AiPageConfig>({
     autoReplyEnabled: false,
     systemPrompt: '',
     knowledgeBase: [],
@@ -50,7 +71,7 @@ export default function AiPage() {
 
   // Scenario generation
   const [scenarioDesc, setScenarioDesc] = useState('');
-  const [scenarioResult, setScenarioResult] = useState<any>(null);
+  const [scenarioResult, setScenarioResult] = useState<ScenarioSuggestion | string | null>(null);
   const [generatingScenario, setGeneratingScenario] = useState(false);
 
   // Keyword rules (merged from auto-reply)
@@ -62,7 +83,7 @@ export default function AiPage() {
   const [newHandoff, setNewHandoff] = useState('');
 
   // Greeting messages
-  const [greetings, setGreetings] = useState<any[]>([]);
+  const [greetings, setGreetings] = useState<GreetingMessage[]>([]);
   const [greetingForm, setGreetingForm] = useState<{ type: string; name: string; text: string } | null>(null);
   const [savingGreeting, setSavingGreeting] = useState(false);
 
@@ -80,22 +101,22 @@ export default function AiPage() {
     function handleAiFill(e: Event) {
       const { type, data } = (e as CustomEvent).detail;
       if (type === 'update_ai_config' && data) {
-        if (data.systemPrompt) setConfig((prev: any) => ({ ...prev, systemPrompt: data.systemPrompt }));
-        if (data.welcomeMessage) setConfig((prev: any) => ({ ...prev, welcomeMessage: data.welcomeMessage }));
+        if (data.systemPrompt) setConfig((prev: AiPageConfig) => ({ ...prev, systemPrompt: data.systemPrompt }));
+        if (data.welcomeMessage) setConfig((prev: AiPageConfig) => ({ ...prev, welcomeMessage: data.welcomeMessage }));
         if (data.knowledgeBase && Array.isArray(data.knowledgeBase)) {
-          setConfig((prev: any) => ({
+          setConfig((prev: AiPageConfig) => ({
             ...prev,
             knowledgeBase: [...(prev.knowledgeBase || []), ...data.knowledgeBase],
           }));
         }
         if (data.keywordRules && Array.isArray(data.keywordRules)) {
-          setConfig((prev: any) => ({
+          setConfig((prev: AiPageConfig) => ({
             ...prev,
             keywordRules: [...(prev.keywordRules || []), ...data.keywordRules],
           }));
         }
         if (data.handoffKeywords && Array.isArray(data.handoffKeywords)) {
-          setConfig((prev: any) => ({
+          setConfig((prev: AiPageConfig) => ({
             ...prev,
             handoffKeywords: [...new Set([...(prev.handoffKeywords || []), ...data.handoffKeywords])],
           }));
@@ -172,7 +193,7 @@ export default function AiPage() {
 
   function addKnowledgeItem() {
     if (!newKbTitle.trim() || !newKbContent.trim()) return;
-    setConfig((prev: any) => ({
+    setConfig((prev: AiPageConfig) => ({
       ...prev,
       knowledgeBase: [...(prev.knowledgeBase || []), { title: newKbTitle, content: newKbContent }],
     }));
@@ -182,7 +203,7 @@ export default function AiPage() {
 
   function addKeywordRule() {
     if (!newKeyword.trim() || !newResponse.trim()) return;
-    setConfig((prev: any) => ({
+    setConfig((prev: AiPageConfig) => ({
       ...prev,
       keywordRules: [...(prev.keywordRules || []), {
         keyword: newKeyword.trim(),
@@ -195,16 +216,16 @@ export default function AiPage() {
   }
 
   function removeKeywordRule(index: number) {
-    setConfig((prev: any) => ({
+    setConfig((prev: AiPageConfig) => ({
       ...prev,
-      keywordRules: (prev.keywordRules || []).filter((_: any, i: number) => i !== index),
+      keywordRules: (prev.keywordRules || []).filter((_: KeywordRule, i: number) => i !== index),
     }));
   }
 
   function addHandoffKeyword() {
     const kw = newHandoff.trim();
     if (!kw || (config.handoffKeywords || []).includes(kw)) return;
-    setConfig((prev: any) => ({
+    setConfig((prev: AiPageConfig) => ({
       ...prev,
       handoffKeywords: [...(prev.handoffKeywords || []), kw],
     }));
@@ -212,7 +233,7 @@ export default function AiPage() {
   }
 
   function removeHandoffKeyword(kw: string) {
-    setConfig((prev: any) => ({
+    setConfig((prev: AiPageConfig) => ({
       ...prev,
       handoffKeywords: (prev.handoffKeywords || []).filter((k: string) => k !== kw),
     }));
@@ -296,7 +317,7 @@ export default function AiPage() {
             <CardContent className="space-y-2">
               <Textarea
                 value={config.welcomeMessage || ''}
-                onChange={(e) => setConfig((p: any) => ({ ...p, welcomeMessage: e.target.value }))}
+                onChange={(e) => setConfig((p: AiPageConfig) => ({ ...p, welcomeMessage: e.target.value }))}
                 rows={3}
                 placeholder="例: 友だち追加ありがとうございます！&#10;ご予約やお問い合わせはこちらからどうぞ。"
               />
@@ -316,7 +337,7 @@ export default function AiPage() {
                 </div>
                 <Switch
                   checked={config.autoReplyEnabled}
-                  onCheckedChange={(checked) => setConfig((p: any) => ({ ...p, autoReplyEnabled: checked }))}
+                  onCheckedChange={(checked) => setConfig((p: AiPageConfig) => ({ ...p, autoReplyEnabled: checked }))}
                 />
               </div>
             </CardHeader>
@@ -325,7 +346,7 @@ export default function AiPage() {
                 <Label>AIの性格・口調（システムプロンプト）</Label>
                 <Textarea
                   value={config.systemPrompt || ''}
-                  onChange={(e) => setConfig((p: any) => ({ ...p, systemPrompt: e.target.value }))}
+                  onChange={(e) => setConfig((p: AiPageConfig) => ({ ...p, systemPrompt: e.target.value }))}
                   rows={4}
                   placeholder="例: あなたは田中ビューティーサロンのAIアシスタントです。丁寧で親しみやすい口調で対応してください。"
                 />
@@ -469,7 +490,7 @@ export default function AiPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {(config.knowledgeBase || []).map((item: any, index: number) => (
+              {(config.knowledgeBase || []).map((item: KnowledgeItem, index: number) => (
                 <div key={index} className="pb-3 border-b last:border-b-0">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-medium">{item.title}</span>
@@ -477,7 +498,7 @@ export default function AiPage() {
                       variant="ghost"
                       size="sm"
                       className="text-destructive"
-                      onClick={() => setConfig((p: any) => ({ ...p, knowledgeBase: p.knowledgeBase.filter((_: any, i: number) => i !== index) }))}
+                      onClick={() => setConfig((p: AiPageConfig) => ({ ...p, knowledgeBase: p.knowledgeBase.filter((_: KnowledgeItem, i: number) => i !== index) }))}
                     >
                       削除
                     </Button>
@@ -721,7 +742,7 @@ export default function AiPage() {
                                   const updated = await api.greetings.update(existing.id, {
                                     name: greetingForm.name,
                                     messages,
-                                  });
+                                  }) as GreetingMessage;
                                   setGreetings((prev) =>
                                     prev.map((g) => (g.id === existing.id ? updated : g)),
                                   );
@@ -730,7 +751,7 @@ export default function AiPage() {
                                     type: greetingForm.type,
                                     name: greetingForm.name,
                                     messages,
-                                  });
+                                  }) as GreetingMessage;
                                   setGreetings((prev) => [...prev, created]);
                                 }
                                 setGreetingForm(null);

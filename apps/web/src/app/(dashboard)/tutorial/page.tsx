@@ -26,7 +26,7 @@ interface Step {
   id: string;
   title: string;
   description: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   href: string;
   checkFn: () => Promise<boolean>;
 }

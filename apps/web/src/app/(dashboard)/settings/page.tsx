@@ -4,7 +4,36 @@ import { toast } from 'sonner';
 
 import { useEffect, useState } from 'react';
 import { Settings, Plus, Check, Copy, CreditCard, Zap, Users, MessageSquare, RefreshCw, Shield, Mail, Trash2 } from 'lucide-react';
+import type { LineAccount } from '@/lib/types';
 import { api } from '@/lib/api-client';
+
+interface BillingPlan {
+  id: string;
+  name: string;
+  price?: number;
+  limits?: { friends?: number; messages?: number; aiTokens?: number };
+}
+
+interface BillingSubscription {
+  planId?: string;
+  planName?: string;
+  status: string;
+}
+
+interface BillingUsage {
+  messagesSent?: number;
+  messagesLimit?: number;
+  aiTokensUsed?: number;
+  aiTokensLimit?: number;
+  friendsCount?: number;
+  friendsLimit?: number;
+}
+
+interface CurrentUser {
+  email: string;
+  role?: string;
+  displayName?: string;
+}
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +44,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<'accounts' | 'billing' | 'operators'>('accounts');
-  const [accounts, setAccounts] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<LineAccount[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [channelId, setChannelId] = useState('');
   const [channelSecret, setChannelSecret] = useState('');
@@ -27,13 +56,13 @@ export default function SettingsPage() {
   const [syncResult, setSyncResult] = useState<{ synced: number } | null>(null);
 
   // Billing state
-  const [plans, setPlans] = useState<any[]>([]);
-  const [subscription, setSubscription] = useState<any>(null);
-  const [usage, setUsage] = useState<any>(null);
+  const [plans, setPlans] = useState<BillingPlan[]>([]);
+  const [subscription, setSubscription] = useState<BillingSubscription | null>(null);
+  const [usage, setUsage] = useState<BillingUsage | null>(null);
   const [loadingBilling, setLoadingBilling] = useState(false);
 
   // Operators state
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('operator');
   const [inviting, setInviting] = useState(false);
@@ -67,7 +96,7 @@ export default function SettingsPage() {
         channelSecret,
         channelAccessToken,
         botName: botName || undefined,
-      });
+      }) as LineAccount;
       setAccounts((prev) => [...prev, account]);
       setShowForm(false);
       setChannelId('');
@@ -83,11 +112,11 @@ export default function SettingsPage() {
 
   const RENDER_API_URL = 'https://linq-line-saas.onrender.com';
 
-  function getWebhookUrl(account: any) {
+  function getWebhookUrl(account: LineAccount) {
     return `${RENDER_API_URL}/webhook/${account.id}`;
   }
 
-  function copyWebhookUrl(account: any) {
+  function copyWebhookUrl(account: LineAccount) {
     navigator.clipboard.writeText(getWebhookUrl(account));
     setCopiedId(account.id);
     setTimeout(() => setCopiedId(null), 2000);
@@ -99,8 +128,8 @@ export default function SettingsPage() {
     try {
       const result = await api.friends.sync();
       setSyncResult(result);
-    } catch (err: any) {
-      toast.error(err.message || '友だち同期に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : '友だち同期に失敗しました');
     } finally {
       setSyncing(false);
     }
@@ -114,8 +143,8 @@ export default function SettingsPage() {
       } else if (result.fallback && result.subscription) {
         setSubscription(result.subscription);
       }
-    } catch (err: any) {
-      toast.error(err.message || 'プラン変更に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'プラン変更に失敗しました');
     }
   }
 
@@ -123,9 +152,9 @@ export default function SettingsPage() {
     if (!confirm('サブスクリプションをキャンセルしますか？')) return;
     try {
       await api.billing.cancel();
-      setSubscription((prev: any) => prev ? { ...prev, status: 'cancelled' } : null);
-    } catch (err: any) {
-      toast.error(err.message || 'キャンセルに失敗しました');
+      setSubscription((prev) => prev ? { ...prev, status: 'cancelled' } : null);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'キャンセルに失敗しました');
     }
   }
 
@@ -184,7 +213,7 @@ export default function SettingsPage() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {accounts.map((account: any) => (
+                          {accounts.map((account) => (
                             <TableRow key={account.id}>
                               <TableCell className="text-sm font-medium">{account.botName || 'LINE Bot'}</TableCell>
                               <TableCell className="text-sm text-muted-foreground">{account.channelId}</TableCell>
@@ -218,9 +247,9 @@ export default function SettingsPage() {
                                       if (!confirm(`「${account.botName || 'LINE Bot'}」を削除しますか？\nWebhookも無効になります。`)) return;
                                       try {
                                         await api.accounts.delete(account.id);
-                                        setAccounts((prev) => prev.filter((a: any) => a.id !== account.id));
-                                      } catch (err: any) {
-                                        toast.error(err.message || '削除に失敗しました');
+                                        setAccounts((prev) => prev.filter((a) => a.id !== account.id));
+                                      } catch (err: unknown) {
+                                        toast.error(err instanceof Error ? err.message : '削除に失敗しました');
                                       }
                                     }}
                                     title="アカウントを削除"

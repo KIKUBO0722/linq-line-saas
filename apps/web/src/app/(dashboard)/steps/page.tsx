@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useEffect, useState, useCallback } from 'react';
 import { GitBranch, Plus, Play, Pause, Clock, ChevronLeft, Trash2, Send, Users, Diamond, X, Tag, BarChart3, Sparkles, Bot } from 'lucide-react';
 import { api } from '@/lib/api-client';
+import type { StepScenario, StepMessage, StepCondition, StepEnrollment, Tag as TagType, MessageContent } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -51,18 +52,18 @@ function ConditionEditor({
   onSave,
   onClose,
 }: {
-  condition: any;
+  condition: StepCondition | null;
   branchTrue: number | null;
   branchFalse: number | null;
   stepCount: number;
-  tags: any[];
-  onSave: (condition: any, branchTrue: number | null, branchFalse: number | null) => void;
+  tags: TagType[];
+  onSave: (condition: StepCondition | null, branchTrue: number | null, branchFalse: number | null) => void;
   onClose: () => void;
 }) {
   const [type, setType] = useState<string>(condition?.type || 'none');
-  const [tagId, setTagId] = useState<string>(condition?.tagId || '');
-  const [operator, setOperator] = useState<string>(condition?.operator || '>=');
-  const [value, setValue] = useState<number>(condition?.value || 0);
+  const [tagId, setTagId] = useState<string>((condition?.tagId as string) || '');
+  const [operator, setOperator] = useState<string>((condition?.operator as string) || '>=');
+  const [value, setValue] = useState<number>(Number(condition?.value) || 0);
   const [bTrue, setBTrue] = useState<number | null>(branchTrue);
   const [bFalse, setBFalse] = useState<number | null>(branchFalse);
 
@@ -72,7 +73,7 @@ function ConditionEditor({
     } else if (type === 'tag_check') {
       onSave({ type: 'tag_check', tagId }, bTrue, bFalse);
     } else if (type === 'score_check') {
-      onSave({ type: 'score_check', operator, value }, bTrue, bFalse);
+      onSave({ type: 'score_check', operator, value: String(value) }, bTrue, bFalse);
     }
   }
 
@@ -194,15 +195,15 @@ function ConditionEditor({
 }
 
 export default function StepsPage() {
-  const [scenarios, setScenarios] = useState<any[]>([]);
+  const [scenarios, setScenarios] = useState<StepScenario[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'list' | 'create' | 'detail'>('list');
-  const [selectedScenario, setSelectedScenario] = useState<any>(null);
-  const [steps, setSteps] = useState<any[]>([]);
-  const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [selectedScenario, setSelectedScenario] = useState<StepScenario | null>(null);
+  const [steps, setSteps] = useState<StepMessage[]>([]);
+  const [enrollments, setEnrollments] = useState<StepEnrollment[]>([]);
 
   // Tags for condition editor
-  const [allTags, setAllTags] = useState<any[]>([]);
+  const [allTags, setAllTags] = useState<TagType[]>([]);
 
   // Condition editor
   const [editingConditionStepId, setEditingConditionStepId] = useState<string | null>(null);
@@ -229,7 +230,7 @@ export default function StepsPage() {
   const [aiGoal, setAiGoal] = useState('');
   const [aiTarget, setAiTarget] = useState('');
   const [aiGenerating, setAiGenerating] = useState(false);
-  const [aiPreview, setAiPreview] = useState<any>(null);
+  const [aiPreview, setAiPreview] = useState<{ name?: string; description?: string; steps?: Array<{ delayMinutes?: number; messageContent: MessageContent | string }> } | null>(null);
 
   const loadScenarios = useCallback(() => {
     fetchApi('/api/v1/steps/scenarios')
@@ -286,7 +287,7 @@ export default function StepsPage() {
 
       // If there are pending AI-generated steps, add them to the new scenario
       if (pendingAiSteps.length > 0) {
-        const createdSteps: any[] = [];
+        const createdSteps: StepMessage[] = [];
         for (let i = 0; i < pendingAiSteps.length; i++) {
           const aiStep = pendingAiSteps[i];
           const unitMultiplier = aiStep.unit === 'hour' ? 60 : aiStep.unit === 'day' ? 1440 : 1;
@@ -315,7 +316,7 @@ export default function StepsPage() {
     setCreating(false);
   }
 
-  async function openScenario(scenario: any) {
+  async function openScenario(scenario: StepScenario) {
     setSelectedScenario(scenario);
     setView('detail');
     try {
@@ -337,7 +338,7 @@ export default function StepsPage() {
     await fetchApi(`/api/v1/steps/scenarios/${id}/${action}`, { method: 'POST' });
     setScenarios((prev) => prev.map((s) => (s.id === id ? { ...s, isActive: !isActive } : s)));
     if (selectedScenario?.id === id) {
-      setSelectedScenario((prev: any) => ({ ...prev, isActive: !isActive }));
+      setSelectedScenario((prev) => prev ? { ...prev, isActive: !isActive } : prev);
     }
   }
 
@@ -350,7 +351,7 @@ export default function StepsPage() {
       stepDelayUnit === 'days' ? stepDelay * 1440 :
       stepDelay;
     try {
-      const data = await fetchApi(`/api/v1/steps/scenarios/${selectedScenario.id}/messages`, {
+      const data = await fetchApi(`/api/v1/steps/scenarios/${selectedScenario!.id}/messages`, {
         method: 'POST',
         body: JSON.stringify({
           delayMinutes,
@@ -362,8 +363,8 @@ export default function StepsPage() {
       setStepText('');
       setStepDelay(0);
       setShowAddStep(false);
-    } catch (err: any) {
-      toast.error(err.message || 'ステップの追加に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'ステップの追加に失敗しました');
     }
     setAddingStep(false);
   }
@@ -376,7 +377,7 @@ export default function StepsPage() {
     } catch {}
   }
 
-  async function saveCondition(stepId: string, condition: any, branchTrue: number | null, branchFalse: number | null) {
+  async function saveCondition(stepId: string, condition: StepCondition | null, branchTrue: number | null, branchFalse: number | null) {
     try {
       await fetchApi(`/api/v1/steps/messages/${stepId}`, {
         method: 'PATCH',
@@ -388,8 +389,8 @@ export default function StepsPage() {
         ),
       );
       setEditingConditionStepId(null);
-    } catch (err: any) {
-      toast.error(err.message || '条件の保存に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : '条件の保存に失敗しました');
     }
   }
 
@@ -487,11 +488,11 @@ export default function StepsPage() {
                                 <p className="text-xs text-muted-foreground">ステップ {i + 1}</p>
                                 {hasCondition && (
                                   <Badge variant="outline" className="text-[10px] h-5 border-amber-300 text-amber-700 bg-amber-50">
-                                    {step.condition.type === 'tag_check' && (
+                                    {step.condition?.type === 'tag_check' && (
                                       <><Tag className="h-2.5 w-2.5 mr-0.5" />タグ条件</>
                                     )}
-                                    {step.condition.type === 'score_check' && (
-                                      <><BarChart3 className="h-2.5 w-2.5 mr-0.5" />スコア {step.condition.operator} {step.condition.value}</>
+                                    {step.condition?.type === 'score_check' && (
+                                      <><BarChart3 className="h-2.5 w-2.5 mr-0.5" />スコア {step.condition?.operator} {step.condition?.value}</>
                                     )}
                                   </Badge>
                                 )}
@@ -507,7 +508,7 @@ export default function StepsPage() {
                                 )}
                               </div>
                               <p className="text-sm whitespace-pre-wrap">
-                                {(step.messageContent as any)?.text || JSON.stringify(step.messageContent)}
+                                {step.messageContent?.text || JSON.stringify(step.messageContent)}
                               </p>
                             </div>
                             <div className="flex items-center gap-1 shrink-0 ml-2">
@@ -563,7 +564,7 @@ export default function StepsPage() {
                         />
                         <select
                           value={stepDelayUnit}
-                          onChange={(e) => setStepDelayUnit(e.target.value as any)}
+                          onChange={(e) => setStepDelayUnit(e.target.value as 'minutes' | 'hours' | 'days')}
                           className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                         >
                           <option value="minutes">分</option>
@@ -819,8 +820,8 @@ export default function StepsPage() {
                         target: aiTarget || undefined,
                       });
                       setAiPreview(result);
-                    } catch (err: any) {
-                      toast.error(err.message || 'AI生成に失敗しました');
+                    } catch (err: unknown) {
+                      toast.error(err instanceof Error ? err.message : 'AI生成に失敗しました');
                     } finally {
                       setAiGenerating(false);
                     }
@@ -848,7 +849,7 @@ export default function StepsPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  {(aiPreview.steps || []).map((step: any, idx: number) => (
+                  {(aiPreview.steps || []).map((step: { delayMinutes?: number; messageContent: MessageContent | string }, idx: number) => (
                     <div key={idx} className="flex items-start gap-3 text-sm border rounded p-3 bg-white">
                       <div className="flex flex-col items-center shrink-0">
                         <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
@@ -882,8 +883,8 @@ export default function StepsPage() {
                           setAiGoal('');
                           setAiTarget('');
                         }
-                      } catch (err: any) {
-                        toast.error(err.message || '保存に失敗しました');
+                      } catch (err: unknown) {
+                        toast.error(err instanceof Error ? err.message : '保存に失敗しました');
                       }
                     }}
                   >
