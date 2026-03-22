@@ -49,6 +49,14 @@ export class AiController {
     return this.aiService.contextAssistant(req.tenantId, body);
   }
 
+  @Post('chat-suggest')
+  async chatSuggest(
+    @Req() req: any,
+    @Body() body: { friendId: string; recentMessages: { role: string; content: string }[]; friendInfo?: any },
+  ) {
+    return this.aiService.chatSuggest(req.tenantId, body);
+  }
+
   // Execute AI-proposed action (actually create in DB)
   @Post('execute-action')
   async executeAction(

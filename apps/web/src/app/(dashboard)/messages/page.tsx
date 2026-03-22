@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Send, MessageSquare, Users, Search, Radio, FileStack, Clock, CalendarClock, Image as ImageIcon, Video, Code2, Plus, X, Zap } from 'lucide-react';
+import { Send, MessageSquare, Users, Search, Radio, FileStack, Clock, CalendarClock, Image as ImageIcon, Video, Code2, Plus, X, Zap, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -112,7 +112,7 @@ export default function MessagesPage() {
   const [broadcastContent, setBroadcastContent] = useState('');
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'unread' | 'confirmed'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'unread' | 'in_progress' | 'done' | 'needs_followup'>('all');
   const [loadingFriends, setLoadingFriends] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [scheduledAt, setScheduledAt] = useState('');
@@ -137,6 +137,10 @@ export default function MessagesPage() {
   // Quick reply state for broadcast
   const [showBroadcastQuickReply, setShowBroadcastQuickReply] = useState(false);
   const [broadcastQuickReplyItems, setBroadcastQuickReplyItems] = useState<Array<{ label: string; text: string }>>([]);
+
+  // AI chat suggestions
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  const [aiSuggestLoading, setAiSuggestLoading] = useState(false);
 
   useEffect(() => {
     api.friends
@@ -455,8 +459,10 @@ export default function MessagesPage() {
                   <div className="flex gap-1">
                     {[
                       { value: 'all' as const, label: '全て' },
-                      { value: 'unread' as const, label: '未確認' },
-                      { value: 'confirmed' as const, label: '確認済み' },
+                      { value: 'unread' as const, label: '未対応' },
+                      { value: 'in_progress' as const, label: '対応中' },
+                      { value: 'done' as const, label: '完了' },
+                      { value: 'needs_followup' as const, label: '要フォロー' },
                     ].map((f) => (
                       <button
                         key={f.value}
@@ -484,7 +490,7 @@ export default function MessagesPage() {
                     friends
                       .filter((f) => {
                         if (statusFilter === 'unread') return f.chatStatus === 'unread' || hasUnread(f.id);
-                        if (statusFilter === 'confirmed') return f.chatStatus === 'confirmed';
+                        if (statusFilter !== 'all') return f.chatStatus === statusFilter;
                         return true;
                       })
                       .map((friend) => (
@@ -493,8 +499,8 @@ export default function MessagesPage() {
                         onClick={() => {
                           setSelectedFriend(friend);
                           if (friend.chatStatus === 'unread') {
-                            api.friends.updateChatStatus(friend.id, 'confirmed').catch(() => {});
-                            setFriends((prev) => prev.map((f) => f.id === friend.id ? { ...f, chatStatus: 'confirmed' } : f));
+                            api.friends.updateChatStatus(friend.id, 'in_progress').catch(() => {});
+                            setFriends((prev) => prev.map((f) => f.id === friend.id ? { ...f, chatStatus: 'in_progress' } : f));
                           }
                         }}
                         className={cn(
@@ -672,9 +678,58 @@ export default function MessagesPage() {
                       </div>
                     )}
 
+                    {/* AI Suggestions */}
+                    {aiSuggestions.length > 0 && (
+                      <div className="px-4 py-2 border-t bg-amber-50/50 space-y-1">
+                        <p className="text-[10px] text-amber-700 font-medium flex items-center gap-1">
+                          <Sparkles className="h-3 w-3" />
+                          AI返信候補
+                        </p>
+                        <div className="flex flex-col gap-1">
+                          {aiSuggestions.map((s, i) => (
+                            <button
+                              key={i}
+                              onClick={() => { setContent(s); setAiSuggestions([]); }}
+                              className="text-left text-xs p-2 rounded border bg-white hover:bg-amber-50 transition-colors line-clamp-2"
+                            >
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                        <button onClick={() => setAiSuggestions([])} className="text-[10px] text-muted-foreground hover:underline">
+                          閉じる
+                        </button>
+                      </div>
+                    )}
+
                     {/* Input area */}
                     <div className="flex items-center gap-2 px-4 py-3 border-t">
                       <TemplatePicker onSelect={(text) => setContent(text)} />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={aiSuggestLoading || messages.length === 0}
+                        onClick={async () => {
+                          setAiSuggestLoading(true);
+                          try {
+                            const recentMessages = messages.slice(-10).map((m: any) => ({
+                              role: m.direction === 'inbound' ? 'user' : 'assistant',
+                              content: m.content?.text || m.content?.toString?.() || '',
+                            }));
+                            const result = await api.ai.chatSuggest({
+                              friendId: selectedFriend.id,
+                              recentMessages,
+                              friendInfo: selectedFriend,
+                            });
+                            setAiSuggestions(result.suggestions || []);
+                          } catch { /* ignore */ }
+                          finally { setAiSuggestLoading(false); }
+                        }}
+                        title="AI返信候補"
+                      >
+                        <Sparkles className={cn("h-4 w-4", aiSuggestLoading && "animate-spin")} />
+                      </Button>
                       <Button
                         type="button"
                         variant={showQuickReply ? 'default' : 'outline'}
@@ -782,9 +837,23 @@ export default function MessagesPage() {
                             {selectedFriend.isFollowing ? 'フォロー中' : 'ブロック'}
                           </span>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-between items-center">
                           <span className="text-muted-foreground">対応状況</span>
-                          <span>{selectedFriend.chatStatus === 'confirmed' ? '確認済み' : '未確認'}</span>
+                          <select
+                            value={selectedFriend.chatStatus || 'unread'}
+                            onChange={async (e) => {
+                              const newStatus = e.target.value;
+                              await api.friends.updateChatStatus(selectedFriend.id, newStatus).catch(() => {});
+                              setSelectedFriend({ ...selectedFriend, chatStatus: newStatus });
+                              setFriends((prev) => prev.map((f) => f.id === selectedFriend.id ? { ...f, chatStatus: newStatus } : f));
+                            }}
+                            className="text-xs border rounded px-1.5 py-0.5 bg-background"
+                          >
+                            <option value="unread">未対応</option>
+                            <option value="in_progress">対応中</option>
+                            <option value="done">完了</option>
+                            <option value="needs_followup">要フォロー</option>
+                          </select>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">スコア</span>

@@ -195,6 +195,8 @@ export const api = {
       fetchApi<{ name: string; description?: string; steps: any[] }>('/api/v1/ai/suggest-scenario', { method: 'POST', body: JSON.stringify(data) }),
     executeAction: (data: { type: string; data: any }) =>
       fetchApi<{ success: boolean; type: string; id: string; details?: any }>('/api/v1/ai/execute-action', { method: 'POST', body: JSON.stringify(data) }),
+    chatSuggest: (data: { friendId: string; recentMessages: { role: string; content: string }[]; friendInfo?: any }) =>
+      fetchApi<{ suggestions: string[] }>('/api/v1/ai/chat-suggest', { method: 'POST', body: JSON.stringify(data) }),
   },
   urlTracking: {
     list: () => fetchApi<any[]>('/api/v1/url-tracking'),

@@ -248,6 +248,49 @@ JSON形式のみで出力してください。`;
     }
   }
 
+  async chatSuggest(
+    tenantId: string,
+    input: { friendId: string; recentMessages: { role: string; content: string }[]; friendInfo?: any },
+  ): Promise<{ suggestions: string[] }> {
+    const config = await this.getConfig(tenantId);
+    const knowledgeContext = await this.searchKnowledge(
+      input.recentMessages.filter((m) => m.role === 'user').slice(-1)[0]?.content || '',
+    );
+
+    const conversationHistory = input.recentMessages
+      .slice(-10)
+      .map((m) => `${m.role === 'user' ? '顧客' : 'スタッフ'}: ${m.content}`)
+      .join('\n');
+
+    const friendContext = input.friendInfo
+      ? `\n顧客情報: ${input.friendInfo.displayName || '不明'}、スコア: ${input.friendInfo.score || 0}、タグ: ${input.friendInfo.tags?.join(', ') || 'なし'}`
+      : '';
+
+    const systemPrompt = `あなたはLINE公式アカウントのカスタマーサポート担当者です。
+${config?.systemPrompt ? `\nビジネス情報:\n${config.systemPrompt}` : ''}
+${knowledgeContext ? `\nナレッジベース:\n${knowledgeContext}` : ''}
+
+顧客からのメッセージに対して、3パターンの返信案を提案してください。
+- パターン1: 丁寧で公式な返信
+- パターン2: 親しみやすいカジュアルな返信
+- パターン3: 具体的なアクション提案を含む返信
+
+各返信は100〜200文字程度で、自然な日本語で書いてください。
+JSON配列で返してください: ["返信1","返信2","返信3"]`;
+
+    const text = await this.generate(
+      systemPrompt,
+      `${friendContext}\n\n会話履歴:\n${conversationHistory}\n\n上記の最後の顧客メッセージに対する3パターンの返信案をJSON配列で提案してください。`,
+    );
+
+    try {
+      const jsonMatch = text.match(/\[[\s\S]*\]/);
+      return { suggestions: jsonMatch ? JSON.parse(jsonMatch[0]) : [text] };
+    } catch {
+      return { suggestions: [text] };
+    }
+  }
+
   async contextAssistant(
     tenantId: string,
     input: { message: string; page: string; pageData?: any; history?: { role: string; content: string }[] },
