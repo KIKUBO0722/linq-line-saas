@@ -426,6 +426,65 @@ export default function OverviewPage() {
         </Card>
       )}
 
+      {/* KPI Stats Cards */}
+      {hasAccount && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            {
+              label: '友だち数',
+              value: friendCount,
+              icon: Users,
+              color: 'text-emerald-600',
+              bg: 'from-emerald-50 to-green-50',
+              border: 'border-emerald-200',
+              suffix: '人',
+            },
+            {
+              label: '配信数（今月）',
+              value: stats?.messages?.sent ?? 0,
+              icon: Send,
+              color: 'text-blue-600',
+              bg: 'from-blue-50 to-indigo-50',
+              border: 'border-blue-200',
+              suffix: '通',
+            },
+            {
+              label: 'AI応答',
+              value: stats?.messages?.aiReplies ?? 0,
+              icon: Bot,
+              color: 'text-purple-600',
+              bg: 'from-purple-50 to-violet-50',
+              border: 'border-purple-200',
+              suffix: '回',
+            },
+            {
+              label: 'ステップ稼働',
+              value: stats?.steps?.active ?? 0,
+              icon: GitBranch,
+              color: 'text-orange-600',
+              bg: 'from-orange-50 to-amber-50',
+              border: 'border-orange-200',
+              suffix: '本',
+            },
+          ].map((kpi) => (
+            <Card key={kpi.label} className={`${kpi.border} linq-card-hover overflow-hidden`}>
+              <CardContent className="p-0">
+                <div className={`bg-gradient-to-br ${kpi.bg} p-4`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-muted-foreground">{kpi.label}</span>
+                    <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-bold tracking-tight">{kpi.value.toLocaleString()}</span>
+                    <span className="text-xs text-muted-foreground">{kpi.suffix}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
       {/* Quick actions - contextual based on setup state */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
@@ -435,9 +494,11 @@ export default function OverviewPage() {
           { href: '/rich-menus', label: 'リッチメニュー', icon: Menu, color: 'text-orange-600' },
         ].map((action) => (
           <a key={action.href} href={action.href}>
-            <Card className="hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer h-full">
+            <Card className="linq-card-hover hover:border-primary/50 cursor-pointer h-full">
               <CardContent className="p-4 flex flex-col items-center gap-2 text-center">
-                <action.icon className={`h-6 w-6 ${action.color}`} />
+                <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
+                  <action.icon className={`h-5 w-5 ${action.color}`} />
+                </div>
                 <p className="text-sm font-medium">{action.label}</p>
               </CardContent>
             </Card>
