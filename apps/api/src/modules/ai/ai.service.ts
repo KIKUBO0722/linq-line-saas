@@ -242,9 +242,14 @@ JSON形式のみで出力してください。`;
 
     try {
       const jsonMatch = text.match(/\{[\s\S]*\}/);
-      return jsonMatch ? JSON.parse(jsonMatch[0]) : { name: 'エラー', steps: [] };
-    } catch {
-      return { name: 'エラー', description: text, steps: [] };
+      if (!jsonMatch) throw new Error('AI応答からJSONを抽出できませんでした');
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (!parsed.steps || !Array.isArray(parsed.steps) || parsed.steps.length === 0) {
+        throw new Error('シナリオのステップが生成されませんでした');
+      }
+      return parsed;
+    } catch (err: any) {
+      throw new Error(err.message || 'AIシナリオ生成に失敗しました。もう一度お試しください。');
     }
   }
 

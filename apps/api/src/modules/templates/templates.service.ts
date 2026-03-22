@@ -73,7 +73,8 @@ export class TemplatesService {
         text: data.text || template.content,
         actions: (data.actions || []).map(this.convertAction),
       };
-      if (data.thumbnailUrl) tpl.thumbnailImageUrl = data.thumbnailUrl;
+      const thumb = data.thumbnailImageUrl || data.thumbnailUrl;
+      if (thumb) tpl.thumbnailImageUrl = thumb;
       if (data.title) tpl.title = data.title;
       return { type: 'template', altText: template.content || template.name, template: tpl };
     }
@@ -84,7 +85,8 @@ export class TemplatesService {
           text: col.text || '',
           actions: (col.actions || []).map(this.convertAction),
         };
-        if (col.thumbnailUrl) c.thumbnailImageUrl = col.thumbnailUrl;
+        const colThumb = col.thumbnailImageUrl || col.thumbnailUrl;
+        if (colThumb) c.thumbnailImageUrl = colThumb;
         if (col.title) c.title = col.title;
         return c;
       });
