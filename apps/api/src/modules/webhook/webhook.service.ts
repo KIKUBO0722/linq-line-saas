@@ -7,6 +7,15 @@ import { FollowHandler } from './handlers/follow.handler';
 import { UnfollowHandler } from './handlers/unfollow.handler';
 import { MessageHandler } from './handlers/message.handler';
 
+interface LineWebhookEvent {
+  type: string;
+  webhookEventId?: string;
+  source?: { userId?: string; type?: string };
+  replyToken?: string;
+  message?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 @Injectable()
 export class WebhookService {
   private readonly logger = new Logger(WebhookService.name);
@@ -52,7 +61,7 @@ export class WebhookService {
     }
   }
 
-  private async processEvent(event: any, account: typeof lineAccounts.$inferSelect) {
+  private async processEvent(event: LineWebhookEvent, account: typeof lineAccounts.$inferSelect) {
     // Store raw event
     await this.db.insert(webhookEvents).values({
       tenantId: account.tenantId,

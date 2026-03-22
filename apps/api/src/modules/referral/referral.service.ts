@@ -9,7 +9,7 @@ export class ReferralService {
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
   // Tenant referral programs (for LINE friends)
-  async createProgram(tenantId: string, data: { name: string; rewardType: string; rewardConfig: any }) {
+  async createProgram(tenantId: string, data: { name: string; rewardType: string; rewardConfig: Record<string, unknown> }) {
     const [program] = await this.db.insert(referralPrograms).values({ tenantId, ...data }).returning();
     return program;
   }

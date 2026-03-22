@@ -7,10 +7,11 @@ import {
   BarChart3, Users, MessageSquare, ArrowUpRight, ArrowDownRight,
   Zap, TrendingUp, Radio, Calendar, RefreshCw, Eye, Route, Plus, Trash2, QrCode, Copy,
   Link2, ExternalLink, MousePointerClick, Target, ToggleLeft, ToggleRight,
+  Clock, Tags, Activity,
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import { api } from '@/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -48,6 +49,11 @@ export default function AnalyticsPage() {
   const [newUrl, setNewUrl] = useState('');
   const [creatingUrl, setCreatingUrl] = useState(false);
   const [showUrlForm, setShowUrlForm] = useState(false);
+  const [cohort, setCohort] = useState<any>(null);
+  const [kpi, setKpi] = useState<any>(null);
+  const [ctr, setCtr] = useState<any>(null);
+  const [segmentData, setSegmentData] = useState<any[]>([]);
+  const [bestSendTime, setBestSendTime] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [deliveryDate, setDeliveryDate] = useState(() => {
     const d = new Date();
@@ -65,8 +71,13 @@ export default function AnalyticsPage() {
       api.analytics.trafficSources().catch(() => []),
       api.urlTracking.list().catch(() => []),
       api.conversions.listGoals().catch(() => []),
+      api.analytics.cohort().catch(() => null),
+      api.analytics.kpi().catch(() => null),
+      api.analytics.ctr().catch(() => null),
+      api.analytics.segments().catch(() => []),
+      api.analytics.bestSendTime().catch(() => null),
     ])
-      .then(([s, u, d, b, ts, urls, goals]) => {
+      .then(([s, u, d, b, ts, urls, goals, ch, k, ct, seg, bst]) => {
         setStats(s);
         setUsage(u);
         setDaily(d);
@@ -74,6 +85,11 @@ export default function AnalyticsPage() {
         setTrafficSources(Array.isArray(ts) ? ts : []);
         setTrackedUrls(Array.isArray(urls) ? urls : []);
         setCvGoals(Array.isArray(goals) ? goals : []);
+        setCohort(ch);
+        setKpi(k);
+        setCtr(ct);
+        setSegmentData(Array.isArray(seg) ? seg : []);
+        setBestSendTime(bst);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -143,6 +159,18 @@ export default function AnalyticsPage() {
           <TabsTrigger value="conversions" className="gap-1.5">
             <Target className="h-4 w-4" />
             CV
+          </TabsTrigger>
+          <TabsTrigger value="cohort" className="gap-1.5">
+            <Activity className="h-4 w-4" />
+            コホート
+          </TabsTrigger>
+          <TabsTrigger value="engagement" className="gap-1.5">
+            <Tags className="h-4 w-4" />
+            エンゲージメント
+          </TabsTrigger>
+          <TabsTrigger value="send-time" className="gap-1.5">
+            <Clock className="h-4 w-4" />
+            配信最適化
           </TabsTrigger>
         </TabsList>
 
@@ -961,8 +989,309 @@ export default function AnalyticsPage() {
             </Card>
           )}
         </TabsContent>
+        {/* Cohort tab */}
+        <TabsContent value="cohort" className="mt-4 space-y-6">
+          {/* KPI Cards */}
+          {kpi && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <KpiCard label="友だち数" value={kpi.totalFriends} />
+              <KpiCard label="新規友だち (今月)" value={kpi.newFriends?.current} change={kpi.newFriends?.change} />
+              <KpiCard label="配信数 (今月)" value={kpi.messagesSent?.current} change={kpi.messagesSent?.change} />
+              <KpiCard label="応答数 (今月)" value={kpi.responses?.current} change={kpi.responses?.change} />
+            </div>
+          )}
+
+          {/* Cohort Retention Heatmap */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">週次コホートリテンション</CardTitle>
+              <CardDescription>友だち追加週ごとの継続率（過去8週）</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {Array.isArray(cohort) && cohort.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr>
+                        <th className="text-left py-2 pr-4 text-muted-foreground font-medium">追加週</th>
+                        <th className="text-center py-2 px-2 text-muted-foreground font-medium">人数</th>
+                        {[0, 1, 2, 3, 4].map(w => (
+                          <th key={w} className="text-center py-2 px-2 text-muted-foreground font-medium">W{w}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cohort.map((row: any, i: number) => (
+                        <tr key={i} className="border-t">
+                          <td className="py-2 pr-4 text-muted-foreground whitespace-nowrap">
+                            {new Date(row.cohortWeek).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}〜
+                          </td>
+                          <td className="text-center py-2 px-2 font-medium">{row.cohortSize}</td>
+                          {[0, 1, 2, 3, 4].map(w => {
+                            const r = row.retention?.find((x: any) => x.week === w);
+                            const rate = r?.rate ?? null;
+                            return (
+                              <td key={w} className="text-center py-2 px-2">
+                                {rate !== null ? (
+                                  <span
+                                    className="inline-block rounded px-2 py-0.5 text-xs font-medium"
+                                    style={{
+                                      backgroundColor: `rgba(6, 199, 85, ${Math.min(rate / 100, 1) * 0.6 + 0.05})`,
+                                      color: rate > 50 ? '#fff' : '#166534',
+                                    }}
+                                  >
+                                    {rate.toFixed(0)}%
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground/40">—</span>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Activity className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                  <p className="text-sm text-muted-foreground">コホートデータがまだありません</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Engagement tab */}
+        <TabsContent value="engagement" className="mt-4 space-y-6">
+          {/* CTR Summary */}
+          {ctr?.summary && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <MetricCard icon={<MousePointerClick className="h-8 w-8 text-blue-500" />} value={ctr.summary.totalClicks} label="総クリック数" />
+              <MetricCard icon={<MessageSquare className="h-8 w-8 text-green-500" />} value={ctr.summary.totalSent} label="総配信数" />
+              <Card className="linq-card-hover">
+                <CardContent className="pt-5 pb-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <span className="text-xs font-medium text-muted-foreground">疑似CTR</span>
+                    <TrendingUp className="h-8 w-8 text-amber-500" />
+                  </div>
+                  <p className="text-2xl font-bold tracking-tight">{ctr.summary.overallCtr}%</p>
+                </CardContent>
+              </Card>
+              <MetricCard icon={<Link2 className="h-8 w-8 text-purple-500" />} value={ctr.summary.totalTrackedUrls} label="追跡URL数" />
+            </div>
+          )}
+
+          {/* CTR Daily Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">日別クリック推移</CardTitle>
+              <CardDescription>追跡URLのクリック数（過去30日）</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {ctr?.daily && ctr.daily.length > 0 ? (
+                <div className="h-[280px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={ctr.daily.map((d: any) => ({
+                        date: new Date(d.date).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }),
+                        クリック: d.clicks,
+                        URL数: d.urls,
+                      }))}
+                      margin={{ top: 5, right: 10, left: -10, bottom: 0 }}
+                    >
+                      <defs>
+                        <linearGradient id="gradClicks" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                      <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" allowDecimals={false} />
+                      <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }} />
+                      <Area type="monotone" dataKey="クリック" stroke="#3B82F6" strokeWidth={2} fill="url(#gradClicks)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <MousePointerClick className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                  <p className="text-sm text-muted-foreground">クリックデータがまだありません</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Segment Comparison */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">タグ別エンゲージメント</CardTitle>
+              <CardDescription>タグごとの友だち数・応答率を比較</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {segmentData.length > 0 ? (
+                <div className="space-y-6">
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={segmentData.map((s: any) => ({
+                          name: s.tagName.length > 8 ? s.tagName.slice(0, 8) + '…' : s.tagName,
+                          友だち数: s.friendCount,
+                          応答率: s.responseRate,
+                        }))}
+                        margin={{ top: 5, right: 10, left: -10, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                        <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                        <YAxis yAxisId="left" tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                        <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} stroke="#94a3b8" unit="%" />
+                        <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }} />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        <Bar yAxisId="left" dataKey="友だち数" fill="#06C755" radius={[4, 4, 0, 0]} />
+                        <Bar yAxisId="right" dataKey="応答率" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Segment table */}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>タグ</TableHead>
+                        <TableHead className="text-right">友だち数</TableHead>
+                        <TableHead className="text-right">送信数</TableHead>
+                        <TableHead className="text-right">受信数</TableHead>
+                        <TableHead className="text-right">応答率</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {segmentData.map((s: any) => (
+                        <TableRow key={s.tagId}>
+                          <TableCell>
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: s.tagColor || '#94a3b8' }} />
+                              {s.tagName}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">{s.friendCount}</TableCell>
+                          <TableCell className="text-right">{s.outboundMessages}</TableCell>
+                          <TableCell className="text-right">{s.inboundMessages}</TableCell>
+                          <TableCell className="text-right font-medium">{s.responseRate}%</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Tags className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                  <p className="text-sm text-muted-foreground">タグデータがまだありません</p>
+                  <p className="text-xs text-muted-foreground mt-1">友だちにタグを付けると、セグメント別の分析ができます</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Send Time Optimization tab */}
+        <TabsContent value="send-time" className="mt-4 space-y-6">
+          {/* Best hours highlight */}
+          {bestSendTime?.bestHours && bestSendTime.bestHours.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {bestSendTime.bestHours.map((h: any, i: number) => (
+                <Card key={i} className={i === 0 ? 'border-green-300 bg-green-50/50 dark:bg-green-950/20' : ''}>
+                  <CardContent className="pt-5 pb-4">
+                    <div className="flex items-start justify-between mb-1">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {i === 0 ? 'ベストタイム' : `${i + 1}位`}
+                      </span>
+                      <Clock className={`h-6 w-6 ${i === 0 ? 'text-green-500' : 'text-muted-foreground'}`} />
+                    </div>
+                    <p className="text-3xl font-bold tracking-tight">{h.hour}:00</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      応答率 <span className="font-semibold text-foreground">{h.responseRate.toFixed(1)}%</span>
+                      <span className="ml-2">({h.sentCount}配信 → {h.responseCount}応答)</span>
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Hourly response rate chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">時間帯別応答率</CardTitle>
+              <CardDescription>配信時間帯ごとの24時間以内の応答率（過去30日）</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {bestSendTime?.hourly && bestSendTime.hourly.length > 0 ? (
+                <div className="h-[320px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={bestSendTime.hourly.map((h: any) => ({
+                        時間: `${h.hour}時`,
+                        応答率: h.responseRate,
+                        配信数: h.sentCount,
+                      }))}
+                      margin={{ top: 5, right: 10, left: -10, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                      <XAxis dataKey="時間" tick={{ fontSize: 10 }} stroke="#94a3b8" interval={1} />
+                      <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" unit="%" />
+                      <Tooltip
+                        contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
+                        formatter={(value: any, name: any) => [
+                          name === '応答率' ? `${value}%` : value,
+                          name,
+                        ]}
+                      />
+                      <Bar
+                        dataKey="応答率"
+                        radius={[4, 4, 0, 0]}
+                        fill="#06C755"
+                      >
+                        {bestSendTime.hourly.map((h: any, idx: number) => {
+                          const isBest = bestSendTime.bestHours?.some((b: any) => b.hour === h.hour);
+                          return <Cell key={idx} fill={isBest ? '#06C755' : '#94a3b8'} fillOpacity={isBest ? 1 : 0.4} />;
+                        })}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Clock className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                  <p className="text-sm text-muted-foreground">配信データがまだありません</p>
+                  <p className="text-xs text-muted-foreground mt-1">メッセージを配信すると、最適な時間帯を分析できます</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
       </Tabs>
     </div>
+  );
+}
+
+/* KPI Card with month-over-month change */
+function KpiCard({ label, value, change }: { label: string; value?: number; change?: number }) {
+  return (
+    <Card className="linq-card-hover">
+      <CardContent className="pt-5 pb-4">
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+        <p className="text-2xl font-bold tracking-tight mt-1">{(value ?? 0).toLocaleString()}</p>
+        {change !== undefined && (
+          <p className={`text-xs mt-1 flex items-center gap-0.5 ${change >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+            {change >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+            {Math.abs(change)}% 前月比
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

@@ -45,7 +45,7 @@ export class ReservationsService {
     const slotIds = slots.map((s) => s.id);
     if (slotIds.length === 0) return [];
 
-    const conditions: any[] = [];
+    const conditions: ReturnType<typeof eq>[] = [];
 
     // We need to filter reservations by tenant's slots
     // Build conditions based on query params

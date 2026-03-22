@@ -3,7 +3,7 @@
 import { toast } from 'sonner';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Users, Search, Tag, Plus, X, MessageSquare, ChevronDown, Sparkles, Download, Upload, Save, Trash2 } from 'lucide-react';
+import { Users, Search, Tag, Plus, X, MessageSquare, ChevronDown, Sparkles, Download, Upload, Save, Trash2, Clock, ArrowDownLeft, ArrowUpRight, UserPlus, UserMinus } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +40,12 @@ export default function FriendsPage() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<any>(null);
 
+  // Timeline
+  const [timeline, setTimeline] = useState<any[]>([]);
+  const [timelineTotal, setTimelineTotal] = useState(0);
+  const [loadingTimeline, setLoadingTimeline] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(false);
+
   // Custom fields
   const [customFields, setCustomFields] = useState<Record<string, any>>({});
   const [newFieldKey, setNewFieldKey] = useState('');
@@ -48,6 +54,19 @@ export default function FriendsPage() {
   const [savingFields, setSavingFields] = useState(false);
   const [editingFieldKey, setEditingFieldKey] = useState<string | null>(null);
   const [editingFieldValue, setEditingFieldValue] = useState('');
+
+  const loadTimeline = useCallback(async (friendId: string) => {
+    setLoadingTimeline(true);
+    try {
+      const res = await api.friends.timeline(friendId, 30);
+      setTimeline(res.events || []);
+      setTimelineTotal(res.total || 0);
+    } catch {
+      setTimeline([]);
+    } finally {
+      setLoadingTimeline(false);
+    }
+  }, []);
 
   const loadFriendTags = useCallback(async (friendId: string) => {
     setLoadingFriendTags(true);
@@ -69,10 +88,13 @@ export default function FriendsPage() {
       setCustomFields((selected.customFields as Record<string, any>) || {});
       setShowAddField(false);
       setEditingFieldKey(null);
+      setShowTimeline(false);
+      setTimeline([]);
     } else {
       setFriendTags([]);
       setAiAnalysis(null);
       setCustomFields({});
+      setTimeline([]);
     }
   }, [selected?.id, loadFriendTags]);
 
@@ -774,6 +796,48 @@ export default function FriendsPage() {
 
               <Separator />
 
+              {/* Timeline */}
+              <div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-1.5"
+                  onClick={() => {
+                    if (!showTimeline && timeline.length === 0) {
+                      loadTimeline(selected.id);
+                    }
+                    setShowTimeline(!showTimeline);
+                  }}
+                >
+                  <Clock className="h-4 w-4" />
+                  タイムライン
+                  <ChevronDown className={cn('h-3 w-3 ml-auto transition-transform', showTimeline && 'rotate-180')} />
+                </Button>
+
+                {showTimeline && (
+                  <div className="mt-3 space-y-1 max-h-[400px] overflow-y-auto">
+                    {loadingTimeline ? (
+                      <p className="text-xs text-center text-muted-foreground py-4">読み込み中...</p>
+                    ) : timeline.length === 0 ? (
+                      <p className="text-xs text-center text-muted-foreground py-4">アクティビティがありません</p>
+                    ) : (
+                      <>
+                        {timeline.map((event: any) => (
+                          <TimelineEvent key={event.id} event={event} />
+                        ))}
+                        {timelineTotal > timeline.length && (
+                          <p className="text-[11px] text-center text-muted-foreground pt-2">
+                            他 {timelineTotal - timeline.length} 件のアクティビティ
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
               <a href="/messages">
                 <Button className="w-full gap-1.5">
                   <MessageSquare className="h-4 w-4" />
@@ -786,4 +850,63 @@ export default function FriendsPage() {
       </div>
     </div>
   );
+}
+
+function TimelineEvent({ event }: { event: any }) {
+  const time = event.timestamp
+    ? new Date(event.timestamp).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : '';
+
+  const contentText = (() => {
+    if (!event.data?.content) return null;
+    const c = event.data.content;
+    if (typeof c === 'string') return c;
+    if (c.text) return c.text;
+    if (c.type) return `[${c.type}]`;
+    return JSON.stringify(c).slice(0, 60);
+  })();
+
+  switch (event.type) {
+    case 'message_received':
+      return (
+        <div className="flex gap-2 py-1.5 px-2 rounded hover:bg-muted/50">
+          <ArrowDownLeft className="h-3.5 w-3.5 mt-0.5 text-purple-500 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-muted-foreground">{time} · 受信</p>
+            {contentText && <p className="text-xs truncate">{contentText}</p>}
+          </div>
+        </div>
+      );
+    case 'message_sent':
+      return (
+        <div className="flex gap-2 py-1.5 px-2 rounded hover:bg-muted/50">
+          <ArrowUpRight className="h-3.5 w-3.5 mt-0.5 text-green-500 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-muted-foreground">{time} · 送信</p>
+            {contentText && <p className="text-xs truncate">{contentText}</p>}
+          </div>
+        </div>
+      );
+    case 'followed':
+      return (
+        <div className="flex gap-2 py-1.5 px-2 rounded hover:bg-muted/50">
+          <UserPlus className="h-3.5 w-3.5 mt-0.5 text-blue-500 shrink-0" />
+          <p className="text-xs text-muted-foreground">{time} · 友だち追加</p>
+        </div>
+      );
+    case 'unfollowed':
+      return (
+        <div className="flex gap-2 py-1.5 px-2 rounded hover:bg-muted/50">
+          <UserMinus className="h-3.5 w-3.5 mt-0.5 text-red-500 shrink-0" />
+          <p className="text-xs text-muted-foreground">{time} · ブロック</p>
+        </div>
+      );
+    default:
+      return (
+        <div className="flex gap-2 py-1.5 px-2 rounded hover:bg-muted/50">
+          <Clock className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
+          <p className="text-xs text-muted-foreground">{time} · {event.type}</p>
+        </div>
+      );
+  }
 }

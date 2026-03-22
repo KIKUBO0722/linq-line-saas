@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { eq, and, or, ilike, sql } from 'drizzle-orm';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -25,7 +25,7 @@ export class AiService {
   }
 
   private getModel() {
-    if (!this.genAI) throw new Error('AI is not configured. Set GEMINI_API_KEY.');
+    if (!this.genAI) throw new BadRequestException('AI is not configured. Set GEMINI_API_KEY.');
     return this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
   }
 
@@ -83,12 +83,12 @@ export class AiService {
       .where(and(eq(aiConversations.tenantId, tenantId), eq(aiConversations.friendId, friendId)))
       .limit(1);
 
-    const history = (conversation?.messages as any[]) || [];
+    const history = (conversation?.messages as Record<string, unknown>[]) || [];
     const recentHistory = history.slice(-20);
 
-    const knowledgeBase = (config.knowledgeBase as any[]) || [];
+    const knowledgeBase = (config.knowledgeBase as Record<string, unknown>[]) || [];
     const knowledgeText = knowledgeBase
-      .map((item: any) => `【${item.title || 'info'}】\n${item.content}`)
+      .map((item: Record<string, unknown>) => `【${item.title || 'info'}】\n${item.content}`)
       .join('\n\n');
 
     const systemPrompt = [
@@ -98,7 +98,7 @@ export class AiService {
     ].join('');
 
     const historyText = recentHistory
-      .map((m: any) => `${m.role === 'user' ? '顧客' : 'アシスタント'}: ${m.content}`)
+      .map((m: Record<string, unknown>) => `${m.role === 'user' ? '顧客' : 'アシスタント'}: ${m.content}`)
       .join('\n');
 
     try {
@@ -158,8 +158,8 @@ export class AiService {
       .where(and(eq(aiConversations.tenantId, tenantId), eq(aiConversations.friendId, friendId)))
       .limit(1);
 
-    const conversationText = (conversation?.messages as any[] || [])
-      .map((m: any) => `${m.role === 'user' ? '顧客' : 'AI'}: ${m.content}`)
+    const conversationText = (conversation?.messages as Record<string, unknown>[] || [])
+      .map((m: Record<string, unknown>) => `${m.role === 'user' ? '顧客' : 'AI'}: ${m.content}`)
       .join('\n');
 
     if (!conversationText) {
@@ -242,20 +242,21 @@ JSON形式のみで出力してください。`;
 
     try {
       const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('AI応答からJSONを抽出できませんでした');
+      if (!jsonMatch) throw new InternalServerErrorException('AI応答からJSONを抽出できませんでした');
       const parsed = JSON.parse(jsonMatch[0]);
       if (!parsed.steps || !Array.isArray(parsed.steps) || parsed.steps.length === 0) {
-        throw new Error('シナリオのステップが生成されませんでした');
+        throw new InternalServerErrorException('シナリオのステップが生成されませんでした');
       }
       return parsed;
-    } catch (err: any) {
-      throw new Error(err.message || 'AIシナリオ生成に失敗しました。もう一度お試しください。');
+    } catch (err: unknown) {
+      if (err instanceof InternalServerErrorException) throw err;
+      throw new InternalServerErrorException(err instanceof Error ? err.message : 'AIシナリオ生成に失敗しました。もう一度お試しください。');
     }
   }
 
   async chatSuggest(
     tenantId: string,
-    input: { friendId: string; recentMessages: { role: string; content: string }[]; friendInfo?: any },
+    input: { friendId: string; recentMessages: { role: string; content: string }[]; friendInfo?: Record<string, unknown> },
   ): Promise<{ suggestions: string[] }> {
     const config = await this.getConfig(tenantId);
     const knowledgeContext = await this.searchKnowledge(
@@ -268,7 +269,7 @@ JSON形式のみで出力してください。`;
       .join('\n');
 
     const friendContext = input.friendInfo
-      ? `\n顧客情報: ${input.friendInfo.displayName || '不明'}、スコア: ${input.friendInfo.score || 0}、タグ: ${input.friendInfo.tags?.join(', ') || 'なし'}`
+      ? `\n顧客情報: ${input.friendInfo.displayName || '不明'}、スコア: ${input.friendInfo.score || 0}、タグ: ${(input.friendInfo.tags as string[])?.join(', ') || 'なし'}`
       : '';
 
     const systemPrompt = `あなたはLINE公式アカウントのカスタマーサポート担当者です。
@@ -298,8 +299,8 @@ JSON配列で返してください: ["返信1","返信2","返信3"]`;
 
   async contextAssistant(
     tenantId: string,
-    input: { message: string; page: string; pageData?: any; history?: { role: string; content: string }[] },
-  ): Promise<{ reply: string; action?: { type: string; data: any } }> {
+    input: { message: string; page: string; pageData?: Record<string, unknown>; history?: { role: string; content: string }[] },
+  ): Promise<{ reply: string; action?: { type: string; data: Record<string, unknown> } }> {
     const pageContextMap: Record<string, string> = {
       '/overview': 'ダッシュボード概要ページ。KPI確認、全体状況の把握。actionは不要。',
       '/messages': 'メッセージページ。個別チャット、一斉配信の作成・送信。→ action type: generate_message',
@@ -529,6 +530,7 @@ ${businessInfo.menu ? `メニュー: ${businessInfo.menu}` : ''}
   }
 
   // Execute AI-proposed action: actually create resources in DB
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async executeAction(tenantId: string, type: string, data: any): Promise<{ success: boolean; type: string; id: string; details?: any }> {
     switch (type) {
       case 'create_scenario': {
@@ -702,7 +704,7 @@ ${businessInfo.menu ? `メニュー: ${businessInfo.menu}` : ''}
       }
 
       case 'update_ai_config': {
-        const configData: any = {};
+        const configData: Record<string, unknown> = {};
         if (data.systemPrompt !== undefined) configData.systemPrompt = data.systemPrompt;
         if (data.welcomeMessage !== undefined) configData.welcomeMessage = data.welcomeMessage;
         if (data.autoReplyEnabled !== undefined) configData.autoReplyEnabled = data.autoReplyEnabled;

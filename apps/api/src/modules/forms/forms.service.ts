@@ -13,7 +13,7 @@ export class FormsService {
     private readonly friendsService: FriendsService,
   ) {}
 
-  async create(tenantId: string, data: { name: string; description?: string; fields: any[]; thankYouMessage?: string; tagOnSubmitId?: string }) {
+  async create(tenantId: string, data: { name: string; description?: string; fields: Record<string, unknown>[]; thankYouMessage?: string; tagOnSubmitId?: string }) {
     const [form] = await this.db.insert(forms).values({ tenantId, ...data }).returning();
     return form;
   }
@@ -36,7 +36,7 @@ export class FormsService {
     await this.db.delete(forms).where(eq(forms.id, id));
   }
 
-  async submitResponse(formId: string, friendId: string | null, answers: any) {
+  async submitResponse(formId: string, friendId: string | null, answers: Record<string, unknown>) {
     const [response] = await this.db.insert(formResponses).values({ formId, friendId, answers }).returning();
 
     // Update engagement score (+5 for form submission)

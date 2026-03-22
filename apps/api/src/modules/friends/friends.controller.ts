@@ -1,12 +1,21 @@
 import { Controller, Get, Post, Patch, Delete, Param, Query, Body, Req, Res, UseGuards, Logger } from '@nestjs/common';
 import { FriendsService } from './friends.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
+import { TenantId } from '../../common/decorators/tenant.decorator';
+import { ImportCsvDto, AssignTagDto, UpdateChatStatusDto } from './dto/friends.dto';
 import { LineService } from '../line/line.service';
 import { TagsService } from '../tags/tags.service';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { Inject } from '@nestjs/common';
 import { lineAccounts } from '@line-saas/db';
 import { eq, and } from 'drizzle-orm';
+
+interface LineProfile {
+  displayName?: string;
+  pictureUrl?: string;
+  statusMessage?: string;
+  language?: string;
+}
 
 @Controller('api/v1/friends')
 @UseGuards(AuthGuard)
@@ -22,12 +31,12 @@ export class FriendsController {
 
   @Get()
   async list(
-    @Req() req: any,
+    @TenantId() tenantId: string,
     @Query('search') search?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.friendsService.findByTenant(req.tenantId, {
+    return this.friendsService.findByTenant(tenantId, {
       search,
       page: page ? parseInt(page) : 1,
       limit: limit ? parseInt(limit) : 20,
@@ -35,11 +44,11 @@ export class FriendsController {
   }
 
   @Post('sync')
-  async syncFollowers(@Req() req: any) {
+  async syncFollowers(@TenantId() tenantId: string) {
     const accounts = await this.db
       .select()
       .from(lineAccounts)
-      .where(and(eq(lineAccounts.tenantId, req.tenantId), eq(lineAccounts.isActive, true)));
+      .where(and(eq(lineAccounts.tenantId, tenantId), eq(lineAccounts.isActive, true)));
 
     let synced = 0;
 
@@ -54,10 +63,10 @@ export class FriendsController {
         this.logger.log(`Found ${followerIds.length} followers for account ${account.id}`);
 
         for (const userId of followerIds) {
-          let profile: any = null;
+          let profile: LineProfile | null = null;
           try {
             profile = await this.lineService.getProfile(credentials, userId);
-          } catch (e) {
+          } catch {
             this.logger.warn(`Failed to get profile for ${userId}`);
           }
 
@@ -83,22 +92,21 @@ export class FriendsController {
   }
 
   @Get('export/csv')
-  async exportCsv(@Req() req: any, @Res() res: any) {
-    const friends = await this.friendsService.findByTenant(req.tenantId, { limit: 10000 });
-    const allTags = await this.tagsService.list(req.tenantId);
+  async exportCsv(@TenantId() tenantId: string, @Res() res: { setHeader: (k: string, v: string) => void; send: (d: string) => void }) {
+    const friends = await this.friendsService.findByTenant(tenantId, { limit: 10000 });
+    await this.tagsService.list(tenantId);
 
-    // Get tags for each friend
     const friendList = Array.isArray(friends) ? friends : [];
     const friendTagMap: Record<string, string[]> = {};
     for (const f of friendList) {
       const fTags = await this.tagsService.listForFriend(f.id);
-      friendTagMap[f.id] = fTags.map((t: any) => t.tag?.name || t.name || '');
+      friendTagMap[f.id] = fTags.map((t: { tag?: { name: string }; name?: string }) => t.tag?.name || t.name || '');
     }
 
     const header = 'ID,表示名,LINE ID,フォロー中,スコア,タグ,対応状況,言語,流入元,登録日\n';
-    const rows = friendList.map((f: any) => {
-      const tagStr = (friendTagMap[f.id] || []).join('|');
-      return `${f.id},"${(f.displayName || '').replace(/"/g, '""')}",${f.lineUserId},${f.isFollowing ? 'はい' : 'いいえ'},${f.score ?? 0},"${tagStr}",${f.chatStatus || 'unread'},${f.language || ''},${f.acquisitionSource || ''},${f.createdAt}`;
+    const rows = friendList.map((f: Record<string, unknown>) => {
+      const tagStr = (friendTagMap[f.id as string] || []).join('|');
+      return `${f.id},"${((f.displayName as string) || '').replace(/"/g, '""')}",${f.lineUserId},${f.isFollowing ? 'はい' : 'いいえ'},${(f.score as number) ?? 0},"${tagStr}",${(f.chatStatus as string) || 'unread'},${(f.language as string) || ''},${(f.acquisitionSource as string) || ''},${f.createdAt}`;
     }).join('\n');
 
     const bom = '\uFEFF';
@@ -108,18 +116,13 @@ export class FriendsController {
   }
 
   @Post('import/csv')
-  async importCsv(@Req() req: any, @Body() body: { csv: string }) {
-    const result = await this.friendsService.importFromCsv(
-      req.tenantId,
-      body.csv,
-      this.tagsService,
-    );
-    return result;
+  async importCsv(@TenantId() tenantId: string, @Body() body: ImportCsvDto) {
+    return this.friendsService.importFromCsv(tenantId, body.csv, this.tagsService);
   }
 
   @Get('custom-field-definitions')
-  async getCustomFieldDefinitions(@Req() req: any) {
-    return this.friendsService.getCustomFieldDefinitions(req.tenantId);
+  async getCustomFieldDefinitions(@TenantId() tenantId: string) {
+    return this.friendsService.getCustomFieldDefinitions(tenantId);
   }
 
   @Get(':id')
@@ -133,7 +136,7 @@ export class FriendsController {
   }
 
   @Post(':id/tags')
-  async assignTag(@Param('id') id: string, @Body() body: { tagId: string }) {
+  async assignTag(@Param('id') id: string, @Body() body: AssignTagDto) {
     await this.tagsService.assignToFriend(id, body.tagId);
     return { success: true };
   }
@@ -145,18 +148,33 @@ export class FriendsController {
   }
 
   @Patch(':id/custom-fields')
-  async updateCustomFields(@Param('id') id: string, @Body() body: Record<string, any>) {
+  async updateCustomFields(@Param('id') id: string, @Body() body: Record<string, unknown>) {
     const result = await this.friendsService.updateCustomFields(id, body);
     return { ok: true, customFields: result };
   }
 
+  @Get(':id/timeline')
+  async getTimeline(
+    @TenantId() tenantId: string,
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.friendsService.getTimeline(
+      tenantId,
+      id,
+      limit ? parseInt(limit) : 50,
+      offset ? parseInt(offset) : 0,
+    );
+  }
+
   @Patch(':id/chat-status')
   async updateChatStatus(
-    @Req() req: any,
+    @TenantId() tenantId: string,
     @Param('id') id: string,
-    @Body() body: { status: string },
+    @Body() body: UpdateChatStatusDto,
   ) {
-    await this.friendsService.updateChatStatus(id, body.status, req.tenantId);
+    await this.friendsService.updateChatStatus(id, body.status, tenantId);
     return { ok: true };
   }
 }

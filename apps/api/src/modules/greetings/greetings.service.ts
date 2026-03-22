@@ -36,7 +36,7 @@ export class GreetingsService {
     data: {
       type: string;
       name: string;
-      messages: any[];
+      messages: Record<string, unknown>[];
       isActive?: boolean;
     },
   ) {
@@ -58,11 +58,11 @@ export class GreetingsService {
     tenantId: string,
     data: {
       name?: string;
-      messages?: any[];
+      messages?: Record<string, unknown>[];
       isActive?: boolean;
     },
   ) {
-    const values: any = { updatedAt: new Date() };
+    const values: Record<string, unknown> = { updatedAt: new Date() };
     if (data.name !== undefined) values.name = data.name;
     if (data.messages !== undefined) values.messages = data.messages;
     if (data.isActive !== undefined) values.isActive = data.isActive;

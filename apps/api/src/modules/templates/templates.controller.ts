@@ -1,6 +1,8 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { TemplatesService } from './templates.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
+import { TenantId } from '../../common/decorators/tenant.decorator';
+import { CreateTemplateDto, UpdateTemplateDto } from './dto/templates.dto';
 
 @Controller('api/v1/templates')
 @UseGuards(AuthGuard)
@@ -8,23 +10,17 @@ export class TemplatesController {
   constructor(private readonly templatesService: TemplatesService) {}
 
   @Get()
-  async list(@Req() req: any) {
-    return this.templatesService.list(req.tenantId);
+  async list(@TenantId() tenantId: string) {
+    return this.templatesService.list(tenantId);
   }
 
   @Post()
-  async create(
-    @Req() req: any,
-    @Body() body: { name: string; content: string; category?: string; messageType?: string; messageData?: any },
-  ) {
-    return this.templatesService.create(req.tenantId, body);
+  async create(@TenantId() tenantId: string, @Body() body: CreateTemplateDto) {
+    return this.templatesService.create(tenantId, body);
   }
 
   @Patch(':id')
-  async update(
-    @Param('id') id: string,
-    @Body() body: { name?: string; content?: string; category?: string; messageType?: string; messageData?: any },
-  ) {
+  async update(@Param('id') id: string, @Body() body: UpdateTemplateDto) {
     return this.templatesService.update(id, body);
   }
 

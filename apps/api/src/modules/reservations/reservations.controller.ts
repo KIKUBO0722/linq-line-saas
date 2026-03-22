@@ -1,7 +1,9 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ReservationsService } from './reservations.service';
 import { GoogleCalendarService } from './google-calendar.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
+import { TenantId } from '../../common/decorators/tenant.decorator';
+import { CreateSlotDto, CreateReservationDto, SaveCalendarIntegrationDto, UpdateReservationStatusDto } from './dto/reservations.dto';
 
 @Controller('api/v1/reservations')
 @UseGuards(AuthGuard)
@@ -12,16 +14,13 @@ export class ReservationsController {
   ) {}
 
   @Get('slots')
-  async listSlots(@Req() req: any) {
-    return this.reservationsService.listSlots(req.tenantId);
+  async listSlots(@TenantId() tenantId: string) {
+    return this.reservationsService.listSlots(tenantId);
   }
 
   @Post('slots')
-  async createSlot(
-    @Req() req: any,
-    @Body() body: { name: string; duration: number; description?: string },
-  ) {
-    return this.reservationsService.createSlot(req.tenantId, body);
+  async createSlot(@TenantId() tenantId: string, @Body() body: CreateSlotDto) {
+    return this.reservationsService.createSlot(tenantId, body);
   }
 
   @Delete('slots/:id')
@@ -32,52 +31,39 @@ export class ReservationsController {
 
   @Get()
   async listReservations(
-    @Req() req: any,
+    @TenantId() tenantId: string,
     @Query('date') date?: string,
     @Query('status') status?: string,
   ) {
-    return this.reservationsService.listReservations(req.tenantId, { date, status });
+    return this.reservationsService.listReservations(tenantId, { date, status });
   }
 
   @Post()
-  async createReservation(
-    @Body() body: {
-      slotId: string;
-      friendId?: string;
-      guestName?: string;
-      date: string;
-      startTime: string;
-      note?: string;
-      reminderMinutesBefore?: number;
-    },
-  ) {
+  async createReservation(@Body() body: CreateReservationDto) {
     return this.reservationsService.createReservation(body);
   }
 
   @Get('calendar-integration')
-  async getCalendarIntegration(@Req() req: any) {
-    return this.googleCalendarService.getIntegration(req.tenantId) || { isActive: false };
+  async getCalendarIntegration(@TenantId() tenantId: string) {
+    return this.googleCalendarService.getIntegration(tenantId) || { isActive: false };
   }
 
   @Post('calendar-integration')
-  async saveCalendarIntegration(@Req() req: any, @Body() body: { calendarId: string; serviceAccountKey: string }) {
-    return this.googleCalendarService.saveIntegration(req.tenantId, {
+  async saveCalendarIntegration(@TenantId() tenantId: string, @Body() body: SaveCalendarIntegrationDto) {
+    return this.googleCalendarService.saveIntegration(tenantId, {
       calendarId: body.calendarId,
       credentials: { serviceAccountKey: body.serviceAccountKey },
     });
   }
 
   @Delete('calendar-integration')
-  async disableCalendarIntegration(@Req() req: any) {
-    await this.googleCalendarService.disableIntegration(req.tenantId);
+  async disableCalendarIntegration(@TenantId() tenantId: string) {
+    await this.googleCalendarService.disableIntegration(tenantId);
     return { ok: true };
   }
 
   @Patch(':id/status')
-  async updateReservationStatus(
-    @Param('id') id: string,
-    @Body() body: { status: string },
-  ) {
+  async updateReservationStatus(@Param('id') id: string, @Body() body: UpdateReservationStatusDto) {
     await this.reservationsService.updateReservationStatus(id, body.status);
     return { ok: true };
   }

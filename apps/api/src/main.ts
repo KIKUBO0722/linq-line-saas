@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 import helmet from 'helmet';
@@ -16,6 +17,13 @@ async function bootstrap() {
     origin: [webUrl, 'http://localhost:3600', 'http://localhost:3000'],
     credentials: true,
   });
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: false,
+    }),
+  );
   app.useGlobalFilters(new GlobalExceptionFilter());
 
   const port = process.env.PORT || process.env.API_PORT || 3001;

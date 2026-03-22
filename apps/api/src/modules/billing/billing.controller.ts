@@ -1,8 +1,11 @@
-import { Controller, Get, Post, Body, Req, UseGuards, RawBody, Headers } from '@nestjs/common';
+import { Controller, Get, Post, Body, Req, UseGuards, Headers } from '@nestjs/common';
 import { BillingService } from './billing.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
+import { TenantId } from '../../common/decorators/tenant.decorator';
+import { SubscribeDto, CheckoutDto } from './dto/billing.dto';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
+import { Request } from 'express';
 
 @Controller('api/v1/billing')
 export class BillingController {
@@ -23,37 +26,37 @@ export class BillingController {
 
   @Get('subscription')
   @UseGuards(AuthGuard)
-  async getSubscription(@Req() req: any) {
-    return this.billingService.getSubscription(req.tenantId);
+  async getSubscription(@TenantId() tenantId: string) {
+    return this.billingService.getSubscription(tenantId);
   }
 
   @Post('subscribe')
   @UseGuards(AuthGuard)
-  async subscribe(@Req() req: any, @Body() body: { planId: string }) {
-    return this.billingService.createSubscription(req.tenantId, body.planId);
+  async subscribe(@TenantId() tenantId: string, @Body() body: SubscribeDto) {
+    return this.billingService.createSubscription(tenantId, body.planId);
   }
 
   @Post('checkout')
   @UseGuards(AuthGuard)
-  async createCheckout(@Req() req: any, @Body() body: { planId: string }) {
-    return this.billingService.createCheckoutSession(req.tenantId, body.planId);
+  async createCheckout(@TenantId() tenantId: string, @Body() body: CheckoutDto) {
+    return this.billingService.createCheckoutSession(tenantId, body.planId);
   }
 
   @Post('cancel')
   @UseGuards(AuthGuard)
-  async cancel(@Req() req: any) {
-    await this.billingService.cancelSubscription(req.tenantId);
+  async cancel(@TenantId() tenantId: string) {
+    await this.billingService.cancelSubscription(tenantId);
     return { ok: true };
   }
 
   @Get('usage')
   @UseGuards(AuthGuard)
-  async getUsage(@Req() req: any) {
-    return this.billingService.getUsage(req.tenantId);
+  async getUsage(@TenantId() tenantId: string) {
+    return this.billingService.getUsage(tenantId);
   }
 
   @Post('webhook')
-  async handleWebhook(@Req() req: any, @Headers('stripe-signature') signature: string) {
+  async handleWebhook(@Req() req: Request & { rawBody: Buffer }, @Headers('stripe-signature') signature: string) {
     const webhookSecret = this.config.get<string>('STRIPE_WEBHOOK_SECRET');
     const stripeKey = this.config.get<string>('STRIPE_SECRET_KEY');
 
@@ -61,14 +64,15 @@ export class BillingController {
       return { ok: false, message: 'Stripe not configured' };
     }
 
-    const stripe = new Stripe(stripeKey, { apiVersion: '2025-03-31.basil' as any });
+    const stripe = new Stripe(stripeKey, { apiVersion: '2025-03-31.basil' as Stripe.LatestApiVersion });
 
     try {
       const event = stripe.webhooks.constructEvent(req.rawBody, signature, webhookSecret);
       await this.billingService.handleStripeWebhook(event);
       return { ok: true };
-    } catch (err: any) {
-      return { ok: false, message: err.message };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      return { ok: false, message };
     }
   }
 }

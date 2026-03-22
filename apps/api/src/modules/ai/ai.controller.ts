@@ -1,6 +1,11 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { AiService } from './ai.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
+import { TenantId } from '../../common/decorators/tenant.decorator';
+import {
+  UpdateAiConfigDto, GenerateMessageDto, SuggestScenarioDto,
+  OnboardingDto, AssistantDto, ChatSuggestDto, ExecuteActionDto,
+} from './dto/ai.dto';
 
 @Controller('api/v1/ai')
 @UseGuards(AuthGuard)
@@ -8,76 +13,57 @@ export class AiController {
   constructor(private readonly aiService: AiService) {}
 
   @Get('config')
-  async getConfig(@Req() req: any) {
-    const config = await this.aiService.getConfig(req.tenantId);
+  async getConfig(@TenantId() tenantId: string) {
+    const config = await this.aiService.getConfig(tenantId);
     return config || { autoReplyEnabled: false, systemPrompt: '', knowledgeBase: [] };
   }
 
   @Patch('config')
-  async updateConfig(@Req() req: any, @Body() body: any) {
-    return this.aiService.upsertConfig(req.tenantId, body);
+  async updateConfig(@TenantId() tenantId: string, @Body() body: UpdateAiConfigDto) {
+    return this.aiService.upsertConfig(tenantId, body);
   }
 
   @Post('generate-message')
-  async generateMessage(@Body() body: { purpose: string; tone: string; target?: string; context?: string }) {
+  async generateMessage(@Body() body: GenerateMessageDto) {
     return this.aiService.generateMessage('', body);
   }
 
   @Post('suggest-scenario')
-  async suggestScenario(@Body() body: { industry: string; goal: string; target?: string }) {
+  async suggestScenario(@Body() body: SuggestScenarioDto) {
     return this.aiService.suggestScenario('', body);
   }
 
   @Post('analyze-friend/:friendId')
-  async analyzeFriend(@Req() req: any, @Param('friendId') friendId: string) {
-    return this.aiService.analyzeFriend(req.tenantId, friendId);
+  async analyzeFriend(@TenantId() tenantId: string, @Param('friendId') friendId: string) {
+    return this.aiService.analyzeFriend(tenantId, friendId);
   }
 
   @Post('onboarding')
-  async onboarding(
-    @Req() req: any,
-    @Body() body: { industry: string; location?: string; target?: string; challenge?: string; hours?: string; menu?: string },
-  ) {
-    return this.aiService.onboardingSetup(req.tenantId, body);
+  async onboarding(@TenantId() tenantId: string, @Body() body: OnboardingDto) {
+    return this.aiService.onboardingSetup(tenantId, body);
   }
 
   @Post('assistant')
-  async assistant(
-    @Req() req: any,
-    @Body() body: { message: string; page: string; pageData?: any; history?: { role: string; content: string }[] },
-  ) {
-    return this.aiService.contextAssistant(req.tenantId, body);
+  async assistant(@TenantId() tenantId: string, @Body() body: AssistantDto) {
+    return this.aiService.contextAssistant(tenantId, body);
   }
 
   @Post('chat-suggest')
-  async chatSuggest(
-    @Req() req: any,
-    @Body() body: { friendId: string; recentMessages: { role: string; content: string }[]; friendInfo?: any },
-  ) {
-    return this.aiService.chatSuggest(req.tenantId, body);
+  async chatSuggest(@TenantId() tenantId: string, @Body() body: ChatSuggestDto) {
+    return this.aiService.chatSuggest(tenantId, body);
   }
 
-  // Execute AI-proposed action (actually create in DB)
   @Post('execute-action')
-  async executeAction(
-    @Req() req: any,
-    @Body() body: { type: string; data: any },
-  ) {
-    return this.aiService.executeAction(req.tenantId, body.type, body.data);
+  async executeAction(@TenantId() tenantId: string, @Body() body: ExecuteActionDto) {
+    return this.aiService.executeAction(tenantId, body.type, body.data);
   }
 
-  // Rollback an AI-created resource
   @Delete('rollback/:type/:id')
-  async rollback(
-    @Req() req: any,
-    @Param('type') type: string,
-    @Param('id') id: string,
-  ) {
-    return this.aiService.rollbackAction(req.tenantId, type, id);
+  async rollback(@TenantId() tenantId: string, @Param('type') type: string, @Param('id') id: string) {
+    return this.aiService.rollbackAction(tenantId, type, id);
   }
 }
 
-// Public controller (no auth) for one-time setup endpoints
 @Controller('api/v1/ai-public')
 export class AiPublicController {
   constructor(private readonly aiService: AiService) {}

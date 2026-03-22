@@ -1,6 +1,8 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ExitPopupsService } from './exit-popups.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
+import { TenantId } from '../../common/decorators/tenant.decorator';
+import { CreateExitPopupDto, UpdateExitPopupDto } from './dto/exit-popups.dto';
 
 @Controller()
 export class ExitPopupsController {
@@ -8,35 +10,35 @@ export class ExitPopupsController {
 
   @Post('api/v1/exit-popups')
   @UseGuards(AuthGuard)
-  async create(@Req() req: any, @Body() body: { name: string; targetType?: string; targetId?: string; title?: string; message?: string; couponCode?: string; couponLabel?: string; ctaText?: string; ctaUrl?: string; triggerType?: string; delaySeconds?: number }) {
-    return this.exitPopupsService.create(req.tenantId, body);
+  async create(@TenantId() tenantId: string, @Body() body: CreateExitPopupDto) {
+    return this.exitPopupsService.create(tenantId, body);
   }
 
   @Get('api/v1/exit-popups')
   @UseGuards(AuthGuard)
-  async list(@Req() req: any) {
-    return this.exitPopupsService.list(req.tenantId);
+  async list(@TenantId() tenantId: string) {
+    return this.exitPopupsService.list(tenantId);
   }
 
   @Put('api/v1/exit-popups/:id')
   @UseGuards(AuthGuard)
-  async update(@Req() req: any, @Param('id') id: string, @Body() body: { name?: string; targetType?: string; targetId?: string; title?: string; message?: string; couponCode?: string; couponLabel?: string; ctaText?: string; ctaUrl?: string; triggerType?: string; delaySeconds?: number; isActive?: boolean }) {
-    return this.exitPopupsService.update(id, req.tenantId, body);
+  async update(@TenantId() tenantId: string, @Param('id') id: string, @Body() body: UpdateExitPopupDto) {
+    return this.exitPopupsService.update(id, tenantId, body);
   }
 
   @Delete('api/v1/exit-popups/:id')
   @UseGuards(AuthGuard)
-  async delete(@Req() req: any, @Param('id') id: string) {
-    return this.exitPopupsService.delete(id, req.tenantId);
+  async delete(@TenantId() tenantId: string, @Param('id') id: string) {
+    return this.exitPopupsService.delete(id, tenantId);
   }
 
   @Get('api/v1/exit-popups/public/:tenantId')
   async getPublic(
-    @Param('tenantId') tenantId: string,
+    @Param('tenantId') tid: string,
     @Query('targetType') targetType: string,
     @Query('targetId') targetId?: string,
   ) {
-    return this.exitPopupsService.getActiveForTarget(tenantId, targetType || 'form', targetId);
+    return this.exitPopupsService.getActiveForTarget(tid, targetType || 'form', targetId);
   }
 
   @Post('api/v1/exit-popups/:id/shown')

@@ -1,6 +1,8 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { ConversionService } from './conversion.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
+import { TenantId } from '../../common/decorators/tenant.decorator';
+import { CreateGoalDto, UpdateGoalDto, RecordConversionDto } from './dto/conversion.dto';
 
 @Controller('api/v1/conversions')
 @UseGuards(AuthGuard)
@@ -8,32 +10,32 @@ export class ConversionController {
   constructor(private readonly conversionService: ConversionService) {}
 
   @Post('goals')
-  async createGoal(@Req() req: any, @Body() body: { name: string; type: string; targetId?: string }) {
-    return this.conversionService.createGoal(req.tenantId, body);
+  async createGoal(@TenantId() tenantId: string, @Body() body: CreateGoalDto) {
+    return this.conversionService.createGoal(tenantId, body);
   }
 
   @Get('goals')
-  async listGoals(@Req() req: any) {
-    return this.conversionService.listGoals(req.tenantId);
+  async listGoals(@TenantId() tenantId: string) {
+    return this.conversionService.listGoals(tenantId);
   }
 
   @Put('goals/:id')
-  async updateGoal(@Req() req: any, @Param('id') id: string, @Body() body: { name?: string; isActive?: boolean }) {
-    return this.conversionService.updateGoal(id, req.tenantId, body);
+  async updateGoal(@TenantId() tenantId: string, @Param('id') id: string, @Body() body: UpdateGoalDto) {
+    return this.conversionService.updateGoal(id, tenantId, body);
   }
 
   @Delete('goals/:id')
-  async deleteGoal(@Req() req: any, @Param('id') id: string) {
-    return this.conversionService.deleteGoal(id, req.tenantId);
+  async deleteGoal(@TenantId() tenantId: string, @Param('id') id: string) {
+    return this.conversionService.deleteGoal(id, tenantId);
   }
 
   @Post('events')
-  async recordConversion(@Req() req: any, @Body() body: { goalId: string; friendId?: string; trackedUrlId?: string; metadata?: Record<string, unknown> }) {
-    return this.conversionService.recordConversion(req.tenantId, body.goalId, body.friendId, body.trackedUrlId, body.metadata);
+  async recordConversion(@TenantId() tenantId: string, @Body() body: RecordConversionDto) {
+    return this.conversionService.recordConversion(tenantId, body.goalId, body.friendId, body.trackedUrlId, body.metadata);
   }
 
   @Get('goals/:id/events')
-  async getGoalEvents(@Req() req: any, @Param('id') id: string) {
-    return this.conversionService.getGoalEvents(id, req.tenantId);
+  async getGoalEvents(@TenantId() tenantId: string, @Param('id') id: string) {
+    return this.conversionService.getGoalEvents(id, tenantId);
   }
 }

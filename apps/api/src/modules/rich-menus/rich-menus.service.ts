@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { richMenus, richMenuGroups, lineAccounts, friends } from '@line-saas/db';
@@ -6,6 +6,12 @@ import { LineService } from '../line/line.service';
 import { messagingApi } from '@line/bot-sdk';
 
 const { MessagingApiBlobClient } = messagingApi;
+
+interface RichMenuAreaInput {
+  bounds?: { x: number; y: number; width: number; height: number };
+  action?: Record<string, unknown>;
+  text?: string;
+}
 
 @Injectable()
 export class RichMenusService {
@@ -30,7 +36,7 @@ export class RichMenusService {
       lineAccountId: string;
       name: string;
       chatBarText?: string;
-      areas?: any[];
+      areas?: RichMenuAreaInput[];
       size?: { width: number; height: number };
     },
   ) {
@@ -41,7 +47,7 @@ export class RichMenusService {
       .where(and(eq(lineAccounts.id, data.lineAccountId), eq(lineAccounts.tenantId, tenantId)))
       .limit(1);
 
-    if (!account) throw new Error('Account not found');
+    if (!account) throw new NotFoundException('Account not found');
 
     const client = this.lineService.getClient({
       channelSecret: account.channelSecret,
@@ -49,7 +55,7 @@ export class RichMenusService {
     });
 
     const size = data.size || { width: 2500, height: 1686 };
-    const areas = (data.areas || []).map((area: any) => ({
+    const areas = (data.areas || []).map((area: RichMenuAreaInput) => ({
       bounds: area.bounds || { x: 0, y: 0, width: size.width, height: size.height },
       action: area.action || { type: 'message', text: area.text || 'メニュー' },
     }));
@@ -68,7 +74,7 @@ export class RichMenusService {
         selected: true,
         name: data.name,
         chatBarText: data.chatBarText || 'メニュー',
-        areas: richMenuAreas,
+        areas: richMenuAreas as messagingApi.RichMenuArea[],
       });
       lineRichMenuId = result.richMenuId;
     } catch (err) {
@@ -99,8 +105,8 @@ export class RichMenusService {
       .where(and(eq(richMenus.id, id), eq(richMenus.tenantId, tenantId)))
       .limit(1);
 
-    if (!menu) throw new Error('Rich menu not found');
-    if (!menu.lineRichMenuId) throw new Error('Rich menu not synced with LINE');
+    if (!menu) throw new NotFoundException('Rich menu not found');
+    if (!menu.lineRichMenuId) throw new BadRequestException('Rich menu not synced with LINE');
 
     const [account] = await this.db
       .select()
@@ -108,7 +114,7 @@ export class RichMenusService {
       .where(eq(lineAccounts.id, menu.lineAccountId))
       .limit(1);
 
-    if (!account) throw new Error('Account not found');
+    if (!account) throw new NotFoundException('Account not found');
 
     // Use blob client for image upload
     const blobClient = new MessagingApiBlobClient({
@@ -134,7 +140,7 @@ export class RichMenusService {
     data: {
       name?: string;
       chatBarText?: string;
-      areas?: any[];
+      areas?: RichMenuAreaInput[];
       size?: { width: number; height: number };
     },
   ) {
@@ -144,7 +150,7 @@ export class RichMenusService {
       .where(and(eq(richMenus.id, id), eq(richMenus.tenantId, tenantId)))
       .limit(1);
 
-    if (!menu) throw new Error('Rich menu not found');
+    if (!menu) throw new NotFoundException('Rich menu not found');
 
     const [account] = await this.db
       .select()
@@ -152,7 +158,7 @@ export class RichMenusService {
       .where(eq(lineAccounts.id, menu.lineAccountId))
       .limit(1);
 
-    if (!account) throw new Error('Account not found');
+    if (!account) throw new NotFoundException('Account not found');
 
     const client = this.lineService.getClient({
       channelSecret: account.channelSecret,
@@ -161,8 +167,8 @@ export class RichMenusService {
 
     // LINE API doesn't support updating rich menus - must delete and recreate
     const wasDefault = menu.isDefault;
-    const newSize = data.size || (menu.size as any) || { width: 2500, height: 1686 };
-    const newAreas = data.areas || (menu.areas as any[]) || [];
+    const newSize = data.size || (menu.size as { width: number; height: number }) || { width: 2500, height: 1686 };
+    const newAreas = data.areas || (menu.areas as Record<string, unknown>[]) || [];
     const newName = data.name || menu.name;
     const newChatBarText = data.chatBarText || menu.chatBarText || 'メニュー';
 
@@ -183,7 +189,7 @@ export class RichMenusService {
         selected: true,
         name: newName,
         chatBarText: newChatBarText,
-        areas: newAreas,
+        areas: newAreas as messagingApi.RichMenuArea[],
       });
       lineRichMenuId = result.richMenuId;
     } catch (err) {
@@ -224,7 +230,7 @@ export class RichMenusService {
       .where(and(eq(richMenus.id, id), eq(richMenus.tenantId, tenantId)))
       .limit(1);
 
-    if (!menu) throw new Error('Rich menu not found');
+    if (!menu) throw new NotFoundException('Rich menu not found');
 
     if (menu.lineRichMenuId) {
       try {
@@ -257,8 +263,8 @@ export class RichMenusService {
       .where(and(eq(richMenus.id, id), eq(richMenus.tenantId, tenantId)))
       .limit(1);
 
-    if (!menu) throw new Error('Rich menu not found');
-    if (!menu.lineRichMenuId) throw new Error('Rich menu not synced with LINE');
+    if (!menu) throw new NotFoundException('Rich menu not found');
+    if (!menu.lineRichMenuId) throw new BadRequestException('Rich menu not synced with LINE');
 
     const [account] = await this.db
       .select()
@@ -266,7 +272,7 @@ export class RichMenusService {
       .where(eq(lineAccounts.id, menu.lineAccountId))
       .limit(1);
 
-    if (!account) throw new Error('Account not found');
+    if (!account) throw new NotFoundException('Account not found');
 
     const client = this.lineService.getClient({
       channelSecret: account.channelSecret,
@@ -315,7 +321,7 @@ export class RichMenusService {
       tabs: Array<{
         name: string;
         chatBarText?: string;
-        areas: any[];
+        areas: RichMenuAreaInput[];
         size?: { width: number; height: number };
       }>;
     },
@@ -327,7 +333,7 @@ export class RichMenusService {
       .where(and(eq(lineAccounts.id, data.lineAccountId), eq(lineAccounts.tenantId, tenantId)))
       .limit(1);
 
-    if (!account) throw new Error('Account not found');
+    if (!account) throw new NotFoundException('Account not found');
 
     const credentials = {
       channelSecret: account.channelSecret,
@@ -361,7 +367,7 @@ export class RichMenusService {
           selected: true,
           name: `${data.name} - ${tab.name}`,
           chatBarText: tab.chatBarText || 'メニュー',
-          areas,
+          areas: areas as messagingApi.RichMenuArea[],
         });
         lineRichMenuId = result.richMenuId;
       } catch (err) {
@@ -462,7 +468,7 @@ export class RichMenusService {
       .where(and(eq(richMenus.tenantId, tenantId), eq(richMenus.groupId, groupId), eq(richMenus.tabIndex, 0)))
       .limit(1);
 
-    if (!firstTab || !firstTab.lineRichMenuId) throw new Error('Group has no synced tabs');
+    if (!firstTab || !firstTab.lineRichMenuId) throw new BadRequestException('Group has no synced tabs');
 
     // Use the existing setDefault method for the first tab
     return this.setDefault(tenantId, firstTab.id);
@@ -479,7 +485,7 @@ export class RichMenusService {
       .where(and(eq(richMenus.id, data.richMenuId), eq(richMenus.tenantId, tenantId)))
       .limit(1);
 
-    if (!menu || !menu.lineRichMenuId) throw new Error('Rich menu not found or not synced');
+    if (!menu || !menu.lineRichMenuId) throw new NotFoundException('Rich menu not found or not synced');
 
     const [account] = await this.db
       .select()
@@ -487,7 +493,7 @@ export class RichMenusService {
       .where(eq(lineAccounts.id, menu.lineAccountId))
       .limit(1);
 
-    if (!account) throw new Error('Account not found');
+    if (!account) throw new NotFoundException('Account not found');
 
     // Get friend's LINE user ID
     const [friend] = await this.db
@@ -496,7 +502,7 @@ export class RichMenusService {
       .where(and(eq(friends.id, data.friendId), eq(friends.tenantId, tenantId)))
       .limit(1);
 
-    if (!friend) throw new Error('Friend not found');
+    if (!friend) throw new NotFoundException('Friend not found');
 
     const creds = { channelSecret: account.channelSecret, channelAccessToken: account.channelAccessToken };
     await this.lineService.linkRichMenuToUser(creds, friend.lineUserId, menu.lineRichMenuId);

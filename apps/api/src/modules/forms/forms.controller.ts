@@ -1,6 +1,8 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { FormsService } from './forms.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
+import { TenantId } from '../../common/decorators/tenant.decorator';
+import { CreateFormDto, UpdateFormDto, SubmitFormDto } from './dto/forms.dto';
 
 @Controller('api/v1/forms')
 @UseGuards(AuthGuard)
@@ -8,13 +10,13 @@ export class FormsController {
   constructor(private readonly formsService: FormsService) {}
 
   @Get()
-  async list(@Req() req: any) {
-    return this.formsService.list(req.tenantId);
+  async list(@TenantId() tenantId: string) {
+    return this.formsService.list(tenantId);
   }
 
   @Post()
-  async create(@Req() req: any, @Body() body: { name: string; description?: string; fields: any[]; thankYouMessage?: string; tagOnSubmitId?: string }) {
-    return this.formsService.create(req.tenantId, body);
+  async create(@TenantId() tenantId: string, @Body() body: CreateFormDto) {
+    return this.formsService.create(tenantId, body);
   }
 
   @Get(':id')
@@ -23,7 +25,7 @@ export class FormsController {
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() body: any) {
+  async update(@Param('id') id: string, @Body() body: UpdateFormDto) {
     await this.formsService.update(id, body);
     return { ok: true };
   }
@@ -35,7 +37,7 @@ export class FormsController {
   }
 
   @Post(':id/submit')
-  async submit(@Param('id') formId: string, @Body() body: { friendId?: string; answers: any }) {
+  async submit(@Param('id') formId: string, @Body() body: SubmitFormDto) {
     return this.formsService.submitResponse(formId, body.friendId || null, body.answers);
   }
 

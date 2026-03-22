@@ -12,13 +12,35 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { EmptyState } from '@/components/ui/empty-state';
+
+interface ReferralProgram {
+  id: string;
+  name: string;
+  description?: string;
+  rewardType: string;
+  rewardValue: string;
+  isActive: boolean;
+}
+
+interface ReferralConversion {
+  id: string;
+  code: string;
+  createdAt: string;
+}
+
+interface ReferralStats {
+  totalCodes: number;
+  totalConversions: number;
+  recentConversions: ReferralConversion[];
+}
 
 export default function ReferralPage() {
-  const [programs, setPrograms] = useState<any[]>([]);
+  const [programs, setPrograms] = useState<ReferralProgram[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'list' | 'create' | 'stats'>('list');
-  const [selectedProgram, setSelectedProgram] = useState<any>(null);
-  const [stats, setStats] = useState<any>(null);
+  const [selectedProgram, setSelectedProgram] = useState<ReferralProgram | null>(null);
+  const [stats, setStats] = useState<ReferralStats | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Create form
@@ -55,14 +77,14 @@ export default function ReferralPage() {
       setRewardValue('');
       setView('list');
       loadPrograms();
-    } catch (err: any) {
-      toast.error(err.message || '作成に失敗しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : '作成に失敗しました');
     } finally {
       setSaving(false);
     }
   }
 
-  async function viewStats(program: any) {
+  async function viewStats(program: ReferralProgram) {
     setSelectedProgram(program);
     try {
       const data = await api.referral.getProgramStats(program.id);
@@ -158,7 +180,7 @@ export default function ReferralPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {stats.recentConversions.map((conv: any) => (
+                {stats.recentConversions.map((conv: ReferralConversion) => (
                   <TableRow key={conv.id}>
                     <TableCell className="text-sm font-medium">{conv.code}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
@@ -268,10 +290,13 @@ export default function ReferralPage() {
 
       {programs.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <Link2 className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">紹介プログラムがありません</h3>
-            <p className="text-sm text-muted-foreground mt-1">「新規作成」からプログラムを作成してください</p>
+          <CardContent>
+            <EmptyState
+              illustration="generic"
+              title="紹介プログラムがありません"
+              description="お友だち紹介プログラムを作成して、友だちの輪を広げましょう"
+              action={{ label: '新規作成', onClick: () => setView('create'), icon: Plus }}
+            />
           </CardContent>
         </Card>
       ) : (

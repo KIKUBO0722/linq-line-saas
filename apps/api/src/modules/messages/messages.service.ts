@@ -1,8 +1,9 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { eq, and, desc, gt, lte, isNotNull, sql, count, max } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { messages, friends, lineAccounts } from '@line-saas/db';
 import { LineService } from '../line/line.service';
+import { messagingApi } from '@line/bot-sdk';
 
 @Injectable()
 export class MessagesService {
@@ -64,14 +65,14 @@ export class MessagesService {
       .groupBy(messages.friendId, friends.lastReadAt);
 
     let totalUnread = 0;
-    const unreadFriends: Array<{ friendId: string; unreadCount: number; lastMessage: any; createdAt: string }> = [];
+    const unreadFriends: Array<{ friendId: string; unreadCount: number; lastMessage: unknown; createdAt: string }> = [];
 
     for (const row of rows) {
       if (!row.friendId) continue;
       const cnt = Number(row.unreadCount);
       totalUnread += cnt;
 
-      let lastMessage: any = null;
+      let lastMessage: unknown = null;
       try {
         lastMessage = typeof row.lastMessageContent === 'string'
           ? JSON.parse(row.lastMessageContent)
@@ -98,7 +99,7 @@ export class MessagesService {
       .where(and(eq(friends.tenantId, tenantId), eq(friends.id, friendId)))
       .limit(1);
 
-    if (!friend) throw new Error('Friend not found');
+    if (!friend) throw new NotFoundException('Friend not found');
 
     const [account] = await this.db
       .select()
@@ -106,7 +107,7 @@ export class MessagesService {
       .where(eq(lineAccounts.id, friend.lineAccountId))
       .limit(1);
 
-    if (!account) throw new Error('LINE account not found');
+    if (!account) throw new NotFoundException('LINE account not found');
 
     await this.lineService.pushMessage(
       { channelSecret: account.channelSecret, channelAccessToken: account.channelAccessToken },
@@ -142,7 +143,7 @@ export class MessagesService {
       previewImageUrl?: string;
       duration?: number;
       altText?: string;
-      contents?: any;
+      contents?: Record<string, unknown>;
       quickReply?: {
         items: Array<{
           type: 'action';
@@ -157,7 +158,7 @@ export class MessagesService {
       .where(and(eq(friends.tenantId, tenantId), eq(friends.id, friendId)))
       .limit(1);
 
-    if (!friend) throw new Error('Friend not found');
+    if (!friend) throw new NotFoundException('Friend not found');
 
     const [account] = await this.db
       .select()
@@ -165,48 +166,48 @@ export class MessagesService {
       .where(eq(lineAccounts.id, friend.lineAccountId))
       .limit(1);
 
-    if (!account) throw new Error('LINE account not found');
+    if (!account) throw new NotFoundException('LINE account not found');
 
-    let lineMessage: any;
+    let lineMessage: messagingApi.Message;
     switch (message.type) {
       case 'text':
-        lineMessage = { type: 'text', text: message.text };
+        lineMessage = { type: 'text', text: message.text } as messagingApi.TextMessage;
         break;
       case 'image':
         lineMessage = {
           type: 'image',
           originalContentUrl: message.originalContentUrl,
           previewImageUrl: message.previewImageUrl || message.originalContentUrl,
-        };
+        } as messagingApi.ImageMessage;
         break;
       case 'video':
         lineMessage = {
           type: 'video',
           originalContentUrl: message.originalContentUrl,
           previewImageUrl: message.previewImageUrl,
-        };
+        } as messagingApi.VideoMessage;
         break;
       case 'audio':
         lineMessage = {
           type: 'audio',
           originalContentUrl: message.originalContentUrl,
           duration: message.duration || 60000,
-        };
+        } as messagingApi.AudioMessage;
         break;
       case 'flex':
         lineMessage = {
           type: 'flex',
           altText: message.altText || 'メッセージ',
           contents: message.contents,
-        };
+        } as messagingApi.FlexMessage;
         break;
       default:
-        throw new Error(`Unsupported message type: ${message.type}`);
+        throw new BadRequestException(`Unsupported message type: ${message.type}`);
     }
 
     // Attach quickReply if provided
     if (message.quickReply && message.quickReply.items && message.quickReply.items.length > 0) {
-      lineMessage.quickReply = message.quickReply;
+      (lineMessage as Record<string, unknown>).quickReply = message.quickReply;
     }
 
     await this.lineService.pushMessage(
@@ -242,7 +243,7 @@ export class MessagesService {
       previewImageUrl?: string;
       duration?: number;
       altText?: string;
-      contents?: any;
+      contents?: Record<string, unknown>;
       quickReply?: {
         items: Array<{
           type: 'action';
@@ -256,46 +257,46 @@ export class MessagesService {
       .from(lineAccounts)
       .where(and(eq(lineAccounts.tenantId, tenantId), eq(lineAccounts.isActive, true)));
 
-    let lineMessage: any;
+    let lineMessage: messagingApi.Message;
     switch (message.type) {
       case 'text':
-        lineMessage = { type: 'text', text: message.text };
+        lineMessage = { type: 'text', text: message.text } as messagingApi.TextMessage;
         break;
       case 'image':
         lineMessage = {
           type: 'image',
           originalContentUrl: message.originalContentUrl,
           previewImageUrl: message.previewImageUrl || message.originalContentUrl,
-        };
+        } as messagingApi.ImageMessage;
         break;
       case 'video':
         lineMessage = {
           type: 'video',
           originalContentUrl: message.originalContentUrl,
           previewImageUrl: message.previewImageUrl,
-        };
+        } as messagingApi.VideoMessage;
         break;
       case 'audio':
         lineMessage = {
           type: 'audio',
           originalContentUrl: message.originalContentUrl,
           duration: message.duration || 60000,
-        };
+        } as messagingApi.AudioMessage;
         break;
       case 'flex':
         lineMessage = {
           type: 'flex',
           altText: message.altText || 'メッセージ',
           contents: message.contents,
-        };
+        } as messagingApi.FlexMessage;
         break;
       default:
-        throw new Error(`Unsupported message type: ${message.type}`);
+        throw new BadRequestException(`Unsupported message type: ${message.type}`);
     }
 
     // Attach quickReply if provided
     if (message.quickReply && message.quickReply.items && message.quickReply.items.length > 0) {
-      lineMessage.quickReply = message.quickReply;
+      (lineMessage as Record<string, unknown>).quickReply = message.quickReply;
     }
 
     for (const account of accounts) {
@@ -413,11 +414,11 @@ export class MessagesService {
           .where(eq(messages.id, msg.id));
 
         processed++;
-      } catch (error: any) {
+      } catch (error: unknown) {
         this.logger.error(`Failed to send scheduled message ${msg.id}:`, error);
         await this.db
           .update(messages)
-          .set({ status: 'failed', error: { message: error.message || 'Unknown error' } })
+          .set({ status: 'failed', error: { message: error instanceof Error ? error.message : 'Unknown error' } })
           .where(eq(messages.id, msg.id));
       }
     }
@@ -453,8 +454,8 @@ export class MessagesService {
           { type: 'text', text },
         ]);
         sent++;
-      } catch (error: any) {
-        this.logger.error(`Test send failed for ${friendId}: ${error.message}`);
+      } catch (error: unknown) {
+        this.logger.error(`Test send failed for ${friendId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
 

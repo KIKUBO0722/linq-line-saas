@@ -1,6 +1,8 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { TagsService } from './tags.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
+import { TenantId } from '../../common/decorators/tenant.decorator';
+import { CreateTagDto, UpdateTagDto } from './dto/tags.dto';
 
 @Controller('api/v1/tags')
 @UseGuards(AuthGuard)
@@ -8,17 +10,17 @@ export class TagsController {
   constructor(private readonly tagsService: TagsService) {}
 
   @Get()
-  async list(@Req() req: any) {
-    return this.tagsService.list(req.tenantId);
+  async list(@TenantId() tenantId: string) {
+    return this.tagsService.list(tenantId);
   }
 
   @Post()
-  async create(@Req() req: any, @Body() body: { name: string; color?: string }) {
-    return this.tagsService.create(req.tenantId, body);
+  async create(@TenantId() tenantId: string, @Body() body: CreateTagDto) {
+    return this.tagsService.create(tenantId, body);
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() body: { name?: string; color?: string }) {
+  async update(@Param('id') id: string, @Body() body: UpdateTagDto) {
     await this.tagsService.update(id, body);
     return { ok: true };
   }

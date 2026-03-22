@@ -1,7 +1,7 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import { eq, and, ilike, sql } from 'drizzle-orm';
+import { eq, and, ilike, sql, desc } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
-import { friends, friendTags, tags, lineAccounts } from '@line-saas/db';
+import { friends, friendTags, tags, lineAccounts, messages } from '@line-saas/db';
 
 interface UpsertFriendDto {
   tenantId: string;
@@ -169,7 +169,7 @@ export class FriendsService {
   async importFromCsv(
     tenantId: string,
     csvText: string,
-    tagsService: any,
+    tagsService: { list(tenantId: string): Promise<{ id: string; name: string }[]>; create(tenantId: string, data: { name: string }): Promise<{ id: string }>; assignToFriend(friendId: string, tagId: string): Promise<void> },
   ): Promise<{ imported: number; updated: number; tagsCreated: number; errors: string[] }> {
     const lines = csvText.split('\n').map((l) => l.trim()).filter(Boolean);
     if (lines.length < 2) return { imported: 0, updated: 0, tagsCreated: 0, errors: ['CSVにデータ行がありません'] };
@@ -255,8 +255,9 @@ export class FriendsService {
         } else {
           updated++;
         }
-      } catch (err: any) {
-        errors.push(`行${i + 1}: ${err.message || '処理エラー'}`);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : '処理エラー';
+        errors.push(`行${i + 1}: ${message}`);
       }
     }
 
@@ -285,5 +286,89 @@ export class FriendsService {
     }
     result.push(current);
     return result;
+  }
+
+  async getTimeline(tenantId: string, friendId: string, limit = 50, offset = 0) {
+    try {
+      // Get friend info for lifecycle events
+      const [friend] = await this.db
+        .select()
+        .from(friends)
+        .where(and(eq(friends.id, friendId), eq(friends.tenantId, tenantId)))
+        .limit(1);
+
+      if (!friend) return { events: [], total: 0 };
+
+      // Get messages for this friend
+      const msgRows = await this.db
+        .select({
+          id: messages.id,
+          direction: messages.direction,
+          messageType: messages.messageType,
+          content: messages.content,
+          status: messages.status,
+          createdAt: messages.createdAt,
+        })
+        .from(messages)
+        .where(and(eq(messages.tenantId, tenantId), eq(messages.friendId, friendId)))
+        .orderBy(desc(messages.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+      // Count total messages
+      const [countResult] = await this.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(messages)
+        .where(and(eq(messages.tenantId, tenantId), eq(messages.friendId, friendId)));
+
+      // Build timeline events
+      type TimelineEvent = {
+        id: string;
+        type: string;
+        timestamp: Date | null;
+        data: Record<string, unknown> | null;
+      };
+
+      const events: TimelineEvent[] = msgRows.map((m) => ({
+        id: m.id,
+        type: m.direction === 'inbound' ? 'message_received' : 'message_sent',
+        timestamp: m.createdAt,
+        data: {
+          messageType: m.messageType,
+          content: m.content,
+          status: m.status,
+          direction: m.direction,
+        },
+      }));
+
+      // Add lifecycle events (follow, unfollow) from friend record
+      if (friend.followedAt) {
+        events.push({
+          id: `follow-${friend.id}`,
+          type: 'followed',
+          timestamp: friend.followedAt,
+          data: null,
+        });
+      }
+      if (friend.unfollowedAt) {
+        events.push({
+          id: `unfollow-${friend.id}`,
+          type: 'unfollowed',
+          timestamp: friend.unfollowedAt,
+          data: null,
+        });
+      }
+
+      const allEvents = events
+        .sort((a, b) => new Date(b.timestamp!).getTime() - new Date(a.timestamp!).getTime());
+
+      return {
+        events: allEvents,
+        total: (countResult?.count ?? 0) + (friend.followedAt ? 1 : 0) + (friend.unfollowedAt ? 1 : 0),
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get timeline for friend ${friendId}`, error);
+      return { events: [], total: 0 };
+    }
   }
 }

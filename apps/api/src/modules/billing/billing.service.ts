@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { eq } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
@@ -69,7 +69,7 @@ export class BillingService {
     }
 
     const [plan] = await this.db.select().from(plans).where(eq(plans.id, planId)).limit(1);
-    if (!plan) throw new Error('Plan not found');
+    if (!plan) throw new NotFoundException('Plan not found');
 
     if (plan.priceMonthly === 0) {
       // Free plan: no Stripe checkout needed
@@ -176,7 +176,7 @@ export class BillingService {
       .where(eq(subscriptions.tenantId, tenantId))
       .limit(1);
 
-    let limits: any = {};
+    let limits: Record<string, number | null> = {};
     if (sub) {
       const [plan] = await this.db.select().from(plans).where(eq(plans.id, sub.planId)).limit(1);
       if (plan) {
@@ -221,10 +221,10 @@ export class BillingService {
   }
 
   async checkLimit(tenantId: string, field: 'messagesSent' | 'aiTokensUsed'): Promise<{ allowed: boolean; current: number; limit: number }> {
-    const usage = await this.getUsage(tenantId);
+    const usage = await this.getUsage(tenantId) as unknown as Record<string, number | null | undefined>;
     const limitKey = field === 'messagesSent' ? 'messagesLimit' : 'aiTokensLimit';
-    const limit = usage[limitKey];
-    const current = field === 'messagesSent' ? usage.messagesSent : usage.aiTokensUsed;
+    const limit = usage[limitKey] as number | null | undefined;
+    const current = (field === 'messagesSent' ? usage.messagesSent : usage.aiTokensUsed) as number;
 
     // -1 or null means unlimited
     if (limit === null || limit === undefined || limit === -1) {

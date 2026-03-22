@@ -3,6 +3,135 @@ import { eq, desc } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { messageTemplates } from '@line-saas/db';
 
+/** Row type inferred from the messageTemplates Drizzle table */
+type MessageTemplate = typeof messageTemplates.$inferSelect;
+
+// ---- LINE Messaging API action types ----
+
+interface LineUriAction {
+  type: 'uri';
+  label: string;
+  uri: string;
+}
+
+interface LineMessageAction {
+  type: 'message';
+  label: string;
+  text: string;
+}
+
+interface LinePostbackAction {
+  type: 'postback';
+  label: string;
+  data: string;
+}
+
+type LineAction = LineUriAction | LineMessageAction | LinePostbackAction;
+
+// ---- Template messageData shapes ----
+
+interface TemplateActionInput {
+  type: string;
+  label?: string;
+  uri?: string;
+  text?: string;
+  data?: string;
+}
+
+interface ButtonsMessageData {
+  text?: string;
+  title?: string;
+  thumbnailImageUrl?: string;
+  thumbnailUrl?: string;
+  actions?: TemplateActionInput[];
+}
+
+interface CarouselColumn {
+  text?: string;
+  title?: string;
+  thumbnailImageUrl?: string;
+  thumbnailUrl?: string;
+  actions?: TemplateActionInput[];
+}
+
+interface CarouselMessageData {
+  columns?: CarouselColumn[];
+}
+
+interface ConfirmMessageData {
+  text?: string;
+  actions?: TemplateActionInput[];
+}
+
+interface ImageMessageData {
+  imageUrl?: string;
+  previewUrl?: string;
+}
+
+type TemplateMessageData =
+  | ButtonsMessageData
+  | CarouselMessageData
+  | ConfirmMessageData
+  | ImageMessageData
+  | Record<string, unknown>;
+
+// ---- LINE message return types ----
+
+interface LineTextMessage {
+  type: 'text';
+  text: string;
+}
+
+interface LineImageMessage {
+  type: 'image';
+  originalContentUrl: string;
+  previewImageUrl: string;
+}
+
+interface LineButtonsTemplate {
+  type: 'buttons';
+  text: string;
+  actions: LineAction[];
+  thumbnailImageUrl?: string;
+  title?: string;
+}
+
+interface LineCarouselColumnOutput {
+  text: string;
+  actions: LineAction[];
+  thumbnailImageUrl?: string;
+  title?: string;
+}
+
+interface LineCarouselTemplate {
+  type: 'carousel';
+  columns: LineCarouselColumnOutput[];
+}
+
+interface LineConfirmTemplate {
+  type: 'confirm';
+  text: string;
+  actions: LineAction[];
+}
+
+interface LineTemplateMessage {
+  type: 'template';
+  altText: string;
+  template: LineButtonsTemplate | LineCarouselTemplate | LineConfirmTemplate;
+}
+
+interface LineFlexMessage {
+  type: 'flex';
+  altText: string;
+  contents: unknown;
+}
+
+type LineMessage =
+  | LineTextMessage
+  | LineImageMessage
+  | LineTemplateMessage
+  | LineFlexMessage;
+
 @Injectable()
 export class TemplatesService {
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
@@ -17,7 +146,7 @@ export class TemplatesService {
 
   async create(
     tenantId: string,
-    data: { name: string; content: string; category?: string; messageType?: string; messageData?: any },
+    data: { name: string; content: string; category?: string; messageType?: string; messageData?: Record<string, unknown> },
   ) {
     const [template] = await this.db
       .insert(messageTemplates)
@@ -35,9 +164,9 @@ export class TemplatesService {
 
   async update(
     id: string,
-    data: { name?: string; content?: string; category?: string; messageType?: string; messageData?: any },
+    data: { name?: string; content?: string; category?: string; messageType?: string; messageData?: Record<string, unknown> },
   ) {
-    const values: any = { updatedAt: new Date() };
+    const values: Record<string, unknown> = { updatedAt: new Date() };
     if (data.name !== undefined) values.name = data.name;
     if (data.content !== undefined) values.content = data.content;
     if (data.category !== undefined) values.category = data.category;
@@ -59,29 +188,31 @@ export class TemplatesService {
   /**
    * Convert a stored template to LINE message format.
    */
-  convertToLineMessage(template: any): any {
+  convertToLineMessage(template: MessageTemplate): LineMessage {
     const type = template.messageType || 'text';
-    const data = template.messageData;
+    const data = template.messageData as TemplateMessageData | null;
 
     if (type === 'text' || !data) {
       return { type: 'text', text: template.content };
     }
 
     if (type === 'buttons') {
-      const tpl: any = {
+      const btnData = data as ButtonsMessageData;
+      const tpl: LineButtonsTemplate = {
         type: 'buttons',
-        text: data.text || template.content,
-        actions: (data.actions || []).map(this.convertAction),
+        text: btnData.text || template.content,
+        actions: (btnData.actions || []).map(this.convertAction),
       };
-      const thumb = data.thumbnailImageUrl || data.thumbnailUrl;
+      const thumb = btnData.thumbnailImageUrl || btnData.thumbnailUrl;
       if (thumb) tpl.thumbnailImageUrl = thumb;
-      if (data.title) tpl.title = data.title;
+      if (btnData.title) tpl.title = btnData.title;
       return { type: 'template', altText: template.content || template.name, template: tpl };
     }
 
     if (type === 'carousel') {
-      const columns = (data.columns || []).map((col: any) => {
-        const c: any = {
+      const carouselData = data as CarouselMessageData;
+      const columns: LineCarouselColumnOutput[] = (carouselData.columns || []).map((col: CarouselColumn) => {
+        const c: LineCarouselColumnOutput = {
           text: col.text || '',
           actions: (col.actions || []).map(this.convertAction),
         };
@@ -95,22 +226,24 @@ export class TemplatesService {
     }
 
     if (type === 'confirm') {
+      const confirmData = data as ConfirmMessageData;
       return {
         type: 'template',
         altText: template.content || template.name,
         template: {
           type: 'confirm',
-          text: data.text || template.content,
-          actions: (data.actions || []).map(this.convertAction),
+          text: confirmData.text || template.content,
+          actions: (confirmData.actions || []).map(this.convertAction),
         },
       };
     }
 
     if (type === 'image') {
+      const imgData = data as ImageMessageData;
       return {
         type: 'image',
-        originalContentUrl: data.imageUrl || '',
-        previewImageUrl: data.previewUrl || data.imageUrl || '',
+        originalContentUrl: imgData.imageUrl || '',
+        previewImageUrl: imgData.previewUrl || imgData.imageUrl || '',
       };
     }
 
@@ -119,7 +252,7 @@ export class TemplatesService {
         return {
           type: 'flex',
           altText: template.content || template.name,
-          contents: typeof data === 'string' ? JSON.parse(data) : data,
+          contents: typeof data === 'string' ? JSON.parse(data as string) : data,
         };
       } catch {
         return { type: 'text', text: template.content };
@@ -129,7 +262,7 @@ export class TemplatesService {
     return { type: 'text', text: template.content };
   }
 
-  private convertAction(action: any) {
+  private convertAction(action: TemplateActionInput): LineAction {
     if (action.type === 'uri') {
       return { type: 'uri', label: action.label || 'リンク', uri: action.uri || '' };
     }

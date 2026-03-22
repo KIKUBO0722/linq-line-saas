@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { EmptyState } from '@/components/ui/empty-state';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
 
@@ -27,13 +28,66 @@ interface SetupItem {
   done: boolean;
 }
 
+interface Friend {
+  id: string;
+  displayName?: string;
+  pictureUrl?: string;
+  isFollowing: boolean;
+  createdAt?: string;
+}
+
+interface Account {
+  id: string;
+  name?: string;
+}
+
+interface OverviewStats {
+  friends?: { total: number };
+  messages?: { sent: number; aiReplies: number };
+  steps?: { active: number };
+}
+
+interface UsageInfo {
+  plan?: string;
+  messageCount?: number;
+  messageLimit?: number;
+}
+
+interface AiConfig {
+  welcomeMessage?: string;
+  autoReplyEnabled?: boolean;
+  systemPrompt?: string;
+}
+
+interface KnowledgeBaseEntry {
+  title: string;
+  content: string;
+}
+
+interface ScenarioStep {
+  day: number;
+  message: string;
+}
+
+interface WizardResult {
+  aiPrompt?: string;
+  welcomeMessage?: string;
+  knowledgeBase?: KnowledgeBaseEntry[];
+  suggestedTags?: string[];
+  scenario?: {
+    name?: string;
+    description?: string;
+    steps?: ScenarioStep[];
+  };
+}
+
 export default function OverviewPage() {
-  const [friends, setFriends] = useState<any[]>([]);
-  const [accounts, setAccounts] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>(null);
-  const [usage, setUsage] = useState<any>(null);
-  const [aiConfig, setAiConfig] = useState<any>(null);
-  const [recentFriends, setRecentFriends] = useState<any[]>([]);
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [stats, setStats] = useState<OverviewStats | null>(null);
+  const [usage, setUsage] = useState<UsageInfo | null>(null);
+  const [aiConfig, setAiConfig] = useState<AiConfig | null>(null);
+  const [recentFriends, setRecentFriends] = useState<Friend[]>([]);
 
   // Onboarding wizard
   const [showWizard, setShowWizard] = useState(false);
@@ -46,13 +100,13 @@ export default function OverviewPage() {
     hours: '',
     menu: '',
   });
-  const [wizardResult, setWizardResult] = useState<any>(null);
+  const [wizardResult, setWizardResult] = useState<WizardResult | null>(null);
   const [wizardLoading, setWizardLoading] = useState(false);
   const [wizardApplied, setWizardApplied] = useState(false);
 
   useEffect(() => {
     api.friends.list({ limit: 5 }).then(setRecentFriends).catch(() => { console.warn('最近の友だち取得に失敗'); });
-    api.friends.list({}).then((f: any) => { setFriends(f); }).catch(() => { console.warn('友だち一覧取得に失敗'); });
+    api.friends.list({}).then((f: Friend[]) => { setFriends(f); }).catch(() => { console.warn('友だち一覧取得に失敗'); });
     api.accounts.list().then(setAccounts).catch(() => { console.warn('アカウント一覧取得に失敗'); });
     api.analytics.overview().then(setStats).catch(() => { console.warn('統計情報取得に失敗'); });
     api.billing.usage().then(setUsage).catch(() => { console.warn('利用状況取得に失敗'); });
@@ -85,7 +139,7 @@ export default function OverviewPage() {
     if (!wizardResult) return;
     setWizardLoading(true);
     try {
-      const configPayload: any = {};
+      const configPayload: Record<string, unknown> = {};
       if (wizardResult.aiPrompt) configPayload.systemPrompt = wizardResult.aiPrompt;
       if (wizardResult.welcomeMessage) configPayload.welcomeMessage = wizardResult.welcomeMessage;
       if (wizardResult.knowledgeBase) configPayload.knowledgeBase = wizardResult.knowledgeBase;
@@ -362,11 +416,11 @@ export default function OverviewPage() {
                     <div className="bg-green-50 rounded-md p-3 text-xs whitespace-pre-wrap">{wizardResult.welcomeMessage}</div>
                   </div>
                 )}
-                {wizardResult.knowledgeBase?.length > 0 && (
+                {wizardResult.knowledgeBase && wizardResult.knowledgeBase.length > 0 && (
                   <div className="space-y-1">
                     <p className="text-sm font-medium">ナレッジベース（{wizardResult.knowledgeBase.length}件）</p>
                     <div className="space-y-1">
-                      {wizardResult.knowledgeBase.map((kb: any, i: number) => (
+                      {wizardResult.knowledgeBase.map((kb: KnowledgeBaseEntry, i: number) => (
                         <div key={i} className="bg-blue-50 rounded-md p-2 text-xs">
                           <span className="font-medium">{kb.title}:</span> {kb.content}
                         </div>
@@ -374,7 +428,7 @@ export default function OverviewPage() {
                     </div>
                   </div>
                 )}
-                {wizardResult.suggestedTags?.length > 0 && (
+                {wizardResult.suggestedTags && wizardResult.suggestedTags.length > 0 && (
                   <div className="space-y-1">
                     <p className="text-sm font-medium">推奨タグ</p>
                     <div className="flex gap-1.5 flex-wrap">
@@ -388,7 +442,7 @@ export default function OverviewPage() {
                   <div className="space-y-1">
                     <p className="text-sm font-medium">ステップ配信シナリオ: {wizardResult.scenario.name}</p>
                     <div className="space-y-1">
-                      {(wizardResult.scenario.steps || []).map((s: any, i: number) => (
+                      {(wizardResult.scenario.steps || []).map((s: ScenarioStep, i: number) => (
                         <div key={i} className="bg-amber-50 rounded-md p-2 text-xs">
                           <span className="font-medium">Day {s.day}:</span> {s.message}
                         </div>
@@ -518,7 +572,7 @@ export default function OverviewPage() {
               <a href="/friends" className="text-xs text-primary hover:underline">すべて見る</a>
             </div>
             <Separator />
-            {recentFriends.map((f: any, i: number) => (
+            {recentFriends.map((f: Friend, i: number) => (
               <div key={f.id}>
                 <a href={`/friends?id=${f.id}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/50 transition-colors cursor-pointer">
                   <Avatar className="h-8 w-8">
@@ -543,12 +597,12 @@ export default function OverviewPage() {
       {/* Empty state when no friends */}
       {recentFriends.length === 0 && hasAccount && (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <Users className="h-12 w-12 text-muted-foreground/30 mb-3" />
-            <h3 className="text-base font-semibold">まだ友だちがいません</h3>
-            <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-              LINE公式アカウントに友だちが追加されると、ここに表示されます
-            </p>
+          <CardContent>
+            <EmptyState
+              illustration="friends"
+              title="まだ友だちがいません"
+              description="LINE公式アカウントに友だちが追加されると、ここに表示されます"
+            />
           </CardContent>
         </Card>
       )}

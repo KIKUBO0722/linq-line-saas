@@ -24,7 +24,7 @@ export class StepsService {
   // Scenario CRUD
   async createScenario(
     tenantId: string,
-    data: { name: string; description?: string; triggerType: string; triggerConfig?: any },
+    data: { name: string; description?: string; triggerType: string; triggerConfig?: Record<string, unknown> },
   ) {
     const [scenario] = await this.db
       .insert(stepScenarios)
@@ -77,9 +77,9 @@ export class StepsService {
     scenarioId: string,
     data: {
       delayMinutes: number;
-      messageContent: any;
+      messageContent: Record<string, unknown>;
       sortOrder: number;
-      condition?: any;
+      condition?: Record<string, unknown>;
       branchTrue?: number | null;
       branchFalse?: number | null;
     },
@@ -160,9 +160,9 @@ export class StepsService {
   }
 
   private async evaluateCondition(
-    condition: any,
+    condition: Record<string, unknown>,
     friendId: string,
-    friendRecord: any,
+    friendRecord: Record<string, unknown> | null,
   ): Promise<boolean> {
     if (!condition || !condition.type) return true;
 
@@ -174,15 +174,15 @@ export class StepsService {
           .where(
             and(
               eq(friendTags.friendId, friendId),
-              eq(friendTags.tagId, condition.tagId),
+              eq(friendTags.tagId, condition.tagId as string),
             ),
           )
           .limit(1);
         return ft.length > 0;
       }
       case 'score_check': {
-        const score = friendRecord?.score ?? 0;
-        const op = condition.operator || '>=';
+        const score = (friendRecord?.score as number) ?? 0;
+        const op = (condition.operator as string) || '>=';
         const value = Number(condition.value) || 0;
         if (op === '>=') return score >= value;
         if (op === '<=') return score <= value;
@@ -237,16 +237,16 @@ export class StepsService {
     if (!account) return;
 
     // Evaluate condition if present
-    const condition = currentStep.condition as any;
+    const condition = currentStep.condition as Record<string, unknown> | null;
     let nextIndex: number;
 
     if (condition && condition.type) {
-      const conditionResult = await this.evaluateCondition(condition, friend.id, friend);
+      const conditionResult = await this.evaluateCondition(condition, friend.id, friend as unknown as Record<string, unknown>);
 
       if (conditionResult) {
         // Condition is true: send the message, then branch to branchTrue or next
-        const messageContent = currentStep.messageContent as any;
-        const lineMessages = [{ type: 'text' as const, text: messageContent.text || messageContent }];
+        const messageContent = currentStep.messageContent as Record<string, unknown>;
+        const lineMessages = [{ type: 'text' as const, text: (messageContent.text as string) || String(messageContent) }];
 
         await this.lineService.pushMessage(
           { channelSecret: account.channelSecret, channelAccessToken: account.channelAccessToken },
@@ -277,8 +277,8 @@ export class StepsService {
       }
     } else {
       // No condition: send normally
-      const messageContent = currentStep.messageContent as any;
-      const lineMessages = [{ type: 'text' as const, text: messageContent.text || messageContent }];
+      const messageContent = currentStep.messageContent as Record<string, unknown>;
+      const lineMessages = [{ type: 'text' as const, text: (messageContent.text as string) || String(messageContent) }];
 
       await this.lineService.pushMessage(
         { channelSecret: account.channelSecret, channelAccessToken: account.channelAccessToken },

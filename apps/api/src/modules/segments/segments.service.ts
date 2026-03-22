@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { eq, inArray, and, notInArray, sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { segments, segmentBroadcasts, friends, friendTags, lineAccounts, messages } from '@line-saas/db';
@@ -39,7 +39,7 @@ export class SegmentsService {
   async getMatchingFriends(tenantId: string, tagIds: string[], matchType: string = 'any', excludeTagIds: string[] = []) {
     if (!tagIds.length) return [];
 
-    let rows: any[];
+    let rows: { id: string; displayName: string | null; lineUserId: string; lineAccountId: string }[];
 
     if (matchType === 'all') {
       // AND logic: friend must have ALL specified tags
@@ -85,7 +85,7 @@ export class SegmentsService {
 
   async broadcast(tenantId: string, segmentId: string, message: string) {
     const [segment] = await this.db.select().from(segments).where(eq(segments.id, segmentId));
-    if (!segment) throw new Error('Segment not found');
+    if (!segment) throw new NotFoundException('Segment not found');
 
     const matchingFriends = await this.getMatchingFriends(
       tenantId,

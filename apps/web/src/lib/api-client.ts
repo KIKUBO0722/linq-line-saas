@@ -48,6 +48,12 @@ export const api = {
       fetchApi(`/api/v1/friends/${friendId}/tags/${tagId}`, { method: 'DELETE' }),
     updateCustomFields: (id: string, fields: Record<string, any>) =>
       fetchApi(`/api/v1/friends/${id}/custom-fields`, { method: 'PATCH', body: JSON.stringify(fields) }),
+    timeline: (id: string, limit?: number, offset?: number) => {
+      const query = new URLSearchParams();
+      if (limit) query.set('limit', String(limit));
+      if (offset) query.set('offset', String(offset));
+      return fetchApi<{ events: any[]; total: number }>(`/api/v1/friends/${id}/timeline?${query}`);
+    },
   },
   accounts: {
     list: () => fetchApi<any[]>('/api/v1/accounts'),
@@ -98,6 +104,11 @@ export const api = {
       fetchApi('/api/v1/analytics/traffic-sources', { method: 'POST', body: JSON.stringify(data) }),
     deleteTrafficSource: (id: string) =>
       fetchApi(`/api/v1/analytics/traffic-sources/${id}`, { method: 'DELETE' }),
+    cohort: (weeks?: number) => fetchApi<any>(`/api/v1/analytics/cohort${weeks ? `?weeks=${weeks}` : ''}`),
+    ctr: (days?: number) => fetchApi<any>(`/api/v1/analytics/ctr${days ? `?days=${days}` : ''}`),
+    bestSendTime: (days?: number) => fetchApi<any>(`/api/v1/analytics/best-send-time${days ? `?days=${days}` : ''}`),
+    segments: () => fetchApi<any[]>('/api/v1/analytics/segments'),
+    kpi: () => fetchApi<any>('/api/v1/analytics/kpi'),
   },
   tags: {
     list: () => fetchApi<any[]>('/api/v1/tags'),

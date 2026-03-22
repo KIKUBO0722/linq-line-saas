@@ -1,6 +1,8 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { StepsService } from './steps.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
+import { TenantId } from '../../common/decorators/tenant.decorator';
+import { CreateScenarioDto, AddStepDto, UpdateStepDto, EnrollFriendDto } from './dto/steps.dto';
 
 @Controller('api/v1/steps')
 @UseGuards(AuthGuard)
@@ -8,16 +10,13 @@ export class StepsController {
   constructor(private readonly stepsService: StepsService) {}
 
   @Get('scenarios')
-  async listScenarios(@Req() req: any) {
-    return this.stepsService.listScenarios(req.tenantId);
+  async listScenarios(@TenantId() tenantId: string) {
+    return this.stepsService.listScenarios(tenantId);
   }
 
   @Post('scenarios')
-  async createScenario(
-    @Req() req: any,
-    @Body() body: { name: string; description?: string; triggerType: string; triggerConfig?: any },
-  ) {
-    return this.stepsService.createScenario(req.tenantId, body);
+  async createScenario(@TenantId() tenantId: string, @Body() body: CreateScenarioDto) {
+    return this.stepsService.createScenario(tenantId, body);
   }
 
   @Get('scenarios/:id')
@@ -38,18 +37,12 @@ export class StepsController {
   }
 
   @Post('scenarios/:id/messages')
-  async addStep(
-    @Param('id') scenarioId: string,
-    @Body() body: { delayMinutes: number; messageContent: any; sortOrder: number; condition?: any },
-  ) {
+  async addStep(@Param('id') scenarioId: string, @Body() body: AddStepDto) {
     return this.stepsService.addStepMessage(scenarioId, body);
   }
 
   @Patch('messages/:id')
-  async updateStep(
-    @Param('id') id: string,
-    @Body() body: { condition?: any; branchTrue?: number | null; branchFalse?: number | null; delayMinutes?: number; messageContent?: any },
-  ) {
+  async updateStep(@Param('id') id: string, @Body() body: UpdateStepDto) {
     return this.stepsService.updateStepMessage(id, body);
   }
 
@@ -60,7 +53,7 @@ export class StepsController {
   }
 
   @Post('scenarios/:id/enroll')
-  async enroll(@Param('id') scenarioId: string, @Body() body: { friendId: string }) {
+  async enroll(@Param('id') scenarioId: string, @Body() body: EnrollFriendDto) {
     return this.stepsService.enrollFriend(body.friendId, scenarioId);
   }
 

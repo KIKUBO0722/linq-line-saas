@@ -1,6 +1,8 @@
-import { Controller, Get, Post, Delete, Body, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { SegmentsService } from './segments.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
+import { TenantId } from '../../common/decorators/tenant.decorator';
+import { CreateSegmentDto, BroadcastSegmentDto } from './dto/segments.dto';
 
 @Controller('api/v1/segments')
 @UseGuards(AuthGuard)
@@ -8,13 +10,13 @@ export class SegmentsController {
   constructor(private readonly segmentsService: SegmentsService) {}
 
   @Get()
-  async list(@Req() req: any) {
-    return this.segmentsService.list(req.tenantId);
+  async list(@TenantId() tenantId: string) {
+    return this.segmentsService.list(tenantId);
   }
 
   @Post()
-  async create(@Req() req: any, @Body() body: { name: string; description?: string; tagIds: string[]; matchType?: string; excludeTagIds?: string[] }) {
-    return this.segmentsService.create(req.tenantId, body);
+  async create(@TenantId() tenantId: string, @Body() body: CreateSegmentDto) {
+    return this.segmentsService.create(tenantId, body);
   }
 
   @Delete(':id')
@@ -24,13 +26,13 @@ export class SegmentsController {
   }
 
   @Post(':id/preview')
-  async preview(@Req() req: any, @Param('id') id: string) {
-    const segments = await this.segmentsService.list(req.tenantId);
-    const segment = segments.find((s: any) => s.id === id);
+  async preview(@TenantId() tenantId: string, @Param('id') id: string) {
+    const segments = await this.segmentsService.list(tenantId);
+    const segment = segments.find((s: { id: string }) => s.id === id);
     if (!segment) return { count: 0, friends: [] };
 
     const matchingFriends = await this.segmentsService.getMatchingFriends(
-      req.tenantId,
+      tenantId,
       segment.tagIds,
       segment.matchType,
       segment.excludeTagIds,
@@ -39,7 +41,7 @@ export class SegmentsController {
   }
 
   @Post(':id/broadcast')
-  async broadcast(@Req() req: any, @Param('id') id: string, @Body() body: { message: string }) {
-    return this.segmentsService.broadcast(req.tenantId, id, body.message);
+  async broadcast(@TenantId() tenantId: string, @Param('id') id: string, @Body() body: BroadcastSegmentDto) {
+    return this.segmentsService.broadcast(tenantId, id, body.message);
   }
 }
