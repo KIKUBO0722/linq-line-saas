@@ -159,7 +159,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-3 max-w-5xl mx-auto space-y-6">
+    <div className="p-2 max-w-5xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold">設定</h1>
         <p className="text-sm text-muted-foreground">アカウント・プランの管理</p>

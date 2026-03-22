@@ -168,7 +168,7 @@ export default function FormsPage() {
   // Responses view
   if (view === 'responses' && selectedForm) {
     return (
-      <div className="p-3 max-w-5xl mx-auto space-y-6">
+      <div className="p-2 max-w-5xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => { setView('list'); setSelectedForm(null); }} aria-label="戻る">
             <ChevronLeft className="h-4 w-4" />
@@ -221,7 +221,7 @@ export default function FormsPage() {
   // Create form view
   if (view === 'create') {
     return (
-      <div className="p-3 max-w-5xl mx-auto space-y-6">
+      <div className="p-2 max-w-5xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => setView('list')} aria-label="戻る">
             <ChevronLeft className="h-4 w-4" />
@@ -428,7 +428,7 @@ export default function FormsPage() {
 
   // List view
   return (
-    <div className="p-3 max-w-5xl mx-auto space-y-6">
+    <div className="p-2 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">フォーム</h1>

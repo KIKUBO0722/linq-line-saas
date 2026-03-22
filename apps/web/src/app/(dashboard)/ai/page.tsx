@@ -248,7 +248,7 @@ export default function AiPage() {
   }
 
   return (
-    <div className="p-3 max-w-5xl mx-auto space-y-6">
+    <div className="p-2 max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

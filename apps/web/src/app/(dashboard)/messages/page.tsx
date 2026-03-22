@@ -451,7 +451,7 @@ export default function MessagesPage() {
   })();
 
   return (
-    <div className="p-3 max-w-5xl mx-auto space-y-6">
+    <div className="p-2 max-w-5xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold">メッセージ</h1>
         <p className="text-sm text-muted-foreground">友だちとの会話・一斉配信</p>
