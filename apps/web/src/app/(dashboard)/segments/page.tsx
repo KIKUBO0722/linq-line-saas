@@ -1,5 +1,7 @@
 'use client';
 
+import { toast } from 'sonner';
+
 import { useEffect, useState } from 'react';
 import { Filter, Plus, Trash2, Send, Eye, Users, Ban } from 'lucide-react';
 import { api } from '@/lib/api-client';
@@ -136,7 +138,7 @@ export default function SegmentsPage() {
       setExcludeTagIds([]);
       setShowCreate(false);
     } catch (err: any) {
-      alert(err.message || 'セグメントの作成に失敗しました');
+      toast.error(err.message || 'セグメントの作成に失敗しました');
     } finally {
       setCreating(false);
     }
@@ -148,7 +150,7 @@ export default function SegmentsPage() {
       await api.segments.delete(id);
       setSegments((prev) => prev.filter((s) => s.id !== id));
     } catch (err: any) {
-      alert(err.message || 'セグメントの削除に失敗しました');
+      toast.error(err.message || 'セグメントの削除に失敗しました');
     }
   }
 
@@ -164,7 +166,7 @@ export default function SegmentsPage() {
       const data = await api.segments.preview(id);
       setPreviewData(data);
     } catch (err: any) {
-      alert(err.message || 'プレビューの取得に失敗しました');
+      toast.error(err.message || 'プレビューの取得に失敗しました');
       setPreviewSegmentId(null);
     } finally {
       setPreviewing(false);
@@ -177,11 +179,11 @@ export default function SegmentsPage() {
     setBroadcasting(true);
     try {
       const result: any = await api.segments.broadcast(id, { message: broadcastMessage.trim() });
-      alert(`${result.recipientCount}人に配信しました`);
+      toast(`${result.recipientCount}人に配信しました`);
       setBroadcastSegmentId(null);
       setBroadcastMessage('');
     } catch (err: any) {
-      alert(err.message || '配信に失敗しました');
+      toast.error(err.message || '配信に失敗しました');
     } finally {
       setBroadcasting(false);
     }

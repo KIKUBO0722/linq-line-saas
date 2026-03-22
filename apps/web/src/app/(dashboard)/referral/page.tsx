@@ -1,5 +1,7 @@
 'use client';
 
+import { toast } from 'sonner';
+
 import { useEffect, useState } from 'react';
 import { Link2, Plus, BarChart3, Gift, Users, ChevronLeft, Copy, Check } from 'lucide-react';
 import { api } from '@/lib/api-client';
@@ -54,7 +56,7 @@ export default function ReferralPage() {
       setView('list');
       loadPrograms();
     } catch (err: any) {
-      alert(err.message || '作成に失敗しました');
+      toast.error(err.message || '作成に失敗しました');
     } finally {
       setSaving(false);
     }

@@ -1,5 +1,7 @@
 'use client';
 
+import { toast } from 'sonner';
+
 import { useEffect, useState } from 'react';
 import { CalendarCheck, Plus, Trash2, Clock, User, Bell, Settings, Link } from 'lucide-react';
 import { api } from '@/lib/api-client';
@@ -131,9 +133,9 @@ export default function ReservationsPage() {
       });
       setCalendarIntegration(result);
       setServiceAccountKey('');
-      alert('Googleカレンダー連携を保存しました');
+      toast.success('Googleカレンダー連携を保存しました');
     } catch (err: any) {
-      alert(err.message || '保存に失敗しました');
+      toast.error(err.message || '保存に失敗しました');
     } finally {
       setSavingCalendar(false);
     }
@@ -144,7 +146,7 @@ export default function ReservationsPage() {
       await api.reservations.disableCalendarIntegration();
       setCalendarIntegration({ ...calendarIntegration, isActive: false });
     } catch (err: any) {
-      alert(err.message || '無効化に失敗しました');
+      toast.error(err.message || '無効化に失敗しました');
     }
   }
 
@@ -183,7 +185,7 @@ export default function ReservationsPage() {
       setSlotDescription('');
       setShowSlotForm(false);
     } catch (err: any) {
-      alert(err.message || 'メニューの作成に失敗しました');
+      toast.error(err.message || 'メニューの作成に失敗しました');
     } finally {
       setCreatingSlot(false);
     }
@@ -196,7 +198,7 @@ export default function ReservationsPage() {
       setSlots((prev) => prev.filter((s) => s.id !== id));
       loadReservations();
     } catch (err: any) {
-      alert(err.message || 'メニューの削除に失敗しました');
+      toast.error(err.message || 'メニューの削除に失敗しました');
     }
   }
 
@@ -222,7 +224,7 @@ export default function ReservationsPage() {
       setShowReservationForm(false);
       loadReservations();
     } catch (err: any) {
-      alert(err.message || '予約の作成に失敗しました');
+      toast.error(err.message || '予約の作成に失敗しました');
     } finally {
       setCreatingRes(false);
     }
@@ -235,7 +237,7 @@ export default function ReservationsPage() {
         prev.map((r) => (r.id === id ? { ...r, status } : r)),
       );
     } catch (err: any) {
-      alert(err.message || 'ステータスの更新に失敗しました');
+      toast.error(err.message || 'ステータスの更新に失敗しました');
     }
   }
 
@@ -245,7 +247,7 @@ export default function ReservationsPage() {
       await api.reservations.delete(id);
       setReservations((prev) => prev.filter((r) => r.id !== id));
     } catch (err: any) {
-      alert(err.message || '予約の削除に失敗しました');
+      toast.error(err.message || '予約の削除に失敗しました');
     }
   }
 

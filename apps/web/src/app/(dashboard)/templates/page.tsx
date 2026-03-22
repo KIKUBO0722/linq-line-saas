@@ -1,5 +1,7 @@
 'use client';
 
+import { toast } from 'sonner';
+
 import { useEffect, useState } from 'react';
 import { FileStack, Plus, Pencil, Trash2, X, Check, Copy, ClipboardCheck, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react';
 import { api } from '@/lib/api-client';
@@ -735,7 +737,7 @@ export default function TemplatesPage() {
       setAiTextContent('');
       setShowCreate(false);
     } catch (err: any) {
-      alert(err.message || 'テンプレートの作成に失敗しました');
+      toast.error(err.message || 'テンプレートの作成に失敗しました');
     } finally {
       setCreating(false);
     }
@@ -766,7 +768,7 @@ export default function TemplatesPage() {
       );
       setEditingId(null);
     } catch (err: any) {
-      alert(err.message || 'テンプレートの更新に失敗しました');
+      toast.error(err.message || 'テンプレートの更新に失敗しました');
     }
   }
 
@@ -776,7 +778,7 @@ export default function TemplatesPage() {
       await api.templates.delete(id);
       setTemplates((prev) => prev.filter((t) => t.id !== id));
     } catch (err: any) {
-      alert(err.message || 'テンプレートの削除に失敗しました');
+      toast.error(err.message || 'テンプレートの削除に失敗しました');
     }
   }
 
@@ -792,7 +794,7 @@ export default function TemplatesPage() {
       setCopiedId(template.id);
       setTimeout(() => setCopiedId(null), 2000);
     } catch {
-      alert('クリップボードにコピーできませんでした');
+      toast('クリップボードにコピーできませんでした');
     }
   }
 

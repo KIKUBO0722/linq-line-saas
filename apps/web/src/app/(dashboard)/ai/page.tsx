@@ -1,5 +1,7 @@
 'use client';
 
+import { toast } from 'sonner';
+
 import { useEffect, useState } from 'react';
 import {
   Bot, Save, Sparkles, Brain, Shield, TrendingUp,
@@ -122,7 +124,7 @@ export default function AiPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(`保存に失敗しました: ${err.message || res.status}`);
+        toast.error(`保存に失敗しました: ${err.message || res.status}`);
       } else {
         const updated = await res.json();
         setConfig(updated);
@@ -130,7 +132,7 @@ export default function AiPage() {
         setTimeout(() => setSaved(false), 2000);
       }
     } catch {
-      alert('保存に失敗しました。ネットワークエラーです。');
+      toast.error('保存に失敗しました。ネットワークエラーです。');
     }
     setSaving(false);
   }
@@ -733,7 +735,7 @@ export default function AiPage() {
                                 }
                                 setGreetingForm(null);
                               } catch {
-                                alert('保存に失敗しました');
+                                toast.error('保存に失敗しました');
                               } finally {
                                 setSavingGreeting(false);
                               }

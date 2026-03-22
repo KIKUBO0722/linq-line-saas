@@ -1,5 +1,7 @@
 'use client';
 
+import { toast } from 'sonner';
+
 import { useEffect, useState, useRef } from 'react';
 import { Send, MessageSquare, Users, Search, Radio, FileStack, Clock, CalendarClock, Image as ImageIcon, Video, Code2, Plus, X, Zap, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api-client';
@@ -250,7 +252,7 @@ export default function MessagesPage() {
           try {
             message = { type: 'flex', altText: 'Flex\u30E1\u30C3\u30BB\u30FC\u30B8', contents: JSON.parse(flexJson) };
           } catch {
-            alert('JSON\u306E\u5F62\u5F0F\u304C\u6B63\u3057\u304F\u3042\u308A\u307E\u305B\u3093');
+            toast('JSON\u306E\u5F62\u5F0F\u304C\u6B63\u3057\u304F\u3042\u308A\u307E\u305B\u3093');
             return;
           }
           break;
@@ -286,7 +288,7 @@ export default function MessagesPage() {
       setQuickReplyItems([]);
       setShowQuickReply(false);
     } catch (err: any) {
-      alert(err.message || '\u9001\u4FE1\u306B\u5931\u6557\u3057\u307E\u3057\u305F');
+      toast(err.message || '\u9001\u4FE1\u306B\u5931\u6557\u3057\u307E\u3057\u305F');
     } finally {
       setSending(false);
     }
@@ -308,8 +310,8 @@ export default function MessagesPage() {
           const dt = new Date(scheduledAt);
           setScheduledAt('');
           setBroadcastContent('');
-          alert(
-            `\u4E88\u7D04\u914D\u4FE1\u3092\u8A2D\u5B9A\u3057\u307E\u3057\u305F: ${dt.toLocaleDateString('ja-JP')} ${dt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`
+          toast.success(
+            `予約配信を設定しました: ${dt.toLocaleDateString('ja-JP')} ${dt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`
           );
           return;
         }
@@ -334,7 +336,7 @@ export default function MessagesPage() {
           try {
             message = { type: 'flex', altText: 'Flex\u30E1\u30C3\u30BB\u30FC\u30B8', contents: JSON.parse(broadcastFlexJson) };
           } catch {
-            alert('JSON\u306E\u5F62\u5F0F\u304C\u6B63\u3057\u304F\u3042\u308A\u307E\u305B\u3093');
+            toast('JSON\u306E\u5F62\u5F0F\u304C\u6B63\u3057\u304F\u3042\u308A\u307E\u305B\u3093');
             return;
           }
           break;
@@ -359,9 +361,9 @@ export default function MessagesPage() {
       setBroadcastFlexJson('');
       setBroadcastQuickReplyItems([]);
       setShowBroadcastQuickReply(false);
-      alert('\u4E00\u6589\u914D\u4FE1\u304C\u5B8C\u4E86\u3057\u307E\u3057\u305F');
+      toast('\u4E00\u6589\u914D\u4FE1\u304C\u5B8C\u4E86\u3057\u307E\u3057\u305F');
     } catch (err: any) {
-      alert(err.message || '\u914D\u4FE1\u306B\u5931\u6557\u3057\u307E\u3057\u305F');
+      toast(err.message || '\u914D\u4FE1\u306B\u5931\u6557\u3057\u307E\u3057\u305F');
     } finally {
       setSending(false);
     }
@@ -1116,7 +1118,7 @@ export default function MessagesPage() {
                   disabled={sending || !broadcastContent.trim()}
                   onClick={async () => {
                     if (friends.length === 0) {
-                      alert('テスト送信先の友だちがいません');
+                      toast('テスト送信先の友だちがいません');
                       return;
                     }
                     const testFriend = friends.find((f) => f.isFollowing) || friends[0];
@@ -1126,9 +1128,9 @@ export default function MessagesPage() {
                         friendIds: [testFriend.id],
                         message: broadcastContent,
                       });
-                      alert(`テスト送信完了（${result.sent}件送信）`);
+                      toast.success(`テスト送信完了（${result.sent}件送信）`);
                     } catch (err: any) {
-                      alert(err.message || 'テスト送信に失敗しました');
+                      toast.error(err.message || 'テスト送信に失敗しました');
                     }
                   }}
                 >

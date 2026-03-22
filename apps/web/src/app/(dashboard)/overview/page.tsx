@@ -1,5 +1,7 @@
 'use client';
 
+import { toast } from 'sonner';
+
 import { useEffect, useState } from 'react';
 import {
   Users, MessageSquare, Bot, ArrowRight, Sparkles, Wand2, Check, Loader2,
@@ -73,7 +75,7 @@ export default function OverviewPage() {
       setWizardResult(data);
       setWizardStep(2);
     } catch {
-      alert('AI生成に失敗しました');
+      toast.error('AI生成に失敗しました');
     } finally {
       setWizardLoading(false);
     }
@@ -127,7 +129,7 @@ export default function OverviewPage() {
 
       setWizardApplied(true);
     } catch {
-      alert('設定の適用に失敗しました');
+      toast.error('設定の適用に失敗しました');
     } finally {
       setWizardLoading(false);
     }

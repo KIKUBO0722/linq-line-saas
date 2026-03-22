@@ -1,5 +1,7 @@
 'use client';
 
+import { toast } from 'sonner';
+
 import { useEffect, useState, useRef } from 'react';
 import {
   Menu, Plus, Trash2, Star, ChevronLeft, AlertCircle, Upload,
@@ -306,8 +308,8 @@ export default function RichMenusPage() {
   function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) { alert('画像ファイルを選択してください'); return; }
-    if (file.size > 1024 * 1024) { alert('ファイルサイズは1MB以下にしてください'); return; }
+    if (!file.type.startsWith('image/')) { toast('画像ファイルを選択してください'); return; }
+    if (file.size > 1024 * 1024) { toast('ファイルサイズは1MB以下にしてください'); return; }
     setImageFile(file);
     const reader = new FileReader();
     reader.onload = () => setImagePreview(reader.result as string);
@@ -331,7 +333,7 @@ export default function RichMenusPage() {
       if (imageFile && menu.id) {
         setUploading(true);
         try { await api.richMenus.uploadImage(menu.id, imageFile); }
-        catch (err: any) { alert(`メニューは作成されましたが、画像アップロードに失敗しました: ${err.message}`); }
+        catch (err: any) { toast.error(`メニューは作成されましたが、画像アップロードに失敗しました: ${err.message}`); }
         setUploading(false);
       }
 
@@ -339,7 +341,7 @@ export default function RichMenusPage() {
       resetEditor();
       setView('list');
     } catch (err: any) {
-      alert(err.message || '保存に失敗しました');
+      toast.error(err.message || '保存に失敗しました');
     } finally {
       setSaving(false);
     }
@@ -364,7 +366,7 @@ export default function RichMenusPage() {
       resetEditor();
       setView('list');
     } catch (err: any) {
-      alert(err.message || 'タブグループの保存に失敗しました');
+      toast.error(err.message || 'タブグループの保存に失敗しました');
     } finally {
       setSaving(false);
     }
@@ -375,7 +377,7 @@ export default function RichMenusPage() {
     try {
       await api.richMenus.delete(id);
       setMenus((prev) => prev.filter((m) => m.id !== id));
-    } catch (err: any) { alert(err.message || '削除に失敗しました'); }
+    } catch (err: any) { toast.error(err.message || '削除に失敗しました'); }
   }
 
   async function handleDeleteGroup(id: string) {
@@ -383,21 +385,21 @@ export default function RichMenusPage() {
     try {
       await api.richMenus.deleteGroup(id);
       setGroups((prev) => prev.filter((g) => g.id !== id));
-    } catch (err: any) { alert(err.message || '削除に失敗しました'); }
+    } catch (err: any) { toast.error(err.message || '削除に失敗しました'); }
   }
 
   async function handleSetDefault(id: string) {
     try {
       await api.richMenus.setDefault(id);
       setMenus((prev) => prev.map((m) => ({ ...m, isDefault: m.id === id })));
-    } catch (err: any) { alert(err.message || 'デフォルト設定に失敗しました'); }
+    } catch (err: any) { toast.error(err.message || 'デフォルト設定に失敗しました'); }
   }
 
   async function handleSetGroupDefault(groupId: string) {
     try {
       await api.richMenus.setGroupDefault(groupId);
       await loadData();
-    } catch (err: any) { alert(err.message || 'デフォルト設定に失敗しました'); }
+    } catch (err: any) { toast.error(err.message || 'デフォルト設定に失敗しました'); }
   }
 
   async function handleAiGenerate(targetAreas: AreaConfig[], setTargetAreas: (a: AreaConfig[]) => void) {
@@ -436,7 +438,7 @@ export default function RichMenusPage() {
           );
         } catch {}
       }
-    } catch { alert('AI提案の取得に失敗しました'); }
+    } catch { toast.error('AI提案の取得に失敗しました'); }
     setAiGenerating(false);
   }
 

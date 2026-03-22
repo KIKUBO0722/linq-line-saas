@@ -1,5 +1,7 @@
 'use client';
 
+import { toast } from 'sonner';
+
 import { useEffect, useState } from 'react';
 import { Settings, Plus, Check, Copy, CreditCard, Zap, Users, MessageSquare, RefreshCw, Shield, Mail, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api-client';
@@ -73,7 +75,7 @@ export default function SettingsPage() {
       setChannelAccessToken('');
       setBotName('');
     } catch (err) {
-      alert('LINE公式アカウントの接続に失敗しました。入力内容を確認してください。');
+      toast.error('LINE公式アカウントの接続に失敗しました。入力内容を確認してください。');
     } finally {
       setSaving(false);
     }
@@ -98,7 +100,7 @@ export default function SettingsPage() {
       const result = await api.friends.sync();
       setSyncResult(result);
     } catch (err: any) {
-      alert(err.message || '友だち同期に失敗しました');
+      toast.error(err.message || '友だち同期に失敗しました');
     } finally {
       setSyncing(false);
     }
@@ -113,7 +115,7 @@ export default function SettingsPage() {
         setSubscription(result.subscription);
       }
     } catch (err: any) {
-      alert(err.message || 'プラン変更に失敗しました');
+      toast.error(err.message || 'プラン変更に失敗しました');
     }
   }
 
@@ -123,7 +125,7 @@ export default function SettingsPage() {
       await api.billing.cancel();
       setSubscription((prev: any) => prev ? { ...prev, status: 'cancelled' } : null);
     } catch (err: any) {
-      alert(err.message || 'キャンセルに失敗しました');
+      toast.error(err.message || 'キャンセルに失敗しました');
     }
   }
 
@@ -218,7 +220,7 @@ export default function SettingsPage() {
                                         await api.accounts.delete(account.id);
                                         setAccounts((prev) => prev.filter((a: any) => a.id !== account.id));
                                       } catch (err: any) {
-                                        alert(err.message || '削除に失敗しました');
+                                        toast.error(err.message || '削除に失敗しました');
                                       }
                                     }}
                                     title="アカウントを削除"
@@ -605,7 +607,7 @@ export default function SettingsPage() {
                 setInviting(true);
                 // MVP: show coming soon message
                 setTimeout(() => {
-                  alert('招待機能は近日公開予定です。現在開発中です。');
+                  toast('招待機能は近日公開予定です。現在開発中です。');
                   setInviting(false);
                 }, 500);
               }} className="space-y-4">

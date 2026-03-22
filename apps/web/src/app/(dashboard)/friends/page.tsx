@@ -1,5 +1,7 @@
 'use client';
 
+import { toast } from 'sonner';
+
 import { useEffect, useState, useCallback } from 'react';
 import { Users, Search, Tag, Plus, X, MessageSquare, ChevronDown, Sparkles, Download, Upload, Save, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api-client';
@@ -98,7 +100,7 @@ export default function FriendsPage() {
       await loadFriendTags(selected.id);
       setShowTagPicker(false);
     } catch (err: any) {
-      alert(err.message || 'タグの割り当てに失敗しました');
+      toast.error(err.message || 'タグの割り当てに失敗しました');
     }
   }
 
@@ -108,7 +110,7 @@ export default function FriendsPage() {
       await api.friends.removeTag(selected.id, tagId);
       await loadFriendTags(selected.id);
     } catch (err: any) {
-      alert(err.message || 'タグの削除に失敗しました');
+      toast.error(err.message || 'タグの削除に失敗しました');
     }
   }
 
@@ -122,7 +124,7 @@ export default function FriendsPage() {
       setNewFieldValue('');
       setShowAddField(false);
     } catch (err: any) {
-      alert(err.message || 'カスタムフィールドの追加に失敗しました');
+      toast.error(err.message || 'カスタムフィールドの追加に失敗しました');
     } finally {
       setSavingFields(false);
     }
@@ -136,7 +138,7 @@ export default function FriendsPage() {
       setCustomFields({ ...customFields, [key]: value });
       setEditingFieldKey(null);
     } catch (err: any) {
-      alert(err.message || 'カスタムフィールドの更新に失敗しました');
+      toast.error(err.message || 'カスタムフィールドの更新に失敗しました');
     } finally {
       setSavingFields(false);
     }
@@ -151,7 +153,7 @@ export default function FriendsPage() {
       delete updated[key];
       setCustomFields(updated);
     } catch (err: any) {
-      alert(err.message || 'カスタムフィールドの削除に失敗しました');
+      toast.error(err.message || 'カスタムフィールドの削除に失敗しました');
     } finally {
       setSavingFields(false);
     }
@@ -197,7 +199,7 @@ export default function FriendsPage() {
       setTags((prev) => [...prev, tag]);
       setNewTagName('');
     } catch (err: any) {
-      alert(err.message || 'タグの作成に失敗しました');
+      toast.error(err.message || 'タグの作成に失敗しました');
     } finally { setCreatingTag(false); }
   }
 

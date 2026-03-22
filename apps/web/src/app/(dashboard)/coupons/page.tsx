@@ -1,5 +1,7 @@
 'use client';
 
+import { toast } from 'sonner';
+
 import { useEffect, useState } from 'react';
 import { Ticket, Plus, Trash2, Copy, Check, X } from 'lucide-react';
 import { api } from '@/lib/api-client';
@@ -132,7 +134,7 @@ export default function CouponsPage() {
       resetForm();
       setShowCreate(false);
     } catch (err: any) {
-      alert(err.message || 'クーポンの作成に失敗しました');
+      toast.error(err.message || 'クーポンの作成に失敗しました');
     } finally {
       setCreating(false);
     }
@@ -143,7 +145,7 @@ export default function CouponsPage() {
       const updated = await api.coupons.toggle(id, isActive) as Partial<Coupon>;
       setCoupons((prev) => prev.map((c) => (c.id === id ? { ...c, ...updated } : c)));
     } catch (err: any) {
-      alert(err.message || 'ステータスの変更に失敗しました');
+      toast.error(err.message || 'ステータスの変更に失敗しました');
     }
   }
 
@@ -153,7 +155,7 @@ export default function CouponsPage() {
       await api.coupons.delete(id);
       setCoupons((prev) => prev.filter((c) => c.id !== id));
     } catch (err: any) {
-      alert(err.message || 'クーポンの削除に失敗しました');
+      toast.error(err.message || 'クーポンの削除に失敗しました');
     }
   }
 

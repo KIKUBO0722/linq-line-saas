@@ -1,5 +1,7 @@
 'use client';
 
+import { toast } from 'sonner';
+
 import { useEffect, useState, useCallback } from 'react';
 import { GitBranch, Plus, Play, Pause, Clock, ChevronLeft, Trash2, Send, Users, Diamond, X, Tag, BarChart3, Sparkles, Bot } from 'lucide-react';
 import { api } from '@/lib/api-client';
@@ -359,7 +361,7 @@ export default function StepsPage() {
       setStepDelay(0);
       setShowAddStep(false);
     } catch (err: any) {
-      alert(err.message || 'ステップの追加に失敗しました');
+      toast.error(err.message || 'ステップの追加に失敗しました');
     }
     setAddingStep(false);
   }
@@ -385,7 +387,7 @@ export default function StepsPage() {
       );
       setEditingConditionStepId(null);
     } catch (err: any) {
-      alert(err.message || '条件の保存に失敗しました');
+      toast.error(err.message || '条件の保存に失敗しました');
     }
   }
 
@@ -822,7 +824,7 @@ export default function StepsPage() {
                       });
                       setAiPreview(result);
                     } catch (err: any) {
-                      alert(err.message || 'AI生成に失敗しました');
+                      toast.error(err.message || 'AI生成に失敗しました');
                     } finally {
                       setAiGenerating(false);
                     }
@@ -885,7 +887,7 @@ export default function StepsPage() {
                           setAiTarget('');
                         }
                       } catch (err: any) {
-                        alert(err.message || '保存に失敗しました');
+                        toast.error(err.message || '保存に失敗しました');
                       }
                     }}
                   >

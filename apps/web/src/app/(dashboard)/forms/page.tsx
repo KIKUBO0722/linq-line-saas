@@ -1,5 +1,7 @@
 'use client';
 
+import { toast } from 'sonner';
+
 import { useEffect, useState } from 'react';
 import { FileText, Plus, Trash2, Eye, ChevronLeft, GripVertical, X, Copy, Check, ExternalLink, Tag } from 'lucide-react';
 import { api } from '@/lib/api-client';
@@ -108,7 +110,7 @@ export default function FormsPage() {
       setView('list');
       loadForms();
     } catch (err: any) {
-      alert(err.message || '作成に失敗しました');
+      toast.error(err.message || '作成に失敗しました');
     } finally {
       setSaving(false);
     }
@@ -120,7 +122,7 @@ export default function FormsPage() {
       await api.forms.delete(id);
       setForms((prev) => prev.filter((f) => f.id !== id));
     } catch (err: any) {
-      alert(err.message || '削除に失敗しました');
+      toast.error(err.message || '削除に失敗しました');
     }
   }
 

@@ -1,5 +1,7 @@
 'use client';
 
+import { toast } from 'sonner';
+
 import { useEffect, useState } from 'react';
 import {
   BarChart3, Users, MessageSquare, ArrowUpRight, ArrowDownRight,
@@ -349,7 +351,7 @@ export default function AnalyticsPage() {
                       setSourceUtmCampaign('');
                       setShowSourceForm(false);
                     } catch (err: any) {
-                      alert(err.message || '作成に失敗しました');
+                      toast.error(err.message || '作成に失敗しました');
                     } finally {
                       setCreatingSrc(false);
                     }
@@ -466,7 +468,7 @@ export default function AnalyticsPage() {
                                   await api.analytics.deleteTrafficSource(src.id);
                                   setTrafficSources((prev) => prev.filter((s) => s.id !== src.id));
                                 } catch (err: any) {
-                                  alert(err.message || '削除に失敗しました');
+                                  toast.error(err.message || '削除に失敗しました');
                                 }
                               }}
                               className="text-destructive hover:text-destructive"

@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api-client';
 import { AiCopilot } from '@/components/dashboard/ai-copilot';
+import { Toaster } from '@/components/ui/sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -242,6 +243,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </main>
 
       <AiCopilot />
+      <Toaster />
     </div>
   );
 }
