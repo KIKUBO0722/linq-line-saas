@@ -43,7 +43,7 @@ export class FriendsService {
       .limit(1);
 
     if (existing.length > 0) {
-      await this.db
+      const [updated] = await this.db
         .update(friends)
         .set({
           displayName: dto.displayName ?? existing[0].displayName,
@@ -55,8 +55,9 @@ export class FriendsService {
           unfollowedAt: null,
           profileSyncedAt: new Date(),
         })
-        .where(eq(friends.id, existing[0].id));
-      return existing[0];
+        .where(eq(friends.id, existing[0].id))
+        .returning();
+      return updated ?? existing[0];
     }
 
     const [newFriend] = await this.db
@@ -79,11 +80,13 @@ export class FriendsService {
     return newFriend;
   }
 
-  async updateChatStatus(friendId: string, status: string) {
+  async updateChatStatus(friendId: string, status: string, tenantId?: string) {
+    const conditions = [eq(friends.id, friendId)];
+    if (tenantId) conditions.push(eq(friends.tenantId, tenantId));
     await this.db
       .update(friends)
       .set({ chatStatus: status })
-      .where(eq(friends.id, friendId));
+      .where(and(...conditions));
   }
 
   async markUnfollowed(lineAccountId: string, lineUserId: string) {

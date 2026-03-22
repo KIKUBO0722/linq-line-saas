@@ -428,7 +428,7 @@ export class MessagesService {
       const [friend] = await this.db
         .select()
         .from(friends)
-        .where(eq(friends.id, friendId))
+        .where(and(eq(friends.id, friendId), eq(friends.tenantId, tenantId)))
         .limit(1);
       if (!friend?.lineUserId) continue;
 

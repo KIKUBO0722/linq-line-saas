@@ -68,33 +68,28 @@ export class TemplatesService {
     }
 
     if (type === 'buttons') {
-      return {
-        type: 'template',
-        altText: template.content || template.name,
-        template: {
-          type: 'buttons',
-          thumbnailImageUrl: data.thumbnailUrl || undefined,
-          title: data.title || undefined,
-          text: data.text || template.content,
-          actions: (data.actions || []).map(this.convertAction),
-        },
+      const tpl: any = {
+        type: 'buttons',
+        text: data.text || template.content,
+        actions: (data.actions || []).map(this.convertAction),
       };
+      if (data.thumbnailUrl) tpl.thumbnailImageUrl = data.thumbnailUrl;
+      if (data.title) tpl.title = data.title;
+      return { type: 'template', altText: template.content || template.name, template: tpl };
     }
 
     if (type === 'carousel') {
-      return {
-        type: 'template',
-        altText: template.content || template.name,
-        template: {
-          type: 'carousel',
-          columns: (data.columns || []).map((col: any) => ({
-            thumbnailImageUrl: col.thumbnailUrl || undefined,
-            title: col.title || undefined,
-            text: col.text || '',
-            actions: (col.actions || []).map(this.convertAction),
-          })),
-        },
-      };
+      const columns = (data.columns || []).map((col: any) => {
+        const c: any = {
+          text: col.text || '',
+          actions: (col.actions || []).map(this.convertAction),
+        };
+        if (col.thumbnailUrl) c.thumbnailImageUrl = col.thumbnailUrl;
+        if (col.title) c.title = col.title;
+        return c;
+      });
+      if (columns.length === 0) return { type: 'text', text: template.content || template.name };
+      return { type: 'template', altText: template.content || template.name, template: { type: 'carousel', columns } };
     }
 
     if (type === 'confirm') {
