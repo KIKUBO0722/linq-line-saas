@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { GitBranch, Plus, Play, Pause, Clock, ChevronLeft, Trash2, Send, Users, Diamond, X, Tag, BarChart3 } from 'lucide-react';
+import { GitBranch, Plus, Play, Pause, Clock, ChevronLeft, Trash2, Send, Users, Diamond, X, Tag, BarChart3, Sparkles, Bot } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -218,6 +218,14 @@ export default function StepsPage() {
   const [stepDelay, setStepDelay] = useState(0);
   const [stepDelayUnit, setStepDelayUnit] = useState<'minutes' | 'hours' | 'days'>('minutes');
   const [addingStep, setAddingStep] = useState(false);
+
+  // AI scenario generation
+  const [showAiGen, setShowAiGen] = useState(false);
+  const [aiIndustry, setAiIndustry] = useState('');
+  const [aiGoal, setAiGoal] = useState('');
+  const [aiTarget, setAiTarget] = useState('');
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiPreview, setAiPreview] = useState<any>(null);
 
   const loadScenarios = useCallback(() => {
     fetchApi('/api/v1/steps/scenarios')
@@ -717,11 +725,162 @@ export default function StepsPage() {
           <h1 className="text-2xl font-bold">ステップ配信</h1>
           <p className="text-sm text-muted-foreground">シナリオベースの自動メッセージ配信</p>
         </div>
-        <Button onClick={() => setView('create')}>
-          <Plus className="h-4 w-4 mr-2" />
-          新規シナリオ
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowAiGen(!showAiGen)}>
+            <Sparkles className="h-4 w-4 mr-2" />
+            AIで自動生成
+          </Button>
+          <Button onClick={() => setView('create')}>
+            <Plus className="h-4 w-4 mr-2" />
+            新規シナリオ
+          </Button>
+        </div>
       </div>
+
+      {/* AI Scenario Generator */}
+      {showAiGen && (
+        <Card className="border-amber-200 bg-amber-50/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Bot className="h-5 w-5 text-amber-600" />
+              AIシナリオ自動生成
+            </CardTitle>
+            <CardDescription>
+              業種と目的を入力するだけで、5〜10通のステップ配信シナリオをAIが自動作成します
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!aiPreview ? (
+              <>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">業種 *</Label>
+                    <Input
+                      value={aiIndustry}
+                      onChange={(e) => setAiIndustry(e.target.value)}
+                      placeholder="例: 美容サロン、飲食店、整体院"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">目的 *</Label>
+                    <Input
+                      value={aiGoal}
+                      onChange={(e) => setAiGoal(e.target.value)}
+                      placeholder="例: リピート促進、新規予約獲得"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">ターゲット</Label>
+                    <Input
+                      value={aiTarget}
+                      onChange={(e) => setAiTarget(e.target.value)}
+                      placeholder="例: 30代女性、初来店客"
+                    />
+                  </div>
+                </div>
+                <Button
+                  disabled={aiGenerating || !aiIndustry.trim() || !aiGoal.trim()}
+                  onClick={async () => {
+                    setAiGenerating(true);
+                    try {
+                      const result = await api.ai.suggestScenario({
+                        industry: aiIndustry,
+                        goal: aiGoal,
+                        target: aiTarget || undefined,
+                      });
+                      setAiPreview(result);
+                    } catch (err: any) {
+                      alert(err.message || 'AI生成に失敗しました');
+                    } finally {
+                      setAiGenerating(false);
+                    }
+                  }}
+                >
+                  {aiGenerating ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                      生成中...（約10秒）
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      シナリオを生成
+                    </>
+                  )}
+                </Button>
+              </>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-semibold">{aiPreview.name}</h4>
+                  {aiPreview.description && (
+                    <p className="text-xs text-muted-foreground mt-1">{aiPreview.description}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {(aiPreview.steps || []).map((step: any, idx: number) => (
+                    <div key={idx} className="flex items-start gap-3 text-sm border rounded p-3 bg-white">
+                      <div className="flex flex-col items-center shrink-0">
+                        <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
+                          {idx + 1}
+                        </div>
+                        <span className="text-[10px] text-muted-foreground mt-1">
+                          {formatDelay(step.delayMinutes || 0)}
+                        </span>
+                      </div>
+                      <p className="flex-1 whitespace-pre-wrap text-xs">
+                        {typeof step.messageContent === 'string'
+                          ? step.messageContent
+                          : step.messageContent?.text || JSON.stringify(step.messageContent)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={async () => {
+                      try {
+                        const result = await api.ai.executeAction({
+                          type: 'create_scenario',
+                          data: aiPreview,
+                        });
+                        if (result.success) {
+                          loadScenarios();
+                          setAiPreview(null);
+                          setShowAiGen(false);
+                          setAiIndustry('');
+                          setAiGoal('');
+                          setAiTarget('');
+                        }
+                      } catch (err: any) {
+                        alert(err.message || '保存に失敗しました');
+                      }
+                    }}
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    このシナリオを登録
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setAiPreview(null)}
+                  >
+                    やり直す
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setShowAiGen(false);
+                      setAiPreview(null);
+                    }}
+                  >
+                    閉じる
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {scenarios.length === 0 ? (
         <Card>

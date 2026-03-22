@@ -39,6 +39,8 @@ export const api = {
     sync: () => fetchApi<{ synced: number }>('/api/v1/friends/sync', { method: 'POST' }),
     updateChatStatus: (id: string, status: string) =>
       fetchApi(`/api/v1/friends/${id}/chat-status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+    importCsv: (csv: string) =>
+      fetchApi<{ imported: number; updated: number; tagsCreated: number; errors: string[] }>('/api/v1/friends/import/csv', { method: 'POST', body: JSON.stringify({ csv }) }),
     listTags: (friendId: string) => fetchApi<any[]>(`/api/v1/friends/${friendId}/tags`),
     assignTag: (friendId: string, tagId: string) =>
       fetchApi(`/api/v1/friends/${friendId}/tags`, { method: 'POST', body: JSON.stringify({ tagId }) }),
@@ -187,6 +189,12 @@ export const api = {
       fetchApi(`/api/v1/steps/scenarios/${scenarioId}/enroll`, { method: 'POST', body: JSON.stringify(data) }),
     getEnrollments: (scenarioId: string) =>
       fetchApi<any[]>(`/api/v1/steps/scenarios/${scenarioId}/enrollments`),
+  },
+  ai: {
+    suggestScenario: (data: { industry: string; goal: string; target?: string }) =>
+      fetchApi<{ name: string; description?: string; steps: any[] }>('/api/v1/ai/suggest-scenario', { method: 'POST', body: JSON.stringify(data) }),
+    executeAction: (data: { type: string; data: any }) =>
+      fetchApi<{ success: boolean; type: string; id: string; details?: any }>('/api/v1/ai/execute-action', { method: 'POST', body: JSON.stringify(data) }),
   },
   urlTracking: {
     list: () => fetchApi<any[]>('/api/v1/url-tracking'),

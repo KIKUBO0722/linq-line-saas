@@ -85,16 +85,36 @@ export class FriendsController {
   @Get('export/csv')
   async exportCsv(@Req() req: any, @Res() res: any) {
     const friends = await this.friendsService.findByTenant(req.tenantId, { limit: 10000 });
+    const allTags = await this.tagsService.list(req.tenantId);
 
-    const header = 'ID,表示名,LINE ID,フォロー中,スコア,登録日\n';
-    const rows = (Array.isArray(friends) ? friends : []).map((f: any) =>
-      `${f.id},"${(f.displayName || '').replace(/"/g, '""')}",${f.lineUserId},${f.isFollowing ? 'はい' : 'いいえ'},${f.score ?? 0},${f.createdAt}`
-    ).join('\n');
+    // Get tags for each friend
+    const friendList = Array.isArray(friends) ? friends : [];
+    const friendTagMap: Record<string, string[]> = {};
+    for (const f of friendList) {
+      const fTags = await this.tagsService.listForFriend(f.id);
+      friendTagMap[f.id] = fTags.map((t: any) => t.tag?.name || t.name || '');
+    }
 
-    const bom = '\uFEFF'; // UTF-8 BOM for Excel
+    const header = 'ID,表示名,LINE ID,フォロー中,スコア,タグ,対応状況,言語,流入元,登録日\n';
+    const rows = friendList.map((f: any) => {
+      const tagStr = (friendTagMap[f.id] || []).join('|');
+      return `${f.id},"${(f.displayName || '').replace(/"/g, '""')}",${f.lineUserId},${f.isFollowing ? 'はい' : 'いいえ'},${f.score ?? 0},"${tagStr}",${f.chatStatus || 'unread'},${f.language || ''},${f.acquisitionSource || ''},${f.createdAt}`;
+    }).join('\n');
+
+    const bom = '\uFEFF';
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename=friends_${new Date().toISOString().slice(0, 10)}.csv`);
     res.send(bom + header + rows);
+  }
+
+  @Post('import/csv')
+  async importCsv(@Req() req: any, @Body() body: { csv: string }) {
+    const result = await this.friendsService.importFromCsv(
+      req.tenantId,
+      body.csv,
+      this.tagsService,
+    );
+    return result;
   }
 
   @Get('custom-field-definitions')

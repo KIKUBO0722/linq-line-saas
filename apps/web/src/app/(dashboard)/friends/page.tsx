@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Users, Search, Tag, Plus, X, MessageSquare, ChevronDown, Sparkles, Download, Save, Trash2 } from 'lucide-react';
+import { Users, Search, Tag, Plus, X, MessageSquare, ChevronDown, Sparkles, Download, Upload, Save, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,11 @@ export default function FriendsPage() {
   // AI analysis
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [analyzingAi, setAnalyzingAi] = useState(false);
+
+  // CSV import
+  const [showImport, setShowImport] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<any>(null);
 
   // Custom fields
   const [customFields, setCustomFields] = useState<Record<string, any>>({});
@@ -216,6 +221,25 @@ export default function FriendsPage() {
     URL.revokeObjectURL(url);
   }
 
+  async function handleImportCsv(file: File) {
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const text = await file.text();
+      const result = await api.friends.importCsv(text);
+      setImportResult(result);
+      // Refresh friends list
+      const updated = await api.friends.list({ search: search || undefined, limit: 100 });
+      setFriends(updated);
+      const updatedTags = await api.tags.list();
+      setTags(updatedTags);
+    } catch (err: any) {
+      setImportResult({ errors: [err.message || 'インポートに失敗しました'] });
+    } finally {
+      setImporting(false);
+    }
+  }
+
   const tagColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
   return (
@@ -227,6 +251,14 @@ export default function FriendsPage() {
           <p className="text-sm text-muted-foreground">{friends.length}人</p>
         </div>
         <div className="flex gap-2">
+          <Button
+            onClick={() => setShowImport(!showImport)}
+            variant={showImport ? 'default' : 'outline'}
+            size="sm"
+          >
+            <Upload className="h-4 w-4 mr-1" />
+            CSVインポート
+          </Button>
           <Button
             onClick={handleExportCsv}
             variant="outline"
@@ -245,6 +277,56 @@ export default function FriendsPage() {
           </Button>
         </div>
       </div>
+
+      {/* CSV Import panel */}
+      {showImport && (
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <h3 className="text-sm font-semibold">CSVインポート</h3>
+            <p className="text-xs text-muted-foreground">
+              CSVファイルから友だちを一括登録します。タグも自動で作成・割り当てされます。
+            </p>
+            <div className="text-xs text-muted-foreground bg-muted/50 rounded p-3 space-y-1">
+              <p className="font-medium">対応フォーマット:</p>
+              <p>• <strong>LinQ形式:</strong> 表示名,LINE ID,タグ,スコア,...</p>
+              <p>• <strong>エルメ形式:</strong> 表示名,LINE UID,タグ,...</p>
+              <p>• タグは <code>|</code> 区切り（例: VIP|来店済み|新規）</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="file"
+                accept=".csv"
+                disabled={importing}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImportCsv(file);
+                }}
+                className="text-sm"
+              />
+              {importing && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+                  インポート中...
+                </div>
+              )}
+            </div>
+            {importResult && (
+              <div className="text-xs space-y-1 border rounded p-3">
+                <p className="font-medium">結果:</p>
+                {importResult.imported > 0 && <p className="text-green-600">新規登録: {importResult.imported}件</p>}
+                {importResult.updated > 0 && <p className="text-blue-600">更新: {importResult.updated}件</p>}
+                {importResult.tagsCreated > 0 && <p className="text-purple-600">タグ作成: {importResult.tagsCreated}件</p>}
+                {importResult.errors?.length > 0 && (
+                  <div className="text-red-500 mt-1">
+                    <p>エラー:</p>
+                    {importResult.errors.map((e: string, i: number) => <p key={i}>• {e}</p>)}
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tag management */}
       {showTags && (

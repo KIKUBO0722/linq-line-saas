@@ -1,7 +1,7 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { eq, and, ilike, sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
-import { friends, friendTags, tags } from '@line-saas/db';
+import { friends, friendTags, tags, lineAccounts } from '@line-saas/db';
 
 interface UpsertFriendDto {
   tenantId: string;
@@ -156,5 +156,131 @@ export class FriendsService {
       }
     }
     return Array.from(keys);
+  }
+
+  /**
+   * CSV Import — supports LinQ format and L Message (エルメ) format
+   * LinQ format: 表示名,LINE ID,タグ,スコア,...
+   * エルメ format: 表示名,LINE UID,タグ,...
+   */
+  async importFromCsv(
+    tenantId: string,
+    csvText: string,
+    tagsService: any,
+  ): Promise<{ imported: number; updated: number; tagsCreated: number; errors: string[] }> {
+    const lines = csvText.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (lines.length < 2) return { imported: 0, updated: 0, tagsCreated: 0, errors: ['CSVにデータ行がありません'] };
+
+    // Parse header
+    const header = this.parseCsvLine(lines[0]).map((h) => h.toLowerCase().trim());
+    const nameIdx = header.findIndex((h) => h.includes('表示名') || h.includes('name') || h.includes('displayname'));
+    const lineIdIdx = header.findIndex((h) => h.includes('line id') || h.includes('uid') || h.includes('lineuserid') || h.includes('line_user_id'));
+    const tagIdx = header.findIndex((h) => h.includes('タグ') || h.includes('tag'));
+    const scoreIdx = header.findIndex((h) => h.includes('スコア') || h.includes('score'));
+
+    if (lineIdIdx === -1 && nameIdx === -1) {
+      return { imported: 0, updated: 0, tagsCreated: 0, errors: ['「表示名」または「LINE ID」列が見つかりません'] };
+    }
+
+    // Get first active account for this tenant
+    const [account] = await this.db
+      .select()
+      .from(lineAccounts)
+      .where(eq(lineAccounts.tenantId, tenantId))
+      .limit(1);
+
+    if (!account) return { imported: 0, updated: 0, tagsCreated: 0, errors: ['LINEアカウントが設定されていません'] };
+
+    // Cache existing tags
+    const existingTags = await tagsService.list(tenantId);
+    const tagMap = new Map<string, string>();
+    for (const t of existingTags) {
+      tagMap.set(t.name.toLowerCase(), t.id);
+    }
+
+    let imported = 0;
+    let updated = 0;
+    let tagsCreated = 0;
+    const errors: string[] = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      try {
+        const cols = this.parseCsvLine(lines[i]);
+        const displayName = nameIdx >= 0 ? cols[nameIdx]?.trim() : '';
+        const lineUserId = lineIdIdx >= 0 ? cols[lineIdIdx]?.trim() : '';
+        const tagStr = tagIdx >= 0 ? cols[tagIdx]?.trim() : '';
+        const score = scoreIdx >= 0 ? parseInt(cols[scoreIdx]) || 0 : 0;
+
+        if (!displayName && !lineUserId) {
+          errors.push(`行${i + 1}: 表示名もLINE IDもありません`);
+          continue;
+        }
+
+        // Upsert friend
+        const friend = await this.upsertFriend({
+          tenantId,
+          lineAccountId: account.id,
+          lineUserId: lineUserId || `import_${Date.now()}_${i}`,
+          displayName: displayName || 'インポート',
+          isFollowing: true,
+          followedAt: new Date(),
+          acquisitionSource: 'csv_import',
+        });
+
+        if (score > 0) {
+          await this.updateScore(friend.id, score);
+        }
+
+        // Process tags (pipe-separated: タグA|タグB)
+        if (tagStr) {
+          const tagNames = tagStr.split('|').map((t) => t.trim()).filter(Boolean);
+          for (const name of tagNames) {
+            let tagId = tagMap.get(name.toLowerCase());
+            if (!tagId) {
+              const newTag = await tagsService.create(tenantId, { name });
+              tagId = newTag.id;
+              tagMap.set(name.toLowerCase(), tagId!);
+              tagsCreated++;
+            }
+            if (tagId) await tagsService.assignToFriend(friend.id, tagId);
+          }
+        }
+
+        // Check if it was new or existing
+        if (friend.acquisitionSource === 'csv_import') {
+          imported++;
+        } else {
+          updated++;
+        }
+      } catch (err: any) {
+        errors.push(`行${i + 1}: ${err.message || '処理エラー'}`);
+      }
+    }
+
+    return { imported, updated, tagsCreated, errors: errors.slice(0, 20) };
+  }
+
+  private parseCsvLine(line: string): string[] {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (ch === ',' && !inQuotes) {
+        result.push(current);
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+    result.push(current);
+    return result;
   }
 }
