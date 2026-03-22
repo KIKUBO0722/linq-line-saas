@@ -7,6 +7,10 @@ import {
   BarChart3, Users, MessageSquare, ArrowUpRight, ArrowDownRight,
   Zap, TrendingUp, Radio, Calendar, RefreshCw, Eye, Route, Plus, Trash2, QrCode, Copy,
 } from 'lucide-react';
+import {
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
+} from 'recharts';
 import { api } from '@/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
@@ -124,12 +128,38 @@ export default function AnalyticsPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">メッセージ内訳</CardTitle>
-                <span className="text-sm font-medium">合計 {msgTotal}</span>
+                <span className="text-sm font-medium">合計 {msgTotal.toLocaleString()}</span>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <ProgressBar label="送信メッセージ" value={stats?.messages?.outbound || 0} percentage={outboundPct} color="hsl(var(--primary))" />
-              <ProgressBar label="受信メッセージ" value={stats?.messages?.inbound || 0} percentage={inboundPct} color="#8B5CF6" />
+            <CardContent>
+              <div className="flex items-center gap-8">
+                <div className="h-[140px] w-[140px] shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: '送信', value: stats?.messages?.outbound || 0 },
+                          { name: '受信', value: stats?.messages?.inbound || 0 },
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={35}
+                        outerRadius={60}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        <Cell fill="#06C755" />
+                        <Cell fill="#8B5CF6" />
+                      </Pie>
+                      <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex-1 space-y-4">
+                  <ProgressBar label="送信メッセージ" value={stats?.messages?.outbound || 0} percentage={outboundPct} color="#06C755" />
+                  <ProgressBar label="受信メッセージ" value={stats?.messages?.inbound || 0} percentage={inboundPct} color="#8B5CF6" />
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -524,17 +554,21 @@ export default function AnalyticsPage() {
   );
 }
 
-function MetricCard({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) {
+function MetricCard({ icon, value, label, trend, color }: { icon: React.ReactNode; value: number; label: string; trend?: number; color?: string }) {
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="flex items-center gap-3">
+    <Card className="linq-card-hover">
+      <CardContent className="pt-5 pb-4">
+        <div className="flex items-start justify-between mb-2">
+          <span className="text-xs font-medium text-muted-foreground">{label}</span>
           {icon}
-          <div>
-            <p className="text-2xl font-bold">{value.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">{label}</p>
-          </div>
         </div>
+        <p className="text-2xl font-bold tracking-tight">{value.toLocaleString()}</p>
+        {trend !== undefined && (
+          <p className={`text-xs mt-1 flex items-center gap-0.5 ${trend >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+            {trend >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+            {Math.abs(trend)}% 前週比
+          </p>
+        )}
       </CardContent>
     </Card>
   );
@@ -582,103 +616,77 @@ function UsageBar({ label, used, limit, icon }: { label: string; used: number; l
 
 function DailyChart({ outbound, inbound, days }: { outbound: any[]; inbound: any[]; days: number }) {
   const dateMap = new Map<string, { out: number; in: number }>();
-
-  // Fill all dates
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
-    dateMap.set(key, { out: 0, in: 0 });
+    dateMap.set(d.toISOString().slice(0, 10), { out: 0, in: 0 });
   }
+  outbound.forEach((d) => { const e = dateMap.get(d.date); if (e) e.out = d.count; });
+  inbound.forEach((d) => { const e = dateMap.get(d.date); if (e) e.in = d.count; });
 
-  outbound.forEach((d) => {
-    const existing = dateMap.get(d.date);
-    if (existing) existing.out = d.count;
-  });
-  inbound.forEach((d) => {
-    const existing = dateMap.get(d.date);
-    if (existing) existing.in = d.count;
-  });
-
-  const entries = Array.from(dateMap.entries());
-  const maxVal = Math.max(1, ...entries.map(([, v]) => Math.max(v.out, v.in)));
+  const chartData = Array.from(dateMap.entries()).map(([date, vals]) => ({
+    date: new Date(date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }),
+    送信: vals.out,
+    受信: vals.in,
+  }));
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-4 mb-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-3 rounded-sm" style={{ background: 'hsl(var(--primary))' }} />
-          送信
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-3 rounded-sm bg-purple-500" />
-          受信
-        </span>
-      </div>
-      {entries.map(([date, vals]) => (
-        <div key={date} className="flex items-center gap-2 text-xs">
-          <span className="text-muted-foreground w-12 shrink-0">
-            {new Date(date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
-          </span>
-          <div className="flex-1 flex flex-col gap-0.5">
-            <div className="flex items-center gap-1">
-              <div
-                className="h-3 rounded-sm transition-all"
-                style={{
-                  width: `${Math.max(vals.out > 0 ? 2 : 0, (vals.out / maxVal) * 100)}%`,
-                  background: 'hsl(var(--primary))',
-                }}
-              />
-              {vals.out > 0 && <span className="text-[10px] text-muted-foreground">{vals.out}</span>}
-            </div>
-            <div className="flex items-center gap-1">
-              <div
-                className="h-3 rounded-sm transition-all bg-purple-500"
-                style={{
-                  width: `${Math.max(vals.in > 0 ? 2 : 0, (vals.in / maxVal) * 100)}%`,
-                }}
-              />
-              {vals.in > 0 && <span className="text-[10px] text-muted-foreground">{vals.in}</span>}
-            </div>
-          </div>
-        </div>
-      ))}
+    <div className="h-[280px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+          <defs>
+            <linearGradient id="gradOut" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#06C755" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="#06C755" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="gradIn" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+          <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#94a3b8" />
+          <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" />
+          <Tooltip
+            contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
+            labelStyle={{ fontWeight: 600 }}
+          />
+          <Area type="monotone" dataKey="送信" stroke="#06C755" strokeWidth={2} fill="url(#gradOut)" />
+          <Area type="monotone" dataKey="受信" stroke="#8B5CF6" strokeWidth={2} fill="url(#gradIn)" />
+        </AreaChart>
+      </ResponsiveContainer>
     </div>
   );
 }
 
 function FriendsChart({ data, days }: { data: any[]; days: number }) {
   const dateMap = new Map<string, number>();
-
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     dateMap.set(d.toISOString().slice(0, 10), 0);
   }
-
   data.forEach((d) => dateMap.set(d.date, d.count));
 
-  const entries = Array.from(dateMap.entries());
-  const maxVal = Math.max(1, ...entries.map(([, v]) => v));
+  const chartData = Array.from(dateMap.entries()).map(([date, count]) => ({
+    date: new Date(date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }),
+    追加: count,
+  }));
 
   return (
-    <div className="space-y-1">
-      {entries.map(([date, count]) => (
-        <div key={date} className="flex items-center gap-2 text-xs">
-          <span className="text-muted-foreground w-12 shrink-0">
-            {new Date(date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
-          </span>
-          <div className="flex-1 flex items-center gap-1">
-            <div
-              className="h-4 rounded-sm transition-all bg-blue-500"
-              style={{
-                width: `${Math.max(count > 0 ? 2 : 0, (count / maxVal) * 100)}%`,
-              }}
-            />
-            {count > 0 && <span className="text-[10px] text-muted-foreground">+{count}</span>}
-          </div>
-        </div>
-      ))}
+    <div className="h-[250px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+          <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#94a3b8" />
+          <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" allowDecimals={false} />
+          <Tooltip
+            contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
+            labelStyle={{ fontWeight: 600 }}
+          />
+          <Bar dataKey="追加" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }
