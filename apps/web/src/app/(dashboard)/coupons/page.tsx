@@ -16,6 +16,8 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageSkeleton } from '@/components/ui/skeleton';
 
 interface Coupon {
   id: string;
@@ -302,15 +304,13 @@ export default function CouponsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex justify-center py-8">
-              <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            </div>
+            <PageSkeleton />
           ) : coupons.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Ticket className="h-10 w-10 text-muted-foreground/30 mb-3" />
-              <p className="text-sm text-muted-foreground">クーポンがまだありません</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">「クーポン作成」から最初のクーポンを作成しましょう</p>
-            </div>
+            <EmptyState
+              illustration="coupons"
+              title="クーポンがまだありません"
+              description="「クーポン作成」から最初のクーポンを作成しましょう"
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -351,6 +351,7 @@ export default function CouponsPage() {
                             variant="ghost"
                             className="h-7 w-7 p-0"
                             onClick={() => handleCopyCode(coupon.id, coupon.code)}
+                            aria-label="コピー"
                           >
                             {copiedId === coupon.id ? (
                               <Check className="h-3.5 w-3.5 text-green-500" />
@@ -397,6 +398,7 @@ export default function CouponsPage() {
                           variant="ghost"
                           onClick={() => handleDelete(coupon.id)}
                           className="text-destructive hover:text-destructive"
+                          aria-label="削除"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>

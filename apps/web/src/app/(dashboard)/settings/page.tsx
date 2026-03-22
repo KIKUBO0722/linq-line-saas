@@ -39,8 +39,8 @@ export default function SettingsPage() {
   const [inviting, setInviting] = useState(false);
 
   useEffect(() => {
-    api.accounts.list().then(setAccounts).catch(() => {});
-    api.auth.me().then((data) => setCurrentUser(data.user)).catch(() => {});
+    api.accounts.list().then(setAccounts).catch(() => { toast.error('アカウント情報の取得に失敗しました'); });
+    api.auth.me().then((data) => setCurrentUser(data.user)).catch(() => { console.warn('ユーザー情報取得に失敗'); });
   }, []);
 
   useEffect(() => {

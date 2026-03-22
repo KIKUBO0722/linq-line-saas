@@ -1,5 +1,5 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import { eq, and, desc, gt, lte, isNotNull } from 'drizzle-orm';
+import { eq, and, desc, gt, lte, isNotNull, sql, count, max } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { messages, friends, lineAccounts } from '@line-saas/db';
 import { LineService } from '../line/line.service';
@@ -34,42 +34,58 @@ export class MessagesService {
 
   /**
    * Get unread summary: count inbound messages after lastReadAt per friend.
-   * totalUnread = total unread message count across all friends.
+   * Uses a single aggregation query instead of N+1 individual queries.
    */
   async getUnreadSummary(tenantId: string) {
-    const allFriends = await this.db
-      .select({ id: friends.id, lastReadAt: friends.lastReadAt })
-      .from(friends)
-      .where(eq(friends.tenantId, tenantId));
+    // Single query: join messages with friends, filter unread inbound, group by friend
+    const rows = await this.db
+      .select({
+        friendId: messages.friendId,
+        unreadCount: count(messages.id).as('unread_count'),
+        lastMessageContent: sql<string>`(
+          SELECT m2.content FROM messages m2
+          WHERE m2.friend_id = ${messages.friendId}
+            AND m2.tenant_id = ${tenantId}
+            AND m2.direction = 'inbound'
+            AND (${friends.lastReadAt} IS NULL OR m2.created_at > ${friends.lastReadAt})
+          ORDER BY m2.created_at DESC LIMIT 1
+        )`.as('last_message_content'),
+        lastMessageCreatedAt: max(messages.createdAt).as('last_message_created_at'),
+      })
+      .from(messages)
+      .innerJoin(friends, eq(messages.friendId, friends.id))
+      .where(
+        and(
+          eq(messages.tenantId, tenantId),
+          eq(messages.direction, 'inbound'),
+          sql`(${friends.lastReadAt} IS NULL OR ${messages.createdAt} > ${friends.lastReadAt})`,
+        ),
+      )
+      .groupBy(messages.friendId, friends.lastReadAt);
 
     let totalUnread = 0;
     const unreadFriends: Array<{ friendId: string; unreadCount: number; lastMessage: any; createdAt: string }> = [];
 
-    for (const friend of allFriends) {
-      const conditions = [
-        eq(messages.tenantId, tenantId),
-        eq(messages.friendId, friend.id),
-        eq(messages.direction, 'inbound'),
-      ];
-      if (friend.lastReadAt) {
-        conditions.push(gt(messages.createdAt, friend.lastReadAt));
+    for (const row of rows) {
+      if (!row.friendId) continue;
+      const cnt = Number(row.unreadCount);
+      totalUnread += cnt;
+
+      let lastMessage: any = null;
+      try {
+        lastMessage = typeof row.lastMessageContent === 'string'
+          ? JSON.parse(row.lastMessageContent)
+          : row.lastMessageContent;
+      } catch {
+        lastMessage = row.lastMessageContent;
       }
 
-      const inboundMsgs = await this.db
-        .select()
-        .from(messages)
-        .where(and(...conditions))
-        .orderBy(desc(messages.createdAt));
-
-      if (inboundMsgs.length > 0) {
-        totalUnread += inboundMsgs.length;
-        unreadFriends.push({
-          friendId: friend.id,
-          unreadCount: inboundMsgs.length,
-          lastMessage: inboundMsgs[0].content,
-          createdAt: inboundMsgs[0].createdAt?.toISOString() || '',
-        });
-      }
+      unreadFriends.push({
+        friendId: row.friendId,
+        unreadCount: cnt,
+        lastMessage,
+        createdAt: row.lastMessageCreatedAt?.toISOString() || '',
+      });
     }
 
     return { totalUnread, unreadFriends };

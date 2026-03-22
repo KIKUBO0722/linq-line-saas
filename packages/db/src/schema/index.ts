@@ -16,3 +16,5 @@ export * from './segments';
 export * from './coupons';
 export * from './reservations';
 export * from './greetings';
+export * from './gacha';
+export * from './exit-popups';

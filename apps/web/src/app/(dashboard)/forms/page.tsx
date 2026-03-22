@@ -14,6 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageSkeleton } from '@/components/ui/skeleton';
 
 type FieldType = 'text' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'email' | 'phone' | 'number';
 
@@ -44,7 +46,7 @@ export default function FormsPage() {
 
   useEffect(() => {
     loadForms();
-    api.tags.list().then(setAvailableTags).catch(() => {});
+    api.tags.list().then(setAvailableTags).catch(() => { console.warn('タグ一覧の取得に失敗'); });
   }, []);
 
   // Listen for AI-generated form fill events
@@ -160,20 +162,14 @@ export default function FormsPage() {
     setTimeout(() => setCopiedId(null), 2000);
   }
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-20">
-        <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
-  }
+  if (loading) return <PageSkeleton />;
 
   // Responses view
   if (view === 'responses' && selectedForm) {
     return (
       <div className="p-6 max-w-5xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => { setView('list'); setSelectedForm(null); }}>
+          <Button variant="ghost" size="sm" onClick={() => { setView('list'); setSelectedForm(null); }} aria-label="戻る">
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div>
@@ -226,7 +222,7 @@ export default function FormsPage() {
     return (
       <div className="p-6 max-w-5xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => setView('list')}>
+          <Button variant="ghost" size="sm" onClick={() => setView('list')} aria-label="戻る">
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div>
@@ -445,10 +441,12 @@ export default function FormsPage() {
 
       {forms.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">フォームがありません</h3>
-            <p className="text-sm text-muted-foreground mt-1">「新規作成」からフォームを作成してください</p>
+          <CardContent>
+            <EmptyState
+              illustration="forms"
+              title="フォームがありません"
+              description="「新規作成」からフォームを作成してください"
+            />
           </CardContent>
         </Card>
       ) : (
@@ -497,11 +495,12 @@ export default function FormsPage() {
                         size="sm"
                         onClick={() => copyFormUrl(form.id)}
                         title="フォームURLをコピー"
+                        aria-label="コピー"
                       >
                         {copiedId === form.id ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
                       </Button>
-                      <a href={`/f/${form.id}`} target="_blank">
-                        <Button variant="ghost" size="sm">
+                      <a href={`/f/${form.id}`} target="_blank" aria-label="外部リンク">
+                        <Button variant="ghost" size="sm" aria-label="外部リンク">
                           <ExternalLink className="h-4 w-4" />
                         </Button>
                       </a>
@@ -509,7 +508,7 @@ export default function FormsPage() {
                         <Eye className="h-4 w-4 mr-1" />
                         回答
                       </Button>
-                      <Button variant="destructive" size="sm" onClick={() => handleDelete(form.id)}>
+                      <Button variant="destructive" size="sm" onClick={() => handleDelete(form.id)} aria-label="削除">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>

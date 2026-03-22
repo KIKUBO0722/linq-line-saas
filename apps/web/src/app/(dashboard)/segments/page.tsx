@@ -13,6 +13,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageSkeleton } from '@/components/ui/skeleton';
 
 interface TagItem {
   id: string;
@@ -355,15 +357,13 @@ export default function SegmentsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex justify-center py-8">
-              <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            </div>
+            <PageSkeleton />
           ) : segments.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Filter className="h-10 w-10 text-muted-foreground/30 mb-3" />
-              <p className="text-sm text-muted-foreground">セグメントがまだありません</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">「セグメント作成」から最初のセグメントを作成しましょう</p>
-            </div>
+            <EmptyState
+              illustration="segments"
+              title="セグメントがまだありません"
+              description="「セグメント作成」から最初のセグメントを作成しましょう"
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -433,13 +433,13 @@ export default function SegmentsPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => handlePreview(segment.id)} title="プレビュー">
+                        <Button size="sm" variant="ghost" onClick={() => handlePreview(segment.id)} title="プレビュー" aria-label="プレビュー">
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setBroadcastSegmentId(broadcastSegmentId === segment.id ? null : segment.id)} title="配信">
+                        <Button size="sm" variant="ghost" onClick={() => setBroadcastSegmentId(broadcastSegmentId === segment.id ? null : segment.id)} title="配信" aria-label="配信">
                           <Send className="h-3.5 w-3.5" />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleDelete(segment.id)} className="text-destructive hover:text-destructive" title="削除">
+                        <Button size="sm" variant="ghost" onClick={() => handleDelete(segment.id)} className="text-destructive hover:text-destructive" title="削除" aria-label="削除">
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>

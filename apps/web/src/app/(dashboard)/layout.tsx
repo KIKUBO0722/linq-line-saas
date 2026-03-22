@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api-client';
@@ -13,7 +13,7 @@ import {
   LayoutDashboard, Users, MessageSquare, GitBranch, Menu,
   FileText, Bot, BarChart3, Settings, LogOut,
   ChevronDown, Send, Filter, FileStack, Ticket,
-  CalendarCheck,
+  CalendarCheck, X, PanelLeftClose, PanelLeft, Dices, ShieldAlert,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -43,6 +43,8 @@ const navigation: NavEntry[] = [
       { name: 'リッチメニュー', href: '/rich-menus', icon: Menu },
       { name: 'フォーム', href: '/forms', icon: FileText },
       { name: 'クーポン', href: '/coupons', icon: Ticket },
+      { name: 'ガチャ', href: '/gacha', icon: Dices },
+      { name: '離脱防止', href: '/exit-popups', icon: ShieldAlert },
     ],
   },
   { name: 'AI・自動化', href: '/ai', icon: Bot },
@@ -142,6 +144,50 @@ function NavAccordion({ group, pathname, badge, onBadgeClear }: { group: NavGrou
   );
 }
 
+// --- Sidebar nav + logout (shared between mobile & desktop) ---
+function SidebarNav({
+  pathname,
+  unreadCount,
+  navigation,
+  onLogout,
+  onNavClick,
+}: {
+  pathname: string | null;
+  unreadCount: number;
+  navigation: NavEntry[];
+  onLogout: () => void;
+  onNavClick?: () => void;
+}) {
+  return (
+    <>
+      <ScrollArea className="flex-1 px-2">
+        <nav className="flex flex-col gap-0.5 py-2" onClick={(e) => {
+          if (onNavClick && (e.target as HTMLElement).closest('a')) onNavClick();
+        }}>
+          {navigation.map((entry) =>
+            isGroup(entry) ? (
+              <NavAccordion key={entry.label} group={entry} pathname={pathname} badge={entry.label === 'メッセージ' ? unreadCount : undefined} onBadgeClear={entry.label === 'メッセージ' ? () => {} : undefined} />
+            ) : (
+              <NavLink key={entry.href} item={entry} pathname={pathname} />
+            ),
+          )}
+        </nav>
+      </ScrollArea>
+
+      <Separator className="bg-white/5" />
+      <div className="p-2">
+        <button
+          onClick={onLogout}
+          className="flex items-center gap-2.5 w-full px-3 py-2 rounded-md text-[12px] text-slate-500 hover:bg-white/5 hover:text-slate-300 transition-colors"
+        >
+          <LogOut className="h-4 w-4" />
+          ログアウト
+        </button>
+      </div>
+    </>
+  );
+}
+
 // --- Main layout ---
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -150,6 +196,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [tenant, setTenant] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     api.auth.me()
@@ -164,6 +212,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const isOnMessages = pathname?.startsWith('/messages') ?? false;
 
+  // Close mobile sidebar on navigation
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
   // Poll for unread messages every 15 seconds (only when NOT on messages page)
   useEffect(() => {
     if (!user || isOnMessages) return;
@@ -174,7 +227,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         .then((data) => {
           if (mounted) setUnreadCount(data.totalUnread ?? 0);
         })
-        .catch(() => {});
+        .catch(() => { console.warn('未読サマリーのポーリングに失敗'); });
     }
     checkUnread();
     const interval = setInterval(checkUnread, 15000);
@@ -186,6 +239,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (isOnMessages) setUnreadCount(0);
   }, [isOnMessages]);
 
+  const handleLogout = useCallback(async () => {
+    try { await api.auth.logout(); } catch {}
+    router.push('/login');
+  }, [router]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -196,49 +254,137 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!user) return null;
 
-  async function handleLogout() {
-    try { await api.auth.logout(); } catch {}
-    router.push('/login');
-  }
-
   return (
     <div className="flex h-screen bg-slate-50">
-      {/* Sidebar */}
-      <aside className="w-56 bg-slate-900 text-white flex flex-col shrink-0">
-        <div className="px-5 pt-5 pb-3">
-          <h1 className="text-xl font-extrabold tracking-tight">
-            <span className="text-[#06C755]">Lin</span>
-            <span className="text-slate-400">Q</span>
-          </h1>
-          <p className="text-[11px] text-slate-500 mt-0.5 truncate">{tenant?.name}</p>
-        </div>
+      {/* Mobile header bar */}
+      <div className="fixed top-0 left-0 right-0 z-40 flex items-center h-12 px-3 bg-slate-900 text-white lg:hidden">
+        <button onClick={() => setMobileOpen(true)} className="p-1.5 rounded-md hover:bg-white/10 transition-colors" aria-label="メニュー">
+          <Menu className="h-5 w-5" />
+        </button>
+        <h1 className="ml-3 text-lg font-extrabold tracking-tight">
+          <span className="text-[#06C755]">Lin</span>
+          <span className="text-slate-400">Q</span>
+        </h1>
+        {unreadCount > 0 && (
+          <span className="ml-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white px-1">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
+      </div>
 
-        <ScrollArea className="flex-1 px-2">
-          <nav className="flex flex-col gap-0.5 py-2">
-            {navigation.map((entry) =>
-              isGroup(entry) ? (
-                <NavAccordion key={entry.label} group={entry} pathname={pathname} badge={entry.label === 'メッセージ' ? unreadCount : undefined} onBadgeClear={entry.label === 'メッセージ' ? () => {} : undefined} />
-              ) : (
-                <NavLink key={entry.href} item={entry} pathname={pathname} />
-              ),
-            )}
-          </nav>
-        </ScrollArea>
-
-        <Separator className="bg-white/5" />
-        <div className="p-2">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2.5 w-full px-3 py-2 rounded-md text-[12px] text-slate-500 hover:bg-white/5 hover:text-slate-300 transition-colors"
-          >
-            <LogOut className="h-4 w-4" />
-            ログアウト
-          </button>
+      {/* Mobile sidebar overlay */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
+          <aside className="relative w-64 h-full bg-slate-900 text-white flex flex-col shadow-xl animate-in slide-in-from-left duration-200">
+            <div className="px-5 pt-5 pb-3 flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-extrabold tracking-tight">
+                  <span className="text-[#06C755]">Lin</span>
+                  <span className="text-slate-400">Q</span>
+                </h1>
+                <p className="text-[11px] text-slate-500 mt-0.5 truncate">{tenant?.name}</p>
+              </div>
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="p-1.5 rounded-md text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
+                aria-label="閉じる"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <SidebarNav
+              pathname={pathname}
+              unreadCount={unreadCount}
+              navigation={navigation}
+              onLogout={handleLogout}
+              onNavClick={() => setMobileOpen(false)}
+            />
+          </aside>
         </div>
+      )}
+
+      {/* Desktop sidebar */}
+      <aside className={cn(
+        'hidden lg:flex flex-col bg-slate-900 text-white shrink-0 transition-all duration-200',
+        collapsed ? 'w-14' : 'w-56',
+      )}>
+        {collapsed ? (
+          /* Collapsed icon-only sidebar */
+          <>
+            <div className="flex items-center justify-center pt-4 pb-2">
+              <button onClick={() => setCollapsed(false)} className="p-1.5 rounded-md text-slate-400 hover:bg-white/10 hover:text-white transition-colors" title="サイドバーを開く" aria-label="サイドバーを開く">
+                <PanelLeft className="h-4 w-4" />
+              </button>
+            </div>
+            <ScrollArea className="flex-1">
+              <nav className="flex flex-col items-center gap-1 py-2">
+                {navigation.map((entry) => {
+                  if (isGroup(entry)) {
+                    return entry.items.map((item) => {
+                      const active = pathname === item.href || pathname?.startsWith(item.href + '/');
+                      const itemBadge = item.href === '/messages' ? unreadCount : undefined;
+                      return (
+                        <Link key={item.href} href={item.href} title={item.name} className={cn(
+                          'relative flex items-center justify-center w-9 h-9 rounded-md transition-colors',
+                          active ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200',
+                        )}>
+                          <item.icon className="h-4 w-4" />
+                          {itemBadge !== undefined && itemBadge > 0 && (
+                            <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white px-0.5">
+                              {itemBadge > 99 ? '!' : itemBadge}
+                            </span>
+                          )}
+                        </Link>
+                      );
+                    });
+                  }
+                  const active = pathname === entry.href || pathname?.startsWith(entry.href + '/');
+                  return (
+                    <Link key={entry.href} href={entry.href} title={entry.name} className={cn(
+                      'flex items-center justify-center w-9 h-9 rounded-md transition-colors',
+                      active ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200',
+                    )}>
+                      <entry.icon className="h-4 w-4" />
+                    </Link>
+                  );
+                })}
+              </nav>
+            </ScrollArea>
+            <Separator className="bg-white/5" />
+            <div className="flex justify-center py-2">
+              <button onClick={handleLogout} title="ログアウト" className="flex items-center justify-center w-9 h-9 rounded-md text-slate-500 hover:bg-white/5 hover:text-slate-300 transition-colors">
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
+          </>
+        ) : (
+          /* Expanded sidebar */
+          <>
+            <div className="px-5 pt-5 pb-3 flex items-start justify-between">
+              <div>
+                <h1 className="text-xl font-extrabold tracking-tight">
+                  <span className="text-[#06C755]">Lin</span>
+                  <span className="text-slate-400">Q</span>
+                </h1>
+                <p className="text-[11px] text-slate-500 mt-0.5 truncate">{tenant?.name}</p>
+              </div>
+              <button onClick={() => setCollapsed(true)} className="mt-1 p-1 rounded-md text-slate-500 hover:bg-white/10 hover:text-slate-300 transition-colors" title="サイドバーを閉じる" aria-label="サイドバーを閉じる">
+                <PanelLeftClose className="h-4 w-4" />
+              </button>
+            </div>
+            <SidebarNav
+              pathname={pathname}
+              unreadCount={unreadCount}
+              navigation={navigation}
+              onLogout={handleLogout}
+            />
+          </>
+        )}
       </aside>
 
       {/* Main */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto pt-12 lg:pt-0">
         {children}
       </main>
 

@@ -51,15 +51,15 @@ export default function OverviewPage() {
   const [wizardApplied, setWizardApplied] = useState(false);
 
   useEffect(() => {
-    api.friends.list({ limit: 5 }).then(setRecentFriends).catch(() => {});
-    api.friends.list({}).then((f: any) => { setFriends(f); }).catch(() => {});
-    api.accounts.list().then(setAccounts).catch(() => {});
-    api.analytics.overview().then(setStats).catch(() => {});
-    api.billing.usage().then(setUsage).catch(() => {});
+    api.friends.list({ limit: 5 }).then(setRecentFriends).catch(() => { console.warn('最近の友だち取得に失敗'); });
+    api.friends.list({}).then((f: any) => { setFriends(f); }).catch(() => { console.warn('友だち一覧取得に失敗'); });
+    api.accounts.list().then(setAccounts).catch(() => { console.warn('アカウント一覧取得に失敗'); });
+    api.analytics.overview().then(setStats).catch(() => { console.warn('統計情報取得に失敗'); });
+    api.billing.usage().then(setUsage).catch(() => { console.warn('利用状況取得に失敗'); });
     fetch(`${API_BASE}/api/v1/ai/config`, { credentials: 'include' })
       .then((r) => r.json())
       .then(setAiConfig)
-      .catch(() => {});
+      .catch(() => { console.warn('AI設定取得に失敗'); });
   }, []);
 
   async function handleWizardGenerate() {

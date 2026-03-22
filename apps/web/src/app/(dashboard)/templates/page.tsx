@@ -12,6 +12,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageSkeleton } from '@/components/ui/skeleton';
 
 const CATEGORIES = [
   { value: '', label: 'すべて' },
@@ -158,7 +160,7 @@ function ActionEditor({
         />
       </div>
       {canRemove && onRemove && (
-        <Button type="button" variant="ghost" size="sm" onClick={onRemove} className="h-8 w-8 p-0 shrink-0">
+        <Button type="button" variant="ghost" size="sm" onClick={onRemove} className="h-8 w-8 p-0 shrink-0" aria-label="削除">
           <X className="h-3.5 w-3.5" />
         </Button>
       )}
@@ -880,19 +882,13 @@ export default function TemplatesPage() {
 
       {/* Template list */}
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        </div>
+        <PageSkeleton />
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <FileStack className="h-10 w-10 text-muted-foreground/30 mb-3" />
-          <p className="text-sm text-muted-foreground">
-            {activeTab ? 'このカテゴリにテンプレートがありません' : 'テンプレートがまだありません'}
-          </p>
-          <p className="text-xs text-muted-foreground/60 mt-1">
-            「テンプレート作成」から最初のテンプレートを作成しましょう
-          </p>
-        </div>
+        <EmptyState
+          illustration="templates"
+          title={activeTab ? 'このカテゴリにテンプレートがありません' : 'テンプレートがまだありません'}
+          description="「テンプレート作成」から最初のテンプレートを作成しましょう"
+        />
       ) : (
         <div className="space-y-6">
           {sortedGroups.map((groupKey) => (

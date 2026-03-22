@@ -64,6 +64,7 @@ function TemplatePicker({
         size="sm"
         onClick={() => setOpen(!open)}
         title="テンプレートを挿入"
+        aria-label="テンプレートを挿入"
       >
         <FileStack className="h-4 w-4" />
       </Button>
@@ -148,7 +149,7 @@ export default function MessagesPage() {
     api.friends
       .list({ search: search || undefined, limit: 100 })
       .then(setFriends)
-      .catch(() => {})
+      .catch(() => { toast.error('友だち一覧の取得に失敗しました'); })
       .finally(() => setLoadingFriends(false));
   }, [search]);
 
@@ -166,7 +167,7 @@ export default function MessagesPage() {
           if (selectedFriend) ids.delete(selectedFriend.id);
           setUnreadFriendIds(ids);
         }
-      }).catch(() => {});
+      }).catch(() => { console.warn('未読サマリーのポーリングに失敗'); });
     }
     fetchUnread();
     const interval = setInterval(fetchUnread, 15000);
@@ -177,7 +178,7 @@ export default function MessagesPage() {
     if (!selectedFriend) return;
     setLoadingMessages(true);
     // Mark as read in DB and fetch conversation
-    api.messages.markAsRead(selectedFriend.id).catch(() => {});
+    api.messages.markAsRead(selectedFriend.id).catch(() => { console.warn('既読マークに失敗'); });
     api.messages
       .conversation(selectedFriend.id)
       .then((msgs) => {
@@ -189,7 +190,7 @@ export default function MessagesPage() {
           return next;
         });
       })
-      .catch(() => {})
+      .catch(() => { toast.error('メッセージの取得に失敗しました'); })
       .finally(() => setLoadingMessages(false));
   }, [selectedFriend]);
 
@@ -202,7 +203,7 @@ export default function MessagesPage() {
         .then((msgs) => {
           setMessages(prev => msgs.length !== prev.length ? msgs : prev);
         })
-        .catch(() => {});
+        .catch(() => { console.warn('会話ポーリングに失敗'); });
     }, 5000);
     return () => clearInterval(interval);
   }, [selectedFriend]);
@@ -501,7 +502,7 @@ export default function MessagesPage() {
                         onClick={() => {
                           setSelectedFriend(friend);
                           if (friend.chatStatus === 'unread') {
-                            api.friends.updateChatStatus(friend.id, 'in_progress').catch(() => {});
+                            api.friends.updateChatStatus(friend.id, 'in_progress').catch(() => { toast.error('対応状況の更新に失敗しました'); });
                             setFriends((prev) => prev.map((f) => f.id === friend.id ? { ...f, chatStatus: 'in_progress' } : f));
                           }
                         }}
@@ -729,6 +730,7 @@ export default function MessagesPage() {
                           finally { setAiSuggestLoading(false); }
                         }}
                         title="AI返信候補"
+                        aria-label="AI返信候補"
                       >
                         <Sparkles className={cn("h-4 w-4", aiSuggestLoading && "animate-spin")} />
                       </Button>
@@ -796,7 +798,7 @@ export default function MessagesPage() {
                         />
                       )}
 
-                      <Button onClick={handleSend} disabled={sending} size="sm">
+                      <Button onClick={handleSend} disabled={sending} size="sm" aria-label="送信">
                         <Send className="h-4 w-4" />
                       </Button>
                     </div>
@@ -845,7 +847,7 @@ export default function MessagesPage() {
                             value={selectedFriend.chatStatus || 'unread'}
                             onChange={async (e) => {
                               const newStatus = e.target.value;
-                              await api.friends.updateChatStatus(selectedFriend.id, newStatus).catch(() => {});
+                              await api.friends.updateChatStatus(selectedFriend.id, newStatus).catch(() => { toast.error('対応状況の更新に失敗しました'); });
                               setSelectedFriend({ ...selectedFriend, chatStatus: newStatus });
                               setFriends((prev) => prev.map((f) => f.id === selectedFriend.id ? { ...f, chatStatus: newStatus } : f));
                             }}

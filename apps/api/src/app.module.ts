@@ -21,6 +21,8 @@ import { SegmentsModule } from './modules/segments/segments.module';
 import { CouponsModule } from './modules/coupons/coupons.module';
 import { ReservationsModule } from './modules/reservations/reservations.module';
 import { GreetingsModule } from './modules/greetings/greetings.module';
+import { GachaModule } from './modules/gacha/gacha.module';
+import { ExitPopupsModule } from './modules/exit-popups/exit-popups.module';
 import { validateEnv } from './config/env.validation';
 
 @Module({
@@ -50,6 +52,8 @@ import { validateEnv } from './config/env.validation';
     CouponsModule,
     ReservationsModule,
     GreetingsModule,
+    GachaModule,
+    ExitPopupsModule,
   ],
 })
 export class AppModule {}

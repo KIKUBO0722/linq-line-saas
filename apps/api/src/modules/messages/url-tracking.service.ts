@@ -1,5 +1,5 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
-import { eq, sql, desc } from 'drizzle-orm';
+import { Injectable, Inject, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { eq, and, sql, desc } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { trackedUrls, urlClicks } from '@line-saas/db';
 
@@ -43,5 +43,35 @@ export class UrlTrackingService {
       .where(eq(urlClicks.trackedUrlId, id))
       .orderBy(desc(urlClicks.clickedAt));
     return clicks;
+  }
+
+  async updateTrackedUrl(tenantId: string, id: string, data: { originalUrl?: string }) {
+    const [existing] = await this.db.select().from(trackedUrls)
+      .where(eq(trackedUrls.id, id))
+      .limit(1);
+
+    if (!existing) throw new NotFoundException('Tracked URL not found');
+    if (existing.tenantId !== tenantId) throw new ForbiddenException('Access denied');
+
+    const [updated] = await this.db.update(trackedUrls)
+      .set({ originalUrl: data.originalUrl ?? existing.originalUrl })
+      .where(and(eq(trackedUrls.id, id), eq(trackedUrls.tenantId, tenantId)))
+      .returning();
+
+    return updated;
+  }
+
+  async deleteTrackedUrl(tenantId: string, id: string) {
+    const [existing] = await this.db.select().from(trackedUrls)
+      .where(eq(trackedUrls.id, id))
+      .limit(1);
+
+    if (!existing) throw new NotFoundException('Tracked URL not found');
+    if (existing.tenantId !== tenantId) throw new ForbiddenException('Access denied');
+
+    await this.db.delete(trackedUrls)
+      .where(and(eq(trackedUrls.id, id), eq(trackedUrls.tenantId, tenantId)));
+
+    return { deleted: true };
   }
 }

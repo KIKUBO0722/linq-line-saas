@@ -198,9 +198,41 @@ export const api = {
     chatSuggest: (data: { friendId: string; recentMessages: { role: string; content: string }[]; friendInfo?: any }) =>
       fetchApi<{ suggestions: string[] }>('/api/v1/ai/chat-suggest', { method: 'POST', body: JSON.stringify(data) }),
   },
+  conversions: {
+    listGoals: () => fetchApi<any[]>('/api/v1/conversions/goals'),
+    createGoal: (data: { name: string; type: string; targetId?: string }) =>
+      fetchApi<any>('/api/v1/conversions/goals', { method: 'POST', body: JSON.stringify(data) }),
+    updateGoal: (id: string, data: { name?: string; isActive?: boolean }) =>
+      fetchApi<any>(`/api/v1/conversions/goals/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteGoal: (id: string) =>
+      fetchApi<any>(`/api/v1/conversions/goals/${id}`, { method: 'DELETE' }),
+    getGoalEvents: (id: string) => fetchApi<any[]>(`/api/v1/conversions/goals/${id}/events`),
+    recordEvent: (data: { goalId: string; friendId?: string; trackedUrlId?: string; metadata?: any }) =>
+      fetchApi<any>('/api/v1/conversions/events', { method: 'POST', body: JSON.stringify(data) }),
+  },
+  exitPopups: {
+    list: () => fetchApi<any[]>('/api/v1/exit-popups'),
+    create: (data: any) => fetchApi<any>('/api/v1/exit-popups', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: any) => fetchApi<any>(`/api/v1/exit-popups/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id: string) => fetchApi<any>(`/api/v1/exit-popups/${id}`, { method: 'DELETE' }),
+  },
+  gacha: {
+    listCampaigns: () => fetchApi<any[]>('/api/v1/gacha/campaigns'),
+    getCampaign: (id: string) => fetchApi<any>(`/api/v1/gacha/campaigns/${id}`),
+    createCampaign: (data: any) => fetchApi<any>('/api/v1/gacha/campaigns', { method: 'POST', body: JSON.stringify(data) }),
+    updateCampaign: (id: string, data: any) => fetchApi<any>(`/api/v1/gacha/campaigns/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteCampaign: (id: string) => fetchApi<any>(`/api/v1/gacha/campaigns/${id}`, { method: 'DELETE' }),
+    addPrize: (campaignId: string, data: any) => fetchApi<any>(`/api/v1/gacha/campaigns/${campaignId}/prizes`, { method: 'POST', body: JSON.stringify(data) }),
+    updatePrize: (id: string, data: any) => fetchApi<any>(`/api/v1/gacha/prizes/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deletePrize: (id: string) => fetchApi<any>(`/api/v1/gacha/prizes/${id}`, { method: 'DELETE' }),
+    draw: (campaignId: string, friendId?: string) => fetchApi<any>(`/api/v1/gacha/campaigns/${campaignId}/draw`, { method: 'POST', body: JSON.stringify({ friendId }) }),
+    getDrawHistory: (campaignId: string) => fetchApi<any[]>(`/api/v1/gacha/campaigns/${campaignId}/draws`),
+  },
   urlTracking: {
     list: () => fetchApi<any[]>('/api/v1/url-tracking'),
     getClicks: (id: string) => fetchApi<any[]>(`/api/v1/url-tracking/${id}/clicks`),
+    create: (originalUrl: string, messageId?: string) =>
+      fetchApi<any>('/api/v1/url-tracking', { method: 'POST', body: JSON.stringify({ originalUrl, messageId }) }),
   },
   richMenus: {
     list: () => fetchApi<any[]>('/api/v1/rich-menus'),

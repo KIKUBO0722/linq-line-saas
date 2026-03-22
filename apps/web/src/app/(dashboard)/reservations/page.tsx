@@ -14,6 +14,8 @@ import { Select, SelectOption } from '@/components/ui/select';
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageSkeleton } from '@/components/ui/skeleton';
 
 interface Slot {
   id: string;
@@ -399,15 +401,13 @@ export default function ReservationsPage() {
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="flex justify-center py-8">
-                  <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                </div>
+                <PageSkeleton />
               ) : reservations.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <CalendarCheck className="h-10 w-10 text-muted-foreground/30 mb-3" />
-                  <p className="text-sm text-muted-foreground">予約がありません</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">「予約作成」から新しい予約を追加しましょう</p>
-                </div>
+                <EmptyState
+                  illustration="reservations"
+                  title="予約がありません"
+                  description="「予約作成」から新しい予約を追加しましょう"
+                />
               ) : (
                 <Table>
                   <TableHeader>
@@ -459,6 +459,7 @@ export default function ReservationsPage() {
                               variant="ghost"
                               onClick={() => handleDeleteReservation(res.id)}
                               className="text-destructive hover:text-destructive"
+                              aria-label="削除"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -539,9 +540,7 @@ export default function ReservationsPage() {
             </CardHeader>
             <CardContent>
               {slotsLoading ? (
-                <div className="flex justify-center py-8">
-                  <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                </div>
+                <PageSkeleton />
               ) : slots.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Clock className="h-10 w-10 text-muted-foreground/30 mb-3" />
@@ -576,6 +575,7 @@ export default function ReservationsPage() {
                             variant="ghost"
                             onClick={() => handleDeleteSlot(slot.id)}
                             className="text-destructive hover:text-destructive"
+                            aria-label="削除"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>

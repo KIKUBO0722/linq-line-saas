@@ -13,6 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageSkeleton } from '@/components/ui/skeleton';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
 
@@ -79,7 +81,7 @@ function ConditionEditor({
       <Card className="w-[420px] max-h-[80vh] overflow-y-auto">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base">条件設定</CardTitle>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onClose} aria-label="閉じる">
             <X className="h-4 w-4" />
           </Button>
         </CardHeader>
@@ -232,13 +234,13 @@ export default function StepsPage() {
   const loadScenarios = useCallback(() => {
     fetchApi('/api/v1/steps/scenarios')
       .then(setScenarios)
-      .catch(() => {})
+      .catch(() => { toast.error('シナリオ一覧の取得に失敗しました'); })
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
     loadScenarios();
-    api.tags.list().then(setAllTags).catch(() => {});
+    api.tags.list().then(setAllTags).catch(() => { console.warn('タグ一覧の取得に失敗'); });
   }, [loadScenarios]);
 
   // Listen for AI copilot data refresh
@@ -391,13 +393,7 @@ export default function StepsPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-20">
-        <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
-  }
+  if (loading) return <PageSkeleton />;
 
   // Detail view - visual editor
   if (view === 'detail' && selectedScenario) {
@@ -918,10 +914,12 @@ export default function StepsPage() {
 
       {scenarios.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <GitBranch className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">シナリオがありません</h3>
-            <p className="text-sm text-muted-foreground mt-1">「新規シナリオ」ボタンから作成してください</p>
+          <CardContent>
+            <EmptyState
+              illustration="steps"
+              title="シナリオがありません"
+              description="「新規シナリオ」ボタンから作成してください"
+            />
           </CardContent>
         </Card>
       ) : (

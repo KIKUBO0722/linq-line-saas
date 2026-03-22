@@ -17,6 +17,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageSkeleton } from '@/components/ui/skeleton';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
 
@@ -677,13 +679,7 @@ export default function RichMenusPage() {
   }
 
   // --- Loading ---
-  if (loading) {
-    return (
-      <div className="flex justify-center py-20">
-        <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
-  }
+  if (loading) return <PageSkeleton />;
 
   // --- Tab Group Editor ---
   if (view === 'create-group') {
@@ -1039,11 +1035,13 @@ export default function RichMenusPage() {
         <TabsContent value="single" className="mt-4">
           {singleMenus.length === 0 ? (
             <Card>
-              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                <Menu className="h-12 w-12 text-muted-foreground/30 mb-4" />
-                <h3 className="text-lg font-semibold">リッチメニューがありません</h3>
-                <p className="text-sm text-muted-foreground mt-1 mb-4">リッチメニューを作成して、LINEトーク画面にメニューを表示しましょう</p>
-                <Button onClick={startCreate} className="gap-1.5"><Plus className="h-4 w-4" />最初のメニューを作成</Button>
+              <CardContent>
+                <EmptyState
+                  illustration="rich-menus"
+                  title="リッチメニューがありません"
+                  description="リッチメニューを作成して、LINEトーク画面にメニューを表示しましょう"
+                  action={{ label: '最初のメニューを作成', onClick: startCreate, icon: Plus }}
+                />
               </CardContent>
             </Card>
           ) : (

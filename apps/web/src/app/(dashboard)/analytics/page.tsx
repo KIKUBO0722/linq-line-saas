@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import {
   BarChart3, Users, MessageSquare, ArrowUpRight, ArrowDownRight,
   Zap, TrendingUp, Radio, Calendar, RefreshCw, Eye, Route, Plus, Trash2, QrCode, Copy,
+  Link2, ExternalLink, MousePointerClick, Target, ToggleLeft, ToggleRight,
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -19,6 +20,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export default function AnalyticsPage() {
   const [stats, setStats] = useState<any>(null);
@@ -33,6 +35,19 @@ export default function AnalyticsPage() {
   const [sourceUtmMedium, setSourceUtmMedium] = useState('');
   const [sourceUtmCampaign, setSourceUtmCampaign] = useState('');
   const [creatingSrc, setCreatingSrc] = useState(false);
+  const [trackedUrls, setTrackedUrls] = useState<any[]>([]);
+  const [selectedUrl, setSelectedUrl] = useState<any>(null);
+  const [urlClicks, setUrlClicks] = useState<any[]>([]);
+  const [cvGoals, setCvGoals] = useState<any[]>([]);
+  const [selectedGoal, setSelectedGoal] = useState<any>(null);
+  const [goalEvents, setGoalEvents] = useState<any[]>([]);
+  const [showGoalForm, setShowGoalForm] = useState(false);
+  const [newGoalName, setNewGoalName] = useState('');
+  const [newGoalType, setNewGoalType] = useState('custom');
+  const [creatingGoal, setCreatingGoal] = useState(false);
+  const [newUrl, setNewUrl] = useState('');
+  const [creatingUrl, setCreatingUrl] = useState(false);
+  const [showUrlForm, setShowUrlForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [deliveryDate, setDeliveryDate] = useState(() => {
     const d = new Date();
@@ -48,13 +63,17 @@ export default function AnalyticsPage() {
       api.analytics.daily(14).catch(() => null),
       api.analytics.broadcasts().catch(() => []),
       api.analytics.trafficSources().catch(() => []),
+      api.urlTracking.list().catch(() => []),
+      api.conversions.listGoals().catch(() => []),
     ])
-      .then(([s, u, d, b, ts]) => {
+      .then(([s, u, d, b, ts, urls, goals]) => {
         setStats(s);
         setUsage(u);
         setDaily(d);
         setBroadcasts(Array.isArray(b) ? b : []);
         setTrafficSources(Array.isArray(ts) ? ts : []);
+        setTrackedUrls(Array.isArray(urls) ? urls : []);
+        setCvGoals(Array.isArray(goals) ? goals : []);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -116,6 +135,14 @@ export default function AnalyticsPage() {
           <TabsTrigger value="traffic" className="gap-1.5">
             <Route className="h-4 w-4" />
             流入経路
+          </TabsTrigger>
+          <TabsTrigger value="url-tracking" className="gap-1.5">
+            <Link2 className="h-4 w-4" />
+            URL測定
+          </TabsTrigger>
+          <TabsTrigger value="conversions" className="gap-1.5">
+            <Target className="h-4 w-4" />
+            CV
           </TabsTrigger>
         </TabsList>
 
@@ -472,6 +499,7 @@ export default function AnalyticsPage() {
                                 }}
                                 className="text-muted-foreground hover:text-foreground"
                                 title="コピー"
+                                aria-label="コピー"
                               >
                                 <Copy className="h-3.5 w-3.5" />
                               </button>
@@ -499,6 +527,7 @@ export default function AnalyticsPage() {
                                 }
                               }}
                               className="text-destructive hover:text-destructive"
+                              aria-label="削除"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -546,9 +575,406 @@ export default function AnalyticsPage() {
             </Card>
           )}
         </TabsContent>
+
+        {/* Conversions tab */}
+        <TabsContent value="conversions" className="mt-4 space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div>
+                <CardTitle className="text-base">コンバージョン目標</CardTitle>
+                <CardDescription className="text-xs">フォーム回答・予約完了・クーポン利用などの成果を計測</CardDescription>
+              </div>
+              <Button size="sm" className="gap-1.5" onClick={() => setShowGoalForm(!showGoalForm)}>
+                <Plus className="h-4 w-4" />
+                目標追加
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {showGoalForm && (
+                <div className="flex gap-2 mb-4 items-end">
+                  <div className="flex-1">
+                    <label className="text-xs text-muted-foreground mb-1 block">目標名</label>
+                    <Input placeholder="例: お問い合わせフォーム回答" value={newGoalName} onChange={(e) => setNewGoalName(e.target.value)} />
+                  </div>
+                  <div className="w-40">
+                    <label className="text-xs text-muted-foreground mb-1 block">種別</label>
+                    <select
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                      value={newGoalType}
+                      onChange={(e) => setNewGoalType(e.target.value)}
+                    >
+                      <option value="form_response">フォーム回答</option>
+                      <option value="reservation_complete">予約完了</option>
+                      <option value="coupon_used">クーポン利用</option>
+                      <option value="url_click">URLクリック</option>
+                      <option value="custom">カスタム</option>
+                    </select>
+                  </div>
+                  <Button
+                    size="sm"
+                    disabled={!newGoalName.trim() || creatingGoal}
+                    onClick={async () => {
+                      setCreatingGoal(true);
+                      try {
+                        const goal = await api.conversions.createGoal({ name: newGoalName.trim(), type: newGoalType });
+                        setCvGoals((prev) => [goal, ...prev]);
+                        setNewGoalName('');
+                        setShowGoalForm(false);
+                        toast.success('コンバージョン目標を作成しました');
+                      } catch {
+                        toast.error('目標作成に失敗しました');
+                      } finally {
+                        setCreatingGoal(false);
+                      }
+                    }}
+                  >
+                    作成
+                  </Button>
+                </div>
+              )}
+
+              {cvGoals.length === 0 ? (
+                <EmptyState
+                  illustration="analytics"
+                  title="コンバージョン目標がありません"
+                  description="「目標追加」からフォーム回答や予約完了などの成果指標を設定しましょう"
+                />
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>目標名</TableHead>
+                      <TableHead className="w-28">種別</TableHead>
+                      <TableHead className="w-20 text-center">CV数</TableHead>
+                      <TableHead className="w-20 text-center">状態</TableHead>
+                      <TableHead className="w-20" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {cvGoals.map((goal) => {
+                      const typeLabels: Record<string, string> = {
+                        form_response: 'フォーム',
+                        reservation_complete: '予約',
+                        coupon_used: 'クーポン',
+                        url_click: 'URL',
+                        custom: 'カスタム',
+                      };
+                      return (
+                        <TableRow
+                          key={goal.id}
+                          className={selectedGoal?.id === goal.id ? 'bg-muted/50' : 'cursor-pointer hover:bg-muted/30'}
+                          onClick={async () => {
+                            setSelectedGoal(goal);
+                            try {
+                              const events = await api.conversions.getGoalEvents(goal.id);
+                              setGoalEvents(Array.isArray(events) ? events : []);
+                            } catch {
+                              setGoalEvents([]);
+                            }
+                          }}
+                        >
+                          <TableCell className="font-medium text-sm">{goal.name}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-[10px]">{typeLabels[goal.type] || goal.type}</Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="secondary" className="gap-1">
+                              <Target className="h-3 w-3" />
+                              {goal.conversionCount ?? 0}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  const updated = await api.conversions.updateGoal(goal.id, { isActive: !goal.isActive });
+                                  setCvGoals((prev) => prev.map((g) => g.id === goal.id ? updated : g));
+                                  toast.success(updated.isActive ? '目標を有効化しました' : '目標を無効化しました');
+                                } catch {
+                                  toast.error('更新に失敗しました');
+                                }
+                              }}
+                              title={goal.isActive ? '無効化' : '有効化'}
+                              aria-label="有効/無効切替"
+                            >
+                              {goal.isActive ? (
+                                <ToggleRight className="h-5 w-5 text-green-500" />
+                              ) : (
+                                <ToggleLeft className="h-5 w-5 text-muted-foreground" />
+                              )}
+                            </button>
+                          </TableCell>
+                          <TableCell>
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (!confirm('この目標を削除しますか？')) return;
+                                try {
+                                  await api.conversions.deleteGoal(goal.id);
+                                  setCvGoals((prev) => prev.filter((g) => g.id !== goal.id));
+                                  if (selectedGoal?.id === goal.id) setSelectedGoal(null);
+                                  toast.success('目標を削除しました');
+                                } catch {
+                                  toast.error('削除に失敗しました');
+                                }
+                              }}
+                              className="text-muted-foreground hover:text-destructive"
+                              aria-label="削除"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* CV Events detail panel */}
+          {selectedGoal && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Target className="h-4 w-4" />
+                  CV詳細: {selectedGoal.name}
+                </CardTitle>
+                <CardDescription className="text-xs">合計 {selectedGoal.conversionCount ?? 0} 件のコンバージョン</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {goalEvents.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">まだコンバージョンがありません</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>日時</TableHead>
+                        <TableHead>友だち</TableHead>
+                        <TableHead>経路</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {goalEvents.slice(0, 50).map((event) => (
+                        <TableRow key={event.id}>
+                          <TableCell className="text-xs">
+                            {new Date(event.convertedAt).toLocaleString('ja-JP')}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {event.friendId ? (
+                              <Badge variant="outline" className="text-[10px]">ID: {event.friendId.slice(0, 8)}</Badge>
+                            ) : (
+                              <span className="text-muted-foreground">不明</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {event.trackedUrlId ? (
+                              <Badge variant="outline" className="text-[10px] gap-1">
+                                <Link2 className="h-2.5 w-2.5" />
+                                URL経由
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">直接</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* URL Tracking tab */}
+        <TabsContent value="url-tracking" className="mt-4 space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div>
+                <CardTitle className="text-base">URLクリック測定</CardTitle>
+                <CardDescription className="text-xs">配信メッセージ内のURLクリック数を計測</CardDescription>
+              </div>
+              <Button size="sm" className="gap-1.5" onClick={() => setShowUrlForm(!showUrlForm)}>
+                <Plus className="h-4 w-4" />
+                URL追加
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {showUrlForm && (
+                <div className="flex gap-2 mb-4">
+                  <Input
+                    placeholder="https://example.com/page"
+                    value={newUrl}
+                    onChange={(e) => setNewUrl(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button
+                    size="sm"
+                    disabled={!newUrl.trim() || creatingUrl}
+                    onClick={async () => {
+                      setCreatingUrl(true);
+                      try {
+                        const created = await api.urlTracking.create(newUrl.trim());
+                        setTrackedUrls((prev) => [created, ...prev]);
+                        setNewUrl('');
+                        setShowUrlForm(false);
+                        toast.success('トラッキングURLを作成しました');
+                      } catch {
+                        toast.error('URL作成に失敗しました');
+                      } finally {
+                        setCreatingUrl(false);
+                      }
+                    }}
+                  >
+                    作成
+                  </Button>
+                </div>
+              )}
+
+              {trackedUrls.length === 0 ? (
+                <EmptyState
+                  illustration="analytics"
+                  title="トラッキングURLがありません"
+                  description="「URL追加」からクリック計測用URLを作成しましょう"
+                />
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>URL</TableHead>
+                      <TableHead className="w-24 text-center">クリック数</TableHead>
+                      <TableHead className="w-32">作成日</TableHead>
+                      <TableHead className="w-20" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {trackedUrls.map((url) => (
+                      <TableRow
+                        key={url.id}
+                        className={selectedUrl?.id === url.id ? 'bg-muted/50' : 'cursor-pointer hover:bg-muted/30'}
+                        onClick={async () => {
+                          setSelectedUrl(url);
+                          try {
+                            const clicks = await api.urlTracking.getClicks(url.id);
+                            setUrlClicks(Array.isArray(clicks) ? clicks : []);
+                          } catch {
+                            setUrlClicks([]);
+                          }
+                        }}
+                      >
+                        <TableCell>
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground truncate max-w-[300px]">{url.originalUrl}</p>
+                            <div className="flex items-center gap-1.5">
+                              <code className="text-[11px] bg-muted px-1.5 py-0.5 rounded">/t/{url.shortCode}</code>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const trackingUrl = `${window.location.origin}/t/${url.shortCode}`;
+                                  navigator.clipboard.writeText(trackingUrl);
+                                  toast.success('トラッキングURLをコピーしました');
+                                }}
+                                className="text-muted-foreground hover:text-foreground"
+                                aria-label="コピー"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="secondary" className="gap-1">
+                            <MousePointerClick className="h-3 w-3" />
+                            {url.clickCount ?? 0}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {new Date(url.createdAt).toLocaleDateString('ja-JP')}
+                        </TableCell>
+                        <TableCell>
+                          <a
+                            href={url.originalUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-muted-foreground hover:text-foreground"
+                            aria-label="外部リンク"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Click detail panel */}
+          {selectedUrl && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <MousePointerClick className="h-4 w-4" />
+                  クリック詳細: {selectedUrl.shortCode}
+                </CardTitle>
+                <CardDescription className="text-xs truncate">{selectedUrl.originalUrl}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {urlClicks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">まだクリックされていません</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>日時</TableHead>
+                        <TableHead>友だち</TableHead>
+                        <TableHead>デバイス</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {urlClicks.slice(0, 50).map((click) => (
+                        <TableRow key={click.id}>
+                          <TableCell className="text-xs">
+                            {new Date(click.clickedAt).toLocaleString('ja-JP')}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {click.friendId ? (
+                              <Badge variant="outline" className="text-[10px]">ID: {click.friendId.slice(0, 8)}</Badge>
+                            ) : (
+                              <span className="text-muted-foreground">不明</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]">
+                            {click.userAgent ? parseUA(click.userAgent) : '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
       </Tabs>
     </div>
   );
+}
+
+/** Parse user agent string to a short device description */
+function parseUA(ua: string): string {
+  if (ua.includes('iPhone')) return 'iPhone';
+  if (ua.includes('iPad')) return 'iPad';
+  if (ua.includes('Android')) return 'Android';
+  if (ua.includes('Windows')) return 'Windows';
+  if (ua.includes('Mac')) return 'Mac';
+  if (ua.includes('Linux')) return 'Linux';
+  return ua.slice(0, 30);
 }
 
 function MetricCard({ icon, value, label, trend, color }: { icon: React.ReactNode; value: number; label: string; trend?: number; color?: string }) {

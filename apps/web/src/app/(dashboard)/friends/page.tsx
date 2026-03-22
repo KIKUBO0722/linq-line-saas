@@ -13,6 +13,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageSkeleton } from '@/components/ui/skeleton';
 
 export default function FriendsPage() {
   const [friends, setFriends] = useState<any[]>([]);
@@ -163,12 +165,12 @@ export default function FriendsPage() {
     api.friends
       .list({ search: search || undefined, limit: 50 })
       .then(setFriends)
-      .catch(() => {})
+      .catch(() => { toast.error('友だち一覧の取得に失敗しました'); })
       .finally(() => setLoading(false));
   }, [search]);
 
   useEffect(() => {
-    api.tags.list().then(setTags).catch(() => {});
+    api.tags.list().then(setTags).catch(() => { console.warn('タグ一覧の取得に失敗'); });
   }, []);
 
   // Listen for AI Copilot fill events
@@ -182,7 +184,7 @@ export default function FriendsPage() {
             api.tags.create({ name: t.name, color: t.color || '#3B82F6' }).catch(() => null)
           )
         ).then(() => {
-          api.tags.list().then(setTags).catch(() => {});
+          api.tags.list().then(setTags).catch(() => { console.warn('タグ一覧の再取得に失敗'); });
         });
       }
     }
@@ -374,6 +376,7 @@ export default function FriendsPage() {
                     <button
                       onClick={() => handleDeleteTag(tag.id)}
                       className="ml-1 hover:opacity-100 opacity-70"
+                      aria-label="削除"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -400,15 +403,15 @@ export default function FriendsPage() {
       <div className="flex gap-6">
         <div className="flex-1 min-w-0">
           {loading ? (
-            <div className="flex justify-center py-20">
-              <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
-            </div>
+            <PageSkeleton />
           ) : friends.length === 0 ? (
             <Card>
-              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold">友だちがいません</h3>
-                <p className="text-sm text-muted-foreground mt-1">LINE公式アカウントに友だちが追加されると表示されます</p>
+              <CardContent>
+                <EmptyState
+                  illustration="friends"
+                  title="友だちがいません"
+                  description="LINE公式アカウントに友だちが追加されると表示されます"
+                />
               </CardContent>
             </Card>
           ) : (
@@ -487,7 +490,7 @@ export default function FriendsPage() {
           <Card className="w-80 shrink-0 self-start">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-base">{selected.displayName || '名前未設定'}</CardTitle>
-              <Button variant="ghost" size="sm" onClick={() => setSelected(null)} className="h-8 w-8 p-0">
+              <Button variant="ghost" size="sm" onClick={() => setSelected(null)} className="h-8 w-8 p-0" aria-label="閉じる">
                 <X className="h-4 w-4" />
               </Button>
             </CardHeader>
@@ -599,6 +602,7 @@ export default function FriendsPage() {
                         <button
                           onClick={() => handleRemoveTag(t.id)}
                           className="ml-1 hover:opacity-100 opacity-70"
+                          aria-label="削除"
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -669,6 +673,7 @@ export default function FriendsPage() {
                             <button
                               onClick={() => handleDeleteCustomField(key)}
                               className="opacity-0 group-hover:opacity-70 hover:opacity-100 ml-1"
+                              aria-label="削除"
                             >
                               <Trash2 className="h-3 w-3 text-destructive" />
                             </button>

@@ -70,9 +70,9 @@ export default function AiPage() {
     fetch(`${API_BASE}/api/v1/ai/config`, { credentials: 'include' })
       .then((r) => r.json())
       .then(setConfig)
-      .catch(() => {})
+      .catch(() => { toast.error('AI設定の取得に失敗しました'); })
       .finally(() => setLoading(false));
-    api.greetings.list().then(setGreetings).catch(() => {});
+    api.greetings.list().then(setGreetings).catch(() => { console.warn('あいさつ一覧の取得に失敗'); });
   }, []);
 
   // Listen for AI Copilot fill events
