@@ -13,14 +13,20 @@ export class TemplatesController {
   }
 
   @Post()
-  async create(@Req() req: any, @Body() body: { name: string; content: string; category?: string }) {
+  async create(
+    @Req() req: any,
+    @Body() body: { name: string; content: string; category?: string; messageType?: string; messageData?: any },
+  ) {
     return this.templatesService.create(req.tenantId, body);
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() body: { name?: string; content?: string; category?: string }) {
+  async update(
+    @Param('id') id: string,
+    @Body() body: { name?: string; content?: string; category?: string; messageType?: string; messageData?: any },
+  ) {
     return this.templatesService.update(id, body);
-    }
+  }
 
   @Delete(':id')
   async delete(@Param('id') id: string) {

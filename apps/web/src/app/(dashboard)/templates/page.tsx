@@ -711,10 +711,23 @@ export default function TemplatesPage() {
     if (!newName.trim() || !content.trim()) return;
     setCreating(true);
     try {
+      // Detect message type from content
+      let messageType = 'text';
+      let messageData: any = null;
+      try {
+        const parsed = JSON.parse(content);
+        if (parsed.type === 'buttons' || parsed.type === 'carousel' || parsed.type === 'confirm') {
+          messageType = parsed.type;
+          messageData = parsed;
+        }
+      } catch { /* plain text */ }
+
       const template = await api.templates.create({
         name: newName.trim(),
-        content: content.trim(),
+        content: messageType === 'text' ? content.trim() : newName.trim(),
         category: newCategory || undefined,
+        messageType,
+        messageData,
       }) as Template;
       setTemplates((prev) => [template, ...prev]);
       setNewName('');
@@ -731,10 +744,22 @@ export default function TemplatesPage() {
   async function handleUpdate(id: string, content: string) {
     if (!editName.trim() || !content.trim()) return;
     try {
+      let messageType = 'text';
+      let messageData: any = null;
+      try {
+        const parsed = JSON.parse(content);
+        if (parsed.type === 'buttons' || parsed.type === 'carousel' || parsed.type === 'confirm') {
+          messageType = parsed.type;
+          messageData = parsed;
+        }
+      } catch { /* plain text */ }
+
       const updated = await api.templates.update(id, {
         name: editName.trim(),
-        content: content.trim(),
+        content: messageType === 'text' ? content.trim() : editName.trim(),
         category: editCategory || undefined,
+        messageType,
+        messageData,
       }) as Partial<Template>;
       setTemplates((prev) =>
         prev.map((t) => (t.id === id ? { ...t, ...updated } : t)),

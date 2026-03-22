@@ -121,9 +121,9 @@ export const api = {
   },
   templates: {
     list: () => fetchApi<any[]>('/api/v1/templates'),
-    create: (data: { name: string; content: string; category?: string }) =>
+    create: (data: { name: string; content: string; category?: string; messageType?: string; messageData?: any }) =>
       fetchApi('/api/v1/templates', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: string, data: { name?: string; content?: string; category?: string }) =>
+    update: (id: string, data: { name?: string; content?: string; category?: string; messageType?: string; messageData?: any }) =>
       fetchApi(`/api/v1/templates/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: (id: string) =>
       fetchApi(`/api/v1/templates/${id}`, { method: 'DELETE' }),
