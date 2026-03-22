@@ -3,7 +3,8 @@
 import { toast } from 'sonner';
 
 import { useEffect, useState } from 'react';
-import { FileStack, Plus, Pencil, Trash2, X, Check, Copy, ClipboardCheck, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react';
+import { FileStack, Plus, Pencil, Trash2, X, Check, Copy, ClipboardCheck, ChevronDown, ChevronUp, Image as ImageIcon, Eye } from 'lucide-react';
+import { LinePreview, templateToLineMessages } from '@/components/line-preview';
 import { api } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -624,6 +625,26 @@ function TemplateForm({
           />
         </div>
       </div>
+
+      {/* LINE Preview */}
+      {isValid() && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <Eye className="h-3.5 w-3.5" />
+            LINEプレビュー
+          </div>
+          <LinePreview
+            messages={templateToLineMessages(
+              templateType,
+              templateType === 'text' ? textContent : name,
+              templateType === 'buttons' ? { thumbnailImageUrl: btnImageUrl, title: btnTitle, text: btnText, actions: btnActions } :
+              templateType === 'carousel' ? { columns } :
+              templateType === 'confirm' ? { text: cfmText, actions: cfmActions } :
+              null,
+            )}
+          />
+        </div>
+      )}
 
       <div className="flex gap-2">
         <Button type="submit" disabled={submitting || !isValid()}>
