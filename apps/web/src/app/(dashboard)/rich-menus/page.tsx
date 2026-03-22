@@ -692,7 +692,7 @@ export default function RichMenusPage() {
     const tabSize = getSize(currentTab.menuSize);
 
     return (
-      <div className="p-6 max-w-6xl mx-auto space-y-6">
+      <div className="p-3 max-w-6xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => { resetEditor(); setView('list'); }}>
             <ChevronLeft className="h-4 w-4" />
@@ -893,7 +893,7 @@ export default function RichMenusPage() {
     const size = getSize();
 
     return (
-      <div className="p-6 max-w-6xl mx-auto space-y-6">
+      <div className="p-3 max-w-6xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => { resetEditor(); setView('list'); }}>
             <ChevronLeft className="h-4 w-4" />
@@ -1006,7 +1006,7 @@ export default function RichMenusPage() {
   const singleMenus = menus.filter((m) => !m.groupId);
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-3 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">リッチメニュー</h1>

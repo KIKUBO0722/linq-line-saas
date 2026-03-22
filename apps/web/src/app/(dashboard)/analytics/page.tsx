@@ -199,7 +199,7 @@ export default function AnalyticsPage() {
   const inboundPct = msgTotal > 0 ? ((stats?.messages?.inbound || 0) / msgTotal) * 100 : 0;
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-3 max-w-5xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold">分析</h1>
         <p className="text-sm text-muted-foreground">過去30日間のパフォーマンス</p>
