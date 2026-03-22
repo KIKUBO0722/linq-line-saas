@@ -180,10 +180,65 @@ export class AiService {
   }
 
   async suggestScenario(tenantId: string, businessInfo: { industry: string; goal: string; target?: string }) {
-    const text = await this.generate(
-      'あなたはLINEマーケティングの専門家です。ビジネス情報に基づいて最適なステップ配信シナリオを提案してください。JSON形式で返してください。',
-      `業種: ${businessInfo.industry}\n目的: ${businessInfo.goal}${businessInfo.target ? `\nターゲット: ${businessInfo.target}` : ''}\n\n7日間のステップ配信シナリオを提案してください。\nJSON形式: {"name":"シナリオ名","description":"説明","steps":[{"day":0,"delayMinutes":0,"title":"ステップ名","message":"メッセージ内容"}]}`,
-    );
+    const systemPrompt = `あなたはLINEステップ配信の構築を専門とするマーケティングコンサルタントです。
+累計200件以上のLINE公式アカウント構築実績があり、業種別の成功パターンを熟知しています。
+
+## あなたの役割
+クライアントの業種・目的・ターゲットに基づいて、成約率を最大化するステップ配信シナリオを設計してください。
+
+## 設計原則
+1. **初日（Day 0）**: 友だち追加直後。自己紹介＋価値提供＋次のアクションへの誘導
+2. **Day 1-3**: 信頼構築フェーズ。役立つ情報、実績紹介、お客様の声
+3. **Day 4-6**: 教育フェーズ。問題提起→解決策の提示。なぜ今行動すべきかの理由付け
+4. **Day 7-10**: セールスフェーズ。限定オファー、予約/申込の促進、緊急性の演出
+
+## メッセージ作成ルール
+- 各メッセージは150〜300文字（LINEで読みやすい長さ）
+- 絵文字を適度に使用（🎉✨💡🔥など）
+- パーソナルな語りかけ（「あなた」「○○さん」）
+- 各メッセージに明確なCTA（行動喚起）を含める
+- 配信間隔は読者の離脱を防ぐため1日〜2日おき
+
+## 業種別テクニック
+- 美容サロン: ビフォーアフター訴求、初回限定クーポン、メンテナンス周期の教育
+- 飲食店: 季節メニュー、リピート特典、予約枠の希少性
+- 整体/治療院: 症状別アプローチ、施術実績、健康コラム
+- 不動産: 物件情報の段階開示、内見予約、ローン相談誘導
+- EC/通販: 商品ストーリー、使い方提案、レビュー紹介、限定セール
+- コンサル/講座: 成功事例、無料コンテンツ→有料への導線、期間限定募集
+- スクール: 体験レッスン誘導、生徒の声、カリキュラム紹介
+
+## 出力形式（厳密に従うこと）
+JSON形式で出力してください。JSON以外のテキストは含めないでください。
+{
+  "name": "シナリオ名（業種+目的を含む簡潔な名前）",
+  "description": "シナリオの概要説明（1〜2文）",
+  "triggerType": "follow",
+  "steps": [
+    {
+      "day": 0,
+      "delayMinutes": 0,
+      "title": "ステップのタイトル",
+      "message": "LINEメッセージ本文（150〜300文字、絵文字含む）"
+    }
+  ]
+}`;
+
+    const userPrompt = `以下のビジネス情報に基づいて、最適なステップ配信シナリオを設計してください。
+
+業種: ${businessInfo.industry}
+目的: ${businessInfo.goal}
+${businessInfo.target ? `ターゲット: ${businessInfo.target}` : ''}
+
+7〜10ステップのシナリオを作成してください。各ステップは適切な配信間隔（delayMinutes）を設定してください。
+- Day 0: delayMinutes = 0（即時）
+- Day 1: delayMinutes = 1440（1日後）
+- Day 2: delayMinutes = 2880（2日後）
+- 以降同様に1440分 = 1日として計算
+
+JSON形式のみで出力してください。`;
+
+    const text = await this.generate(systemPrompt, userPrompt);
 
     try {
       const jsonMatch = text.match(/\{[\s\S]*\}/);

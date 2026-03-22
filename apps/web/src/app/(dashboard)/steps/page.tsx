@@ -746,37 +746,69 @@ export default function StepsPage() {
               AIシナリオ自動生成
             </CardTitle>
             <CardDescription>
-              業種と目的を入力するだけで、5〜10通のステップ配信シナリオをAIが自動作成します
+              業種と目的を選ぶだけで、7〜10通のステップ配信シナリオをAIが30秒で自動作成。構築代行30万円相当のクオリティ。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {!aiPreview ? (
               <>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">業種 *</Label>
-                    <Input
-                      value={aiIndustry}
-                      onChange={(e) => setAiIndustry(e.target.value)}
-                      placeholder="例: 美容サロン、飲食店、整体院"
-                    />
+                {/* Industry presets */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold">業種を選択 *</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['美容サロン', '飲食店', '整体・治療院', '不動産', 'EC・通販', 'コンサル・講座', 'スクール・教室', 'クリニック', 'ジム・フィットネス'].map((ind) => (
+                      <button
+                        key={ind}
+                        onClick={() => setAiIndustry(ind)}
+                        className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                          aiIndustry === ind
+                            ? 'bg-amber-500 text-white border-amber-500'
+                            : 'text-muted-foreground border-border hover:bg-muted'
+                        }`}
+                      >
+                        {ind}
+                      </button>
+                    ))}
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">目的 *</Label>
-                    <Input
-                      value={aiGoal}
-                      onChange={(e) => setAiGoal(e.target.value)}
-                      placeholder="例: リピート促進、新規予約獲得"
-                    />
+                  <Input
+                    value={aiIndustry}
+                    onChange={(e) => setAiIndustry(e.target.value)}
+                    placeholder="上記以外の場合は直接入力"
+                    className="mt-1"
+                  />
+                </div>
+                {/* Goal presets */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold">目的を選択 *</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['新規予約獲得', 'リピート促進', 'セミナー集客', '商品販売', '来店誘導', 'アップセル', '休眠復帰', 'ブランド認知'].map((g) => (
+                      <button
+                        key={g}
+                        onClick={() => setAiGoal(g)}
+                        className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                          aiGoal === g
+                            ? 'bg-amber-500 text-white border-amber-500'
+                            : 'text-muted-foreground border-border hover:bg-muted'
+                        }`}
+                      >
+                        {g}
+                      </button>
+                    ))}
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">ターゲット</Label>
-                    <Input
-                      value={aiTarget}
-                      onChange={(e) => setAiTarget(e.target.value)}
-                      placeholder="例: 30代女性、初来店客"
-                    />
-                  </div>
+                  <Input
+                    value={aiGoal}
+                    onChange={(e) => setAiGoal(e.target.value)}
+                    placeholder="上記以外の場合は直接入力"
+                    className="mt-1"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">ターゲット（任意）</Label>
+                  <Input
+                    value={aiTarget}
+                    onChange={(e) => setAiTarget(e.target.value)}
+                    placeholder="例: 30代女性、初来店客、既存会員"
+                  />
                 </div>
                 <Button
                   disabled={aiGenerating || !aiIndustry.trim() || !aiGoal.trim()}
