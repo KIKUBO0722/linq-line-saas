@@ -21,6 +21,30 @@ export class StepsService {
     private readonly lineService: LineService,
   ) {}
 
+  /** Verify a scenario belongs to the tenant, returning it or throwing */
+  private async verifyScenarioOwnership(tenantId: string, scenarioId: string) {
+    const [scenario] = await this.db
+      .select()
+      .from(stepScenarios)
+      .where(and(eq(stepScenarios.id, scenarioId), eq(stepScenarios.tenantId, tenantId)))
+      .limit(1);
+    if (!scenario) throw new NotFoundException('Scenario not found');
+    return scenario;
+  }
+
+  /** Verify a step message belongs to a scenario owned by the tenant */
+  private async verifyStepMessageOwnership(tenantId: string, messageId: string) {
+    const [stepMsg] = await this.db
+      .select({ id: stepMessages.id, scenarioId: stepMessages.scenarioId })
+      .from(stepMessages)
+      .where(eq(stepMessages.id, messageId))
+      .limit(1);
+    if (!stepMsg) throw new NotFoundException('Step message not found');
+
+    await this.verifyScenarioOwnership(tenantId, stepMsg.scenarioId);
+    return stepMsg;
+  }
+
   // Scenario CRUD
   async createScenario(
     tenantId: string,
@@ -41,13 +65,8 @@ export class StepsService {
       .orderBy(stepScenarios.createdAt);
   }
 
-  async getScenario(id: string) {
-    const [scenario] = await this.db
-      .select()
-      .from(stepScenarios)
-      .where(eq(stepScenarios.id, id))
-      .limit(1);
-    if (!scenario) throw new NotFoundException('Scenario not found');
+  async getScenario(tenantId: string, id: string) {
+    const scenario = await this.verifyScenarioOwnership(tenantId, id);
 
     const steps = await this.db
       .select()
@@ -58,22 +77,25 @@ export class StepsService {
     return { ...scenario, steps };
   }
 
-  async activateScenario(id: string) {
+  async activateScenario(tenantId: string, id: string) {
+    await this.verifyScenarioOwnership(tenantId, id);
     await this.db
       .update(stepScenarios)
       .set({ isActive: true })
-      .where(eq(stepScenarios.id, id));
+      .where(and(eq(stepScenarios.id, id), eq(stepScenarios.tenantId, tenantId)));
   }
 
-  async deactivateScenario(id: string) {
+  async deactivateScenario(tenantId: string, id: string) {
+    await this.verifyScenarioOwnership(tenantId, id);
     await this.db
       .update(stepScenarios)
       .set({ isActive: false })
-      .where(eq(stepScenarios.id, id));
+      .where(and(eq(stepScenarios.id, id), eq(stepScenarios.tenantId, tenantId)));
   }
 
   // Step messages CRUD
   async addStepMessage(
+    tenantId: string,
     scenarioId: string,
     data: {
       delayMinutes: number;
@@ -84,6 +106,7 @@ export class StepsService {
       branchFalse?: number | null;
     },
   ) {
+    await this.verifyScenarioOwnership(tenantId, scenarioId);
     const [step] = await this.db
       .insert(stepMessages)
       .values({ scenarioId, ...data })
@@ -92,9 +115,11 @@ export class StepsService {
   }
 
   async updateStepMessage(
+    tenantId: string,
     id: string,
     data: Partial<typeof stepMessages.$inferInsert>,
   ) {
+    await this.verifyStepMessageOwnership(tenantId, id);
     const [updated] = await this.db
       .update(stepMessages)
       .set(data)
@@ -103,12 +128,15 @@ export class StepsService {
     return updated;
   }
 
-  async deleteStepMessage(id: string) {
+  async deleteStepMessage(tenantId: string, id: string) {
+    await this.verifyStepMessageOwnership(tenantId, id);
     await this.db.delete(stepMessages).where(eq(stepMessages.id, id));
   }
 
   // Enrollment
-  async enrollFriend(friendId: string, scenarioId: string) {
+  async enrollFriend(tenantId: string, friendId: string, scenarioId: string) {
+    await this.verifyScenarioOwnership(tenantId, scenarioId);
+
     const steps = await this.db
       .select()
       .from(stepMessages)
@@ -133,7 +161,8 @@ export class StepsService {
     return enrollment;
   }
 
-  async getEnrollments(scenarioId: string) {
+  async getEnrollments(tenantId: string, scenarioId: string) {
+    await this.verifyScenarioOwnership(tenantId, scenarioId);
     return this.db
       .select()
       .from(stepEnrollments)

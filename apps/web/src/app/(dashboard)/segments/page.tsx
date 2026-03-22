@@ -107,7 +107,10 @@ export default function SegmentsPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!newName.trim() || selectedTagIds.length === 0) return;
+    if (!newName.trim() || selectedTagIds.length === 0) {
+      toast.error('セグメント名とタグを1つ以上選択してください');
+      return;
+    }
     setCreating(true);
     try {
       const segment = await api.segments.create({

@@ -148,6 +148,7 @@ export default function ReservationsPage() {
       const data = await api.reservations.list(Object.keys(params).length > 0 ? params : undefined);
       setReservations(Array.isArray(data) ? data as ReservationWithSlot[] : []);
     } catch {
+      toast.error('予約データの読み込みに失敗しました');
       setReservations([]);
     } finally {
       setLoading(false);

@@ -20,45 +20,45 @@ export class StepsController {
   }
 
   @Get('scenarios/:id')
-  async getScenario(@Param('id') id: string) {
-    return this.stepsService.getScenario(id);
+  async getScenario(@TenantId() tenantId: string, @Param('id') id: string) {
+    return this.stepsService.getScenario(tenantId, id);
   }
 
   @Post('scenarios/:id/activate')
-  async activate(@Param('id') id: string) {
-    await this.stepsService.activateScenario(id);
+  async activate(@TenantId() tenantId: string, @Param('id') id: string) {
+    await this.stepsService.activateScenario(tenantId, id);
     return { ok: true };
   }
 
   @Post('scenarios/:id/deactivate')
-  async deactivate(@Param('id') id: string) {
-    await this.stepsService.deactivateScenario(id);
+  async deactivate(@TenantId() tenantId: string, @Param('id') id: string) {
+    await this.stepsService.deactivateScenario(tenantId, id);
     return { ok: true };
   }
 
   @Post('scenarios/:id/messages')
-  async addStep(@Param('id') scenarioId: string, @Body() body: AddStepDto) {
-    return this.stepsService.addStepMessage(scenarioId, body);
+  async addStep(@TenantId() tenantId: string, @Param('id') scenarioId: string, @Body() body: AddStepDto) {
+    return this.stepsService.addStepMessage(tenantId, scenarioId, body);
   }
 
   @Patch('messages/:id')
-  async updateStep(@Param('id') id: string, @Body() body: UpdateStepDto) {
-    return this.stepsService.updateStepMessage(id, body);
+  async updateStep(@TenantId() tenantId: string, @Param('id') id: string, @Body() body: UpdateStepDto) {
+    return this.stepsService.updateStepMessage(tenantId, id, body);
   }
 
   @Delete('messages/:id')
-  async deleteStep(@Param('id') id: string) {
-    await this.stepsService.deleteStepMessage(id);
+  async deleteStep(@TenantId() tenantId: string, @Param('id') id: string) {
+    await this.stepsService.deleteStepMessage(tenantId, id);
     return { ok: true };
   }
 
   @Post('scenarios/:id/enroll')
-  async enroll(@Param('id') scenarioId: string, @Body() body: EnrollFriendDto) {
-    return this.stepsService.enrollFriend(body.friendId, scenarioId);
+  async enroll(@TenantId() tenantId: string, @Param('id') scenarioId: string, @Body() body: EnrollFriendDto) {
+    return this.stepsService.enrollFriend(tenantId, body.friendId, scenarioId);
   }
 
   @Get('scenarios/:id/enrollments')
-  async enrollments(@Param('id') scenarioId: string) {
-    return this.stepsService.getEnrollments(scenarioId);
+  async enrollments(@TenantId() tenantId: string, @Param('id') scenarioId: string) {
+    return this.stepsService.getEnrollments(tenantId, scenarioId);
   }
 }

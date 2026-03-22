@@ -50,7 +50,7 @@ function TemplatePicker({
           setTemplates(t);
           setLoaded(true);
         })
-        .catch(() => setLoaded(true));
+        .catch(() => { toast.error('テンプレートの読み込みに失敗しました'); setLoaded(true); });
     }
   }, [open, loaded]);
 

@@ -39,7 +39,7 @@ export default function GachaPage() {
   useEffect(() => {
     api.gacha.listCampaigns()
       .then((data) => setCampaigns(Array.isArray(data) ? data : []))
-      .catch(() => setCampaigns([]))
+      .catch(() => { toast.error('ガチャキャンペーンの読み込みに失敗しました'); setCampaigns([]); })
       .finally(() => setLoading(false));
   }, []);
 

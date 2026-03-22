@@ -20,14 +20,14 @@ export class TagsController {
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() body: UpdateTagDto) {
-    await this.tagsService.update(id, body);
+  async update(@TenantId() tenantId: string, @Param('id') id: string, @Body() body: UpdateTagDto) {
+    await this.tagsService.update(id, body, tenantId);
     return { ok: true };
   }
 
   @Delete(':id')
-  async delete(@Param('id') id: string) {
-    await this.tagsService.delete(id);
+  async delete(@TenantId() tenantId: string, @Param('id') id: string) {
+    await this.tagsService.delete(id, tenantId);
     return { ok: true };
   }
 }

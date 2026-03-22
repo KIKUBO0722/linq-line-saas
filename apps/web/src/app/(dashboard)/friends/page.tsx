@@ -219,7 +219,7 @@ export default function FriendsPage() {
   }, [search]);
 
   useEffect(() => {
-    api.tags.list().then(setTags).catch(() => { console.warn('タグ一覧の取得に失敗'); });
+    api.tags.list().then(setTags).catch(() => { toast.error('タグ一覧の取得に失敗しました'); });
   }, []);
 
   // Listen for AI Copilot fill events
@@ -230,10 +230,10 @@ export default function FriendsPage() {
         // Auto-create tags from AI suggestions
         Promise.all(
           data.tags.map((t: { name: string; color?: string }) =>
-            api.tags.create({ name: t.name, color: t.color || '#3B82F6' }).catch(() => null)
+            api.tags.create({ name: t.name, color: t.color || '#3B82F6' }).catch(() => { toast.error('タグの作成に失敗しました'); return null; })
           )
         ).then(() => {
-          api.tags.list().then(setTags).catch(() => { console.warn('タグ一覧の再取得に失敗'); });
+          api.tags.list().then(setTags).catch(() => { toast.error('タグ一覧の再取得に失敗しました'); });
         });
       }
     }
@@ -259,7 +259,9 @@ export default function FriendsPage() {
     try {
       await api.tags.delete(id);
       setTags((prev) => prev.filter((t) => t.id !== id));
-    } catch {}
+    } catch {
+      toast.error('タグの削除に失敗しました');
+    }
   }
 
   async function handleExportCsv() {

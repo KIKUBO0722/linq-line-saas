@@ -241,7 +241,7 @@ export default function StepsPage() {
 
   useEffect(() => {
     loadScenarios();
-    api.tags.list().then(setAllTags).catch(() => { console.warn('タグ一覧の取得に失敗'); });
+    api.tags.list().then(setAllTags).catch(() => { toast.error('タグ一覧の取得に失敗しました'); });
   }, [loadScenarios]);
 
   // Listen for AI copilot data refresh
@@ -274,6 +274,10 @@ export default function StepsPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
+    if (!newName.trim() || !newTrigger) {
+      toast.error('シナリオ名とトリガータイプは必須です');
+      return;
+    }
     setCreating(true);
     try {
       const data = await fetchApi('/api/v1/steps/scenarios', {
@@ -374,7 +378,9 @@ export default function StepsPage() {
     try {
       await fetchApi(`/api/v1/steps/messages/${stepId}`, { method: 'DELETE' });
       setSteps((prev) => prev.filter((s) => s.id !== stepId));
-    } catch {}
+    } catch {
+      toast.error('ステップの削除に失敗しました');
+    }
   }
 
   async function saveCondition(stepId: string, condition: StepCondition | null, branchTrue: number | null, branchFalse: number | null) {
@@ -706,7 +712,7 @@ export default function StepsPage() {
                 </select>
               </div>
               <div className="flex gap-2 pt-2">
-                <Button type="submit" disabled={creating}>{creating ? '作成中...' : '作成する'}</Button>
+                <Button type="submit" disabled={creating || !newName.trim()}>{creating ? '作成中...' : '作成する'}</Button>
                 <Button type="button" variant="ghost" onClick={() => setView('list')}>キャンセル</Button>
               </div>
             </form>

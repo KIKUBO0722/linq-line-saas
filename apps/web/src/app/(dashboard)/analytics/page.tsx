@@ -146,21 +146,24 @@ export default function AnalyticsPage() {
   const [loadingDelivery, setLoadingDelivery] = useState(false);
 
   useEffect(() => {
+    let failCount = 0;
+    const track = <T,>(fallback: T) => () => { failCount++; return fallback as T; };
     Promise.all([
-      api.analytics.overview().catch(() => null),
-      api.billing.usage().catch(() => null),
-      api.analytics.daily(14).catch(() => null),
-      api.analytics.broadcasts().catch(() => []),
-      api.analytics.trafficSources().catch(() => []),
-      api.urlTracking.list().catch(() => []),
-      api.conversions.listGoals().catch(() => []),
-      api.analytics.cohort().catch(() => null),
-      api.analytics.kpi().catch(() => null),
-      api.analytics.ctr().catch(() => null),
-      api.analytics.segments().catch(() => []),
-      api.analytics.bestSendTime().catch(() => null),
+      api.analytics.overview().catch(track(null)),
+      api.billing.usage().catch(track(null)),
+      api.analytics.daily(14).catch(track(null)),
+      api.analytics.broadcasts().catch(track([])),
+      api.analytics.trafficSources().catch(track([])),
+      api.urlTracking.list().catch(track([])),
+      api.conversions.listGoals().catch(track([])),
+      api.analytics.cohort().catch(track(null)),
+      api.analytics.kpi().catch(track(null)),
+      api.analytics.ctr().catch(track(null)),
+      api.analytics.segments().catch(track([])),
+      api.analytics.bestSendTime().catch(track(null)),
     ])
       .then(([s, u, d, b, ts, urls, goals, ch, k, ct, seg, bst]) => {
+        if (failCount > 0) toast.error('一部のアナリティクスデータの読み込みに失敗しました');
         setStats(s as typeof stats);
         setUsage(u as typeof usage);
         setDaily(d as typeof daily);
@@ -184,6 +187,7 @@ export default function AnalyticsPage() {
       const data = await api.analytics.delivery(dateStr);
       setDelivery(Array.isArray(data) ? (data as unknown as DeliveryEntry[]) : []);
     } catch {
+      toast.error('配信実績の読み込みに失敗しました');
       setDelivery([]);
     } finally {
       setLoadingDelivery(false);

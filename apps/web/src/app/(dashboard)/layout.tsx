@@ -1,5 +1,7 @@
 'use client';
 
+import { toast } from 'sonner';
+
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -227,7 +229,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         .then((data) => {
           if (mounted) setUnreadCount(data.totalUnread ?? 0);
         })
-        .catch(() => { console.warn('未読サマリーのポーリングに失敗'); });
+        .catch(() => { /* background polling – silent */ });
     }
     checkUnread();
     const interval = setInterval(checkUnread, 15000);

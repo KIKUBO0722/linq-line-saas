@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { tags, friendTags } from '@line-saas/db';
@@ -16,13 +16,25 @@ export class TagsService {
     return tag;
   }
 
-  async update(id: string, data: { name?: string; color?: string }) {
-    await this.db.update(tags).set(data).where(eq(tags.id, id));
+  async verifyOwnership(tagId: string, tenantId: string) {
+    const [tag] = await this.db
+      .select()
+      .from(tags)
+      .where(and(eq(tags.id, tagId), eq(tags.tenantId, tenantId)))
+      .limit(1);
+    if (!tag) throw new NotFoundException('タグが見つかりません');
+    return tag;
   }
 
-  async delete(id: string) {
+  async update(id: string, data: { name?: string; color?: string }, tenantId: string) {
+    await this.verifyOwnership(id, tenantId);
+    await this.db.update(tags).set(data).where(and(eq(tags.id, id), eq(tags.tenantId, tenantId)));
+  }
+
+  async delete(id: string, tenantId: string) {
+    await this.verifyOwnership(id, tenantId);
     await this.db.delete(friendTags).where(eq(friendTags.tagId, id));
-    await this.db.delete(tags).where(eq(tags.id, id));
+    await this.db.delete(tags).where(and(eq(tags.id, id), eq(tags.tenantId, tenantId)));
   }
 
   async assignToFriend(friendId: string, tagId: string) {

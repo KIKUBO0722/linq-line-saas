@@ -86,15 +86,16 @@ export default function OverviewPage() {
   const [wizardApplied, setWizardApplied] = useState(false);
 
   useEffect(() => {
-    api.friends.list({ limit: 5 }).then(setRecentFriends).catch(() => { console.warn('最近の友だち取得に失敗'); });
-    api.friends.list({}).then((f: Friend[]) => { setFriends(f); }).catch(() => { console.warn('友だち一覧取得に失敗'); });
-    api.accounts.list().then(setAccounts).catch(() => { console.warn('アカウント一覧取得に失敗'); });
-    api.analytics.overview().then(setStats).catch(() => { console.warn('統計情報取得に失敗'); });
-    api.billing.usage().then(setUsage).catch(() => { console.warn('利用状況取得に失敗'); });
+    const onErr = () => { toast.error('データの読み込みに失敗しました'); };
+    api.friends.list({ limit: 5 }).then(setRecentFriends).catch(onErr);
+    api.friends.list({}).then((f: Friend[]) => { setFriends(f); }).catch(onErr);
+    api.accounts.list().then(setAccounts).catch(onErr);
+    api.analytics.overview().then(setStats).catch(onErr);
+    api.billing.usage().then(setUsage).catch(onErr);
     fetch(`${API_BASE}/api/v1/ai/config`, { credentials: 'include' })
       .then((r) => r.json())
       .then(setAiConfig)
-      .catch(() => { console.warn('AI設定取得に失敗'); });
+      .catch(onErr);
   }, []);
 
   async function handleWizardGenerate() {

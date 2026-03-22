@@ -47,7 +47,7 @@ export default function FormsPage() {
 
   useEffect(() => {
     loadForms();
-    api.tags.list().then(setAvailableTags).catch(() => { console.warn('タグ一覧の取得に失敗'); });
+    api.tags.list().then(setAvailableTags).catch(() => { toast.error('タグ一覧の取得に失敗しました'); });
   }, []);
 
   // Listen for AI-generated form fill events
@@ -93,7 +93,10 @@ export default function FormsPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!formName.trim() || fields.some((f) => !f.label.trim())) return;
+    if (!formName.trim() || fields.some((f) => !f.label.trim())) {
+      toast.error('フォーム名とすべてのフィールドラベルは必須です');
+      return;
+    }
     setSaving(true);
     try {
       await api.forms.create({

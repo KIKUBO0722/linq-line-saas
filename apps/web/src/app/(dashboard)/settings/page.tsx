@@ -69,17 +69,20 @@ export default function SettingsPage() {
 
   useEffect(() => {
     api.accounts.list().then(setAccounts).catch(() => { toast.error('アカウント情報の取得に失敗しました'); });
-    api.auth.me().then((data) => setCurrentUser(data.user)).catch(() => { console.warn('ユーザー情報取得に失敗'); });
+    api.auth.me().then((data) => setCurrentUser(data.user)).catch(() => { toast.error('ユーザー情報の取得に失敗しました'); });
   }, []);
 
   useEffect(() => {
     if (tab === 'billing') {
       setLoadingBilling(true);
+      let billingFailed = false;
+      const trackBilling = <T,>(fallback: T) => () => { billingFailed = true; return fallback as T; };
       Promise.all([
-        api.billing.plans().catch(() => []),
-        api.billing.subscription().catch(() => null),
-        api.billing.usage().catch(() => null),
+        api.billing.plans().catch(trackBilling([])),
+        api.billing.subscription().catch(trackBilling(null)),
+        api.billing.usage().catch(trackBilling(null)),
       ]).then(([p, s, u]) => {
+        if (billingFailed) toast.error('請求情報の一部の読み込みに失敗しました');
         setPlans(p);
         setSubscription(s);
         setUsage(u);

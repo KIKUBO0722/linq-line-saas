@@ -33,7 +33,7 @@ export default function ExitPopupsPage() {
   useEffect(() => {
     api.exitPopups.list()
       .then((data) => setPopups(Array.isArray(data) ? data : []))
-      .catch(() => setPopups([]))
+      .catch(() => { toast.error('離脱ポップアップの読み込みに失敗しました'); setPopups([]); })
       .finally(() => setLoading(false));
   }, []);
 

@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { eq, and, ilike, sql, desc } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { friends, friendTags, tags, lineAccounts, messages } from '@line-saas/db';
@@ -80,13 +80,12 @@ export class FriendsService {
     return newFriend;
   }
 
-  async updateChatStatus(friendId: string, status: string, tenantId?: string) {
-    const conditions = [eq(friends.id, friendId)];
-    if (tenantId) conditions.push(eq(friends.tenantId, tenantId));
+  async updateChatStatus(friendId: string, status: string, tenantId: string) {
+    await this.findByIdOrThrow(friendId, tenantId);
     await this.db
       .update(friends)
       .set({ chatStatus: status })
-      .where(and(...conditions));
+      .where(and(eq(friends.id, friendId), eq(friends.tenantId, tenantId)));
   }
 
   async markUnfollowed(lineAccountId: string, lineUserId: string) {
@@ -116,8 +115,16 @@ export class FriendsService {
     return query;
   }
 
-  async findById(id: string) {
-    const [friend] = await this.db.select().from(friends).where(eq(friends.id, id)).limit(1);
+  async findById(id: string, tenantId?: string) {
+    const conditions = [eq(friends.id, id)];
+    if (tenantId) conditions.push(eq(friends.tenantId, tenantId));
+    const [friend] = await this.db.select().from(friends).where(and(...conditions)).limit(1);
+    return friend;
+  }
+
+  async findByIdOrThrow(id: string, tenantId: string) {
+    const friend = await this.findById(id, tenantId);
+    if (!friend) throw new NotFoundException('友だちが見つかりません');
     return friend;
   }
 
@@ -128,9 +135,8 @@ export class FriendsService {
       .where(eq(friends.id, friendId));
   }
 
-  async updateCustomFields(friendId: string, fields: Record<string, any>) {
-    const friend = await this.findById(friendId);
-    if (!friend) return null;
+  async updateCustomFields(friendId: string, fields: Record<string, any>, tenantId: string) {
+    const friend = await this.findByIdOrThrow(friendId, tenantId);
     const existing = (friend.customFields as Record<string, any>) || {};
     const merged = { ...existing, ...fields };
     // Remove keys explicitly set to null
@@ -140,7 +146,7 @@ export class FriendsService {
     await this.db
       .update(friends)
       .set({ customFields: merged })
-      .where(eq(friends.id, friendId));
+      .where(and(eq(friends.id, friendId), eq(friends.tenantId, tenantId)));
     return merged;
   }
 

@@ -54,6 +54,7 @@ export default function CouponsPage() {
   const [formDescription, setFormDescription] = useState('');
   const [formExpiresAt, setFormExpiresAt] = useState('');
   const [formMaxUses, setFormMaxUses] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadCoupons();
@@ -103,11 +104,20 @@ export default function CouponsPage() {
     setFormDescription('');
     setFormExpiresAt('');
     setFormMaxUses('');
+    setErrors({});
   }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!formName.trim() || !formCode.trim() || !formDiscountValue) return;
+    const newErrors: Record<string, string> = {};
+    if (!formName.trim()) newErrors.name = 'クーポン名を入力してください';
+    if (!formCode.trim()) newErrors.code = 'クーポンコードを入力してください';
+    if (!formDiscountValue) newErrors.discountValue = '割引値を入力してください';
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    setErrors({});
     setCreating(true);
     try {
       const coupon = (await api.coupons.create({
@@ -185,17 +195,18 @@ export default function CouponsPage() {
                   <Label>クーポン名 *</Label>
                   <Input
                     value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
+                    onChange={(e) => { setFormName(e.target.value); setErrors(prev => ({...prev, name: ''})); }}
                     placeholder="例: 新規登録10%OFF"
                     autoFocus
                   />
+                  {errors.name && <p className="text-sm text-red-500 mt-1">{errors.name}</p>}
                 </div>
                 <div className="space-y-1.5">
                   <Label>クーポンコード *</Label>
                   <div className="flex gap-2">
                     <Input
                       value={formCode}
-                      onChange={(e) => setFormCode(e.target.value.toUpperCase())}
+                      onChange={(e) => { setFormCode(e.target.value.toUpperCase()); setErrors(prev => ({...prev, code: ''})); }}
                       placeholder="例: WELCOME10"
                       className="flex-1"
                     />
@@ -203,11 +214,12 @@ export default function CouponsPage() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setFormCode(generateCode())}
+                      onClick={() => { setFormCode(generateCode()); setErrors(prev => ({...prev, code: ''})); }}
                     >
                       自動生成
                     </Button>
                   </div>
+                  {errors.code && <p className="text-sm text-red-500 mt-1">{errors.code}</p>}
                 </div>
               </div>
 
@@ -227,10 +239,11 @@ export default function CouponsPage() {
                   <Input
                     type="number"
                     value={formDiscountValue}
-                    onChange={(e) => setFormDiscountValue(e.target.value)}
+                    onChange={(e) => { setFormDiscountValue(e.target.value); setErrors(prev => ({...prev, discountValue: ''})); }}
                     placeholder={formDiscountType === 'percentage' ? '例: 10' : '例: 500'}
                     min="1"
                   />
+                  {errors.discountValue && <p className="text-sm text-red-500 mt-1">{errors.discountValue}</p>}
                 </div>
               </div>
 

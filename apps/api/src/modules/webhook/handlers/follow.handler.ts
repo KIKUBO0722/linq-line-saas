@@ -109,7 +109,7 @@ export class FollowHandler {
         );
 
       for (const scenario of followScenarios) {
-        await this.stepsService.enrollFriend(friend.id, scenario.id);
+        await this.stepsService.enrollFriend(account.tenantId, friend.id, scenario.id);
         this.logger.log(`Enrolled friend ${friend.id} in scenario ${scenario.name}`);
       }
     } catch (error) {

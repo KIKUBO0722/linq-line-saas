@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Query, Body, Req, Res, UseGuards, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Query, Body, Req, Res, UseGuards, Logger, NotFoundException } from '@nestjs/common';
 import { FriendsService } from './friends.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { TenantId } from '../../common/decorators/tenant.decorator';
@@ -126,30 +126,36 @@ export class FriendsController {
   }
 
   @Get(':id')
-  async getById(@Param('id') id: string) {
-    return this.friendsService.findById(id);
+  async getById(@TenantId() tenantId: string, @Param('id') id: string) {
+    const friend = await this.friendsService.findById(id, tenantId);
+    if (!friend) throw new NotFoundException('友だちが見つかりません');
+    return friend;
   }
 
   @Get(':id/tags')
-  async listTags(@Param('id') id: string) {
+  async listTags(@TenantId() tenantId: string, @Param('id') id: string) {
+    await this.friendsService.findByIdOrThrow(id, tenantId);
     return this.tagsService.listForFriend(id);
   }
 
   @Post(':id/tags')
-  async assignTag(@Param('id') id: string, @Body() body: AssignTagDto) {
+  async assignTag(@TenantId() tenantId: string, @Param('id') id: string, @Body() body: AssignTagDto) {
+    await this.friendsService.findByIdOrThrow(id, tenantId);
+    await this.tagsService.verifyOwnership(body.tagId, tenantId);
     await this.tagsService.assignToFriend(id, body.tagId);
     return { success: true };
   }
 
   @Delete(':id/tags/:tagId')
-  async removeTag(@Param('id') id: string, @Param('tagId') tagId: string) {
+  async removeTag(@TenantId() tenantId: string, @Param('id') id: string, @Param('tagId') tagId: string) {
+    await this.friendsService.findByIdOrThrow(id, tenantId);
     await this.tagsService.removeFromFriend(id, tagId);
     return { success: true };
   }
 
   @Patch(':id/custom-fields')
-  async updateCustomFields(@Param('id') id: string, @Body() body: Record<string, unknown>) {
-    const result = await this.friendsService.updateCustomFields(id, body);
+  async updateCustomFields(@TenantId() tenantId: string, @Param('id') id: string, @Body() body: Record<string, unknown>) {
+    const result = await this.friendsService.updateCustomFields(id, body, tenantId);
     return { ok: true, customFields: result };
   }
 
@@ -160,6 +166,7 @@ export class FriendsController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
+    await this.friendsService.findByIdOrThrow(id, tenantId);
     return this.friendsService.getTimeline(
       tenantId,
       id,

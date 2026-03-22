@@ -195,11 +195,14 @@ export default function RichMenusPage() {
 
   async function loadData() {
     try {
+      let rmFailed = false;
+      const trackRm = <T,>(fallback: T) => () => { rmFailed = true; return fallback as T; };
       const [m, a, g] = await Promise.all([
-        api.richMenus.list().catch(() => []),
-        api.accounts.list().catch(() => []),
-        api.richMenus.listGroups().catch(() => []),
+        api.richMenus.list().catch(trackRm([])),
+        api.accounts.list().catch(trackRm([])),
+        api.richMenus.listGroups().catch(trackRm([])),
       ]);
+      if (rmFailed) toast.error('リッチメニューデータの一部の読み込みに失敗しました');
       setMenus(m);
       setAccounts(a);
       setGroups(g);

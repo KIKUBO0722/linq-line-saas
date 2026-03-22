@@ -93,7 +93,7 @@ export default function AiPage() {
       .then(setConfig)
       .catch(() => { toast.error('AI設定の取得に失敗しました'); })
       .finally(() => setLoading(false));
-    api.greetings.list().then(setGreetings).catch(() => { console.warn('あいさつ一覧の取得に失敗'); });
+    api.greetings.list().then(setGreetings).catch(() => { toast.error('あいさつ一覧の取得に失敗しました'); });
   }, []);
 
   // Listen for AI Copilot fill events
