@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api-client';
+import type { Tenant } from '@/lib/types';
 import { AiCopilot } from '@/components/dashboard/ai-copilot';
 import { Toaster } from '@/components/ui/sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -18,6 +19,32 @@ import {
   CalendarCheck, X, PanelLeftClose, PanelLeft, Dices, ShieldAlert, Building2,
   type LucideIcon,
 } from 'lucide-react';
+
+// --- Brand Logo ---
+function BrandLogo({ tenant, size = 'lg' }: { tenant?: Tenant | null; size?: 'sm' | 'lg' }) {
+  const appName = tenant?.appName;
+  const logoUrl = tenant?.logoUrl;
+  const primaryColor = tenant?.primaryColor || '#06C755';
+
+  if (logoUrl) {
+    return <img src={logoUrl} alt={appName || 'LinQ'} className={size === 'lg' ? 'h-7 max-w-[120px] object-contain' : 'h-5 max-w-[100px] object-contain'} />;
+  }
+
+  if (appName) {
+    return (
+      <h1 className={cn('font-extrabold tracking-tight', size === 'lg' ? 'text-xl' : 'text-lg')}>
+        <span style={{ color: primaryColor }}>{appName}</span>
+      </h1>
+    );
+  }
+
+  return (
+    <h1 className={cn('font-extrabold tracking-tight', size === 'lg' ? 'text-xl' : 'text-lg')}>
+      <span className="text-[#06C755]">Lin</span>
+      <span className="text-slate-400">Q</span>
+    </h1>
+  );
+}
 
 // --- Navigation structure ---
 interface NavItem { name: string; href: string; icon: LucideIcon }
@@ -62,14 +89,15 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string | null })
   return (
     <Link
       href={item.href}
+      aria-current={active ? 'page' : undefined}
       className={cn(
-        'flex items-center gap-2.5 px-3 py-2 rounded-md text-[13px] font-medium transition-colors',
+        'flex items-center gap-2.5 px-3 py-2 rounded-md text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50',
         active
           ? 'bg-white/10 text-white'
-          : 'text-slate-400 hover:bg-white/5 hover:text-slate-200',
+          : 'text-slate-300 hover:bg-white/5 hover:text-slate-100',
       )}
     >
-      <item.icon className="h-4 w-4 shrink-0" />
+      <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
       {item.name}
     </Link>
   );
@@ -195,8 +223,8 @@ function SidebarNav({
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useState<any>(null);
-  const [tenant, setTenant] = useState<any>(null);
+  const [user, setUser] = useState<{ id: string; email: string; role?: string } | null>(null);
+  const [tenant, setTenant] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -260,14 +288,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex h-screen bg-slate-50">
       {/* Mobile header bar */}
-      <div className="fixed top-0 left-0 right-0 z-40 flex items-center h-12 px-3 bg-slate-900 text-white lg:hidden">
+      <div className="fixed top-0 left-0 right-0 z-40 flex items-center h-12 px-3 text-white lg:hidden" style={{ backgroundColor: tenant?.sidebarColor || '#0f172a' }}>
         <button onClick={() => setMobileOpen(true)} className="p-1.5 rounded-md hover:bg-white/10 transition-colors" aria-label="メニュー">
           <Menu className="h-5 w-5" />
         </button>
-        <h1 className="ml-3 text-lg font-extrabold tracking-tight">
-          <span className="text-[#06C755]">Lin</span>
-          <span className="text-slate-400">Q</span>
-        </h1>
+        <div className="ml-3">
+          <BrandLogo tenant={tenant} size="sm" />
+        </div>
         {unreadCount > 0 && (
           <span className="ml-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white px-1">
             {unreadCount > 99 ? '99+' : unreadCount}
@@ -277,16 +304,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Mobile sidebar overlay */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="ナビゲーションメニュー" onKeyDown={(e) => { if (e.key === 'Escape') setMobileOpen(false); }}>
           <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
-          <aside className="relative w-64 h-full bg-slate-900 text-white flex flex-col shadow-xl animate-in slide-in-from-left duration-200">
+          <aside role="navigation" aria-label="メインメニュー" className="relative w-64 h-full text-white flex flex-col shadow-xl animate-in slide-in-from-left duration-200" style={{ backgroundColor: tenant?.sidebarColor || '#0f172a' }}>
             <div className="px-5 pt-5 pb-3 flex items-center justify-between">
               <div>
-                <h1 className="text-xl font-extrabold tracking-tight">
-                  <span className="text-[#06C755]">Lin</span>
-                  <span className="text-slate-400">Q</span>
-                </h1>
-                <p className="text-[11px] text-slate-500 mt-0.5 truncate">{tenant?.name}</p>
+                <BrandLogo tenant={tenant} />
+                <p className="text-[11px] text-slate-300 mt-0.5 truncate">{tenant?.name}</p>
               </div>
               <button
                 onClick={() => setMobileOpen(false)}
@@ -308,10 +332,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       {/* Desktop sidebar */}
-      <aside className={cn(
-        'hidden lg:flex flex-col bg-slate-900 text-white shrink-0 transition-all duration-200',
+      <aside role="navigation" aria-label="メインメニュー" className={cn(
+        'hidden lg:flex flex-col text-white shrink-0 transition-all duration-200',
         collapsed ? 'w-14' : 'w-56',
-      )}>
+      )} style={{ backgroundColor: tenant?.sidebarColor || '#0f172a' }}>
         {collapsed ? (
           /* Collapsed icon-only sidebar */
           <>
@@ -366,11 +390,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <>
             <div className="px-5 pt-5 pb-3 flex items-start justify-between">
               <div>
-                <h1 className="text-xl font-extrabold tracking-tight">
-                  <span className="text-[#06C755]">Lin</span>
-                  <span className="text-slate-400">Q</span>
-                </h1>
-                <p className="text-[11px] text-slate-500 mt-0.5 truncate">{tenant?.name}</p>
+                <BrandLogo tenant={tenant} />
+                <p className="text-[11px] text-slate-300 mt-0.5 truncate">{tenant?.name}</p>
               </div>
               <button onClick={() => setCollapsed(true)} className="mt-1 p-1 rounded-md text-slate-500 hover:bg-white/10 hover:text-slate-300 transition-colors" title="サイドバーを閉じる" aria-label="サイドバーを閉じる">
                 <PanelLeftClose className="h-4 w-4" />
@@ -387,7 +408,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main */}
-      <main className="flex-1 overflow-y-auto pt-12 lg:pt-0">
+      <main role="main" className="flex-1 overflow-y-auto pt-12 lg:pt-0">
         {children}
       </main>
 

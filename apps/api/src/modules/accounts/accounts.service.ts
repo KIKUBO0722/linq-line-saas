@@ -1,11 +1,13 @@
-import { Injectable, Inject, ForbiddenException } from '@nestjs/common';
+import { Injectable, Inject, ForbiddenException, Logger } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
-import { lineAccounts } from '@line-saas/db';
+import { lineAccounts, tenants } from '@line-saas/db';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AccountsService {
+  private readonly logger = new Logger(AccountsService.name);
+
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     private readonly config: ConfigService,
@@ -54,5 +56,55 @@ export class AccountsService {
 
     await this.db.delete(lineAccounts).where(and(eq(lineAccounts.id, id), eq(lineAccounts.tenantId, tenantId)));
     return { success: true };
+  }
+
+  // --- Branding ---
+
+  async getBranding(tenantId: string) {
+    const [tenant] = await this.db
+      .select({
+        appName: tenants.appName,
+        logoUrl: tenants.logoUrl,
+        primaryColor: tenants.primaryColor,
+        sidebarColor: tenants.sidebarColor,
+        faviconUrl: tenants.faviconUrl,
+      })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
+    return tenant || {};
+  }
+
+  async updateBranding(tenantId: string, data: {
+    appName?: string;
+    logoUrl?: string;
+    primaryColor?: string;
+    sidebarColor?: string;
+    faviconUrl?: string;
+  }) {
+    try {
+      const [updated] = await this.db
+        .update(tenants)
+        .set({
+          appName: data.appName,
+          logoUrl: data.logoUrl,
+          primaryColor: data.primaryColor,
+          sidebarColor: data.sidebarColor,
+          faviconUrl: data.faviconUrl,
+          updatedAt: new Date(),
+        })
+        .where(eq(tenants.id, tenantId))
+        .returning({
+          appName: tenants.appName,
+          logoUrl: tenants.logoUrl,
+          primaryColor: tenants.primaryColor,
+          sidebarColor: tenants.sidebarColor,
+          faviconUrl: tenants.faviconUrl,
+        });
+      return updated;
+    } catch (error) {
+      this.logger.error('Failed to update branding', error);
+      throw error;
+    }
   }
 }

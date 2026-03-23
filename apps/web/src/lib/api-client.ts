@@ -44,7 +44,10 @@ import type {
   StepScenario,
   Subscription,
   Tag,
+  TeamMember,
   Tenant,
+  TenantBranding,
+  TenantInvitation,
   TimelineEvent,
   TrackedUrl,
   TrafficSource,
@@ -116,6 +119,9 @@ export const api = {
       fetchApi('/api/v1/accounts', { method: 'POST', body: JSON.stringify(data) }),
     delete: (id: string) =>
       fetchApi(`/api/v1/accounts/${id}`, { method: 'DELETE' }),
+    getBranding: () => fetchApi<TenantBranding>('/api/v1/accounts/branding'),
+    updateBranding: (data: TenantBranding) =>
+      fetchApi<TenantBranding>('/api/v1/accounts/branding', { method: 'PATCH', body: JSON.stringify(data) }),
   },
   messages: {
     conversation: (friendId: string) => fetchApi<Message[]>(`/api/v1/messages/conversation/${friendId}`),
@@ -271,6 +277,23 @@ export const api = {
       fetchApi<{ title: string; period: string; sections: Array<{ heading: string; content: string }>; recommendations: string[] }>(`/api/v1/ai/generate-report${period ? `?period=${period}` : ''}`, { method: 'POST' }),
     optimizeForm: (formId: string) =>
       fetchApi<{ formName: string; score: number; issues: Array<{ severity: 'high' | 'medium' | 'low'; issue: string; suggestion: string }>; improvedFields?: Array<{ label: string; type: string; placeholder?: string; required?: boolean }> }>(`/api/v1/ai/optimize-form/${formId}`, { method: 'POST' }),
+  },
+  onboarding: {
+    getTemplates: () => fetchApi<Array<{ id: string; name: string; description: string; icon: string }>>('/api/v1/onboarding/templates'),
+    applyTemplate: (industryId: string) =>
+      fetchApi<{ success: boolean; industry: string; tagsCreated: number; scenarioCreated: string }>('/api/v1/onboarding/apply-template', { method: 'POST', body: JSON.stringify({ industryId }) }),
+  },
+  team: {
+    list: () => fetchApi<TeamMember[]>('/api/v1/auth/team'),
+    invite: (data: { email: string; role?: string }) =>
+      fetchApi<TenantInvitation>('/api/v1/auth/invite', { method: 'POST', body: JSON.stringify(data) }),
+    listInvitations: () => fetchApi<TenantInvitation[]>('/api/v1/auth/invitations'),
+    cancelInvitation: (id: string) =>
+      fetchApi(`/api/v1/auth/invitations/${id}`, { method: 'DELETE' }),
+    updateRole: (userId: string, role: string) =>
+      fetchApi(`/api/v1/auth/team/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
+    removeMember: (userId: string) =>
+      fetchApi(`/api/v1/auth/team/${userId}`, { method: 'DELETE' }),
   },
   agency: {
     status: () => fetchApi<{ isAgency: boolean }>('/api/v1/agency/status'),

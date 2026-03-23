@@ -1,6 +1,9 @@
-import { Controller, Post, Get, Body, Res, Req, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Patch, Param, Body, Res, Req, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
+import { AuthGuard } from '../../common/guards/auth.guard';
+import { TenantId } from '../../common/decorators/tenant.decorator';
+import { InviteUserDto, UpdateRoleDto } from './dto/auth.dto';
 
 const COOKIE_NAME = 'session_id';
 const COOKIE_OPTIONS = {
@@ -71,7 +74,65 @@ export class AuthController {
         name: result.tenant.name,
         slug: result.tenant.slug,
         status: result.tenant.status,
+        industry: result.tenant.industry,
+        appName: result.tenant.appName,
+        logoUrl: result.tenant.logoUrl,
+        primaryColor: result.tenant.primaryColor,
+        sidebarColor: result.tenant.sidebarColor,
+        faviconUrl: result.tenant.faviconUrl,
       },
     };
+  }
+
+  // --- Team management ---
+
+  @Get('team')
+  @UseGuards(AuthGuard)
+  async getTeam(@TenantId() tenantId: string) {
+    return this.authService.getTeamMembers(tenantId);
+  }
+
+  @Post('invite')
+  @UseGuards(AuthGuard)
+  async invite(@TenantId() tenantId: string, @Body() body: InviteUserDto) {
+    return this.authService.inviteUser(tenantId, body.email, body.role);
+  }
+
+  @Get('invitations')
+  @UseGuards(AuthGuard)
+  async listInvitations(@TenantId() tenantId: string) {
+    return this.authService.listInvitations(tenantId);
+  }
+
+  @Delete('invitations/:id')
+  @UseGuards(AuthGuard)
+  async cancelInvitation(@TenantId() tenantId: string, @Param('id') id: string) {
+    return this.authService.cancelInvitation(tenantId, id);
+  }
+
+  @Post('accept-invite')
+  async acceptInvite(
+    @Body() body: { token: string; password: string; displayName?: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.acceptInvitation(body.token, body.password, body.displayName);
+    res.cookie(COOKIE_NAME, result.session.id, COOKIE_OPTIONS);
+    return { user: result.user, tenant: result.tenant };
+  }
+
+  @Patch('team/:userId/role')
+  @UseGuards(AuthGuard)
+  async updateRole(
+    @TenantId() tenantId: string,
+    @Param('userId') userId: string,
+    @Body() body: UpdateRoleDto,
+  ) {
+    return this.authService.updateUserRole(tenantId, userId, body.role);
+  }
+
+  @Delete('team/:userId')
+  @UseGuards(AuthGuard)
+  async removeMember(@TenantId() tenantId: string, @Param('userId') userId: string) {
+    return this.authService.removeMember(tenantId, userId);
   }
 }

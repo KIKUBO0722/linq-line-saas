@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import {
   GraduationCap, Settings, Bot, GitBranch, Menu,
   CheckCircle2, Circle, ChevronRight, ArrowRight,
-  Sparkles, Loader2, ExternalLink,
+  Sparkles, Loader2, ExternalLink, Building2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -92,6 +93,14 @@ export default function TutorialPage() {
   const [checking, setChecking] = useState(true);
   const [aiTip, setAiTip] = useState('');
   const [loadingTip, setLoadingTip] = useState(false);
+  const [templates, setTemplates] = useState<Array<{ id: string; name: string; description: string; icon: string }>>([]);
+  const [applyingTemplate, setApplyingTemplate] = useState<string | null>(null);
+  const [templateApplied, setTemplateApplied] = useState(false);
+
+  // Load templates
+  useEffect(() => {
+    api.onboarding.getTemplates().then(setTemplates).catch(() => {});
+  }, []);
 
   // Check completion status of all steps
   useEffect(() => {
@@ -105,7 +114,20 @@ export default function TutorialPage() {
       setChecking(false);
     }
     checkAll();
-  }, []);
+  }, [templateApplied]);
+
+  async function handleApplyTemplate(industryId: string) {
+    setApplyingTemplate(industryId);
+    try {
+      const result = await api.onboarding.applyTemplate(industryId);
+      toast.success(`${result.industry}テンプレートを適用しました（タグ${result.tagsCreated}個、シナリオ「${result.scenarioCreated}」作成）`);
+      setTemplateApplied(true);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'テンプレートの適用に失敗しました');
+    } finally {
+      setApplyingTemplate(null);
+    }
+  }
 
   const completedCount = Object.values(stepStatus).filter(Boolean).length;
   const totalCount = steps.length;
@@ -171,6 +193,50 @@ export default function TutorialPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Industry Template Selection */}
+      {!templateApplied && templates.length > 0 && (
+        <Card className="border-2 border-blue-200">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Building2 className="h-5 w-5 text-blue-500" />
+              <h3 className="text-sm font-semibold">業種テンプレートで一括セットアップ</h3>
+              <Badge variant="outline" className="text-[10px] border-blue-400 text-blue-500">おすすめ</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              業種を選択すると、タグ・あいさつメッセージ・ステップ配信・AI設定が自動でセットアップされます
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {templates.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => handleApplyTemplate(t.id)}
+                  disabled={!!applyingTemplate}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border hover:border-blue-400 hover:bg-blue-50 transition-colors disabled:opacity-50"
+                >
+                  <span className="text-2xl">{t.icon}</span>
+                  <span className="text-xs font-medium">{t.name}</span>
+                  {applyingTemplate === t.id && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-3">
+              ※ テンプレートは後からカスタマイズできます。スキップして手動で設定することも可能です。
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {templateApplied && (
+        <Card className="border-green-300 bg-green-50">
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <p className="text-sm font-medium text-green-800">業種テンプレートを適用しました！下の各ステップで内容をカスタマイズできます。</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Steps */}
       <div className="space-y-3">

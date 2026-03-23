@@ -1,8 +1,8 @@
-import { Controller, Get, Post, Delete, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Patch, Param, Body, UseGuards } from '@nestjs/common';
 import { AccountsService } from './accounts.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { TenantId } from '../../common/decorators/tenant.decorator';
-import { CreateAccountDto } from './dto/accounts.dto';
+import { CreateAccountDto, UpdateBrandingDto } from './dto/accounts.dto';
 
 @Controller('api/v1/accounts')
 @UseGuards(AuthGuard)
@@ -22,5 +22,15 @@ export class AccountsController {
   @Delete(':id')
   async delete(@TenantId() tenantId: string, @Param('id') id: string) {
     return this.accountsService.delete(tenantId, id);
+  }
+
+  @Get('branding')
+  async getBranding(@TenantId() tenantId: string) {
+    return this.accountsService.getBranding(tenantId);
+  }
+
+  @Patch('branding')
+  async updateBranding(@TenantId() tenantId: string, @Body() body: UpdateBrandingDto) {
+    return this.accountsService.updateBranding(tenantId, body);
   }
 }

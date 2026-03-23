@@ -4,8 +4,8 @@ import { toast } from 'sonner';
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Settings, Plus, Check, Copy, CreditCard, Zap, Users, MessageSquare, RefreshCw, Shield, Mail, Trash2, CheckCircle2, XCircle } from 'lucide-react';
-import type { LineAccount } from '@/lib/types';
+import { Settings, Plus, Check, Copy, CreditCard, Zap, Users, MessageSquare, RefreshCw, Shield, Mail, Trash2, CheckCircle2, XCircle, Palette, Clock } from 'lucide-react';
+import type { LineAccount, TenantBranding, TeamMember, TenantInvitation } from '@/lib/types';
 import { api } from '@/lib/api-client';
 import { EmptyState } from '@/components/ui/empty-state';
 
@@ -45,7 +45,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 
 export default function SettingsPage() {
-  const [tab, setTab] = useState<'accounts' | 'billing' | 'operators'>('accounts');
+  const [tab, setTab] = useState<'accounts' | 'billing' | 'operators' | 'branding'>('accounts');
   const [accounts, setAccounts] = useState<LineAccount[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [channelId, setChannelId] = useState('');
@@ -63,11 +63,17 @@ export default function SettingsPage() {
   const [usage, setUsage] = useState<BillingUsage | null>(null);
   const [loadingBilling, setLoadingBilling] = useState(false);
 
-  // Operators state
+  // Operators/Team state
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('operator');
   const [inviting, setInviting] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [invitations, setInvitations] = useState<TenantInvitation[]>([]);
+
+  // Branding state
+  const [branding, setBranding] = useState<TenantBranding>({});
+  const [savingBranding, setSavingBranding] = useState(false);
 
   const searchParams = useSearchParams();
 
@@ -89,7 +95,15 @@ export default function SettingsPage() {
   useEffect(() => {
     api.accounts.list().then(setAccounts).catch(() => { toast.error('アカウント情報の取得に失敗しました'); });
     api.auth.me().then((data) => setCurrentUser(data.user)).catch(() => { toast.error('ユーザー情報の取得に失敗しました'); });
+    api.accounts.getBranding().then(setBranding).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (tab === 'operators') {
+      api.team.list().then(setTeamMembers).catch(() => {});
+      api.team.listInvitations().then(setInvitations).catch(() => {});
+    }
+  }, [tab]);
 
   useEffect(() => {
     if (tab === 'billing') {
@@ -187,7 +201,7 @@ export default function SettingsPage() {
         <p className="text-sm text-muted-foreground">アカウント・プランの管理</p>
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as 'accounts' | 'billing' | 'operators')}>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as 'accounts' | 'billing' | 'operators' | 'branding')}>
         <TabsList>
           <TabsTrigger value="accounts" className="gap-1.5">
             <Settings className="h-4 w-4" />
@@ -199,7 +213,11 @@ export default function SettingsPage() {
           </TabsTrigger>
           <TabsTrigger value="operators" className="gap-1.5">
             <Shield className="h-4 w-4" />
-            オペレーター
+            チーム管理
+          </TabsTrigger>
+          <TabsTrigger value="branding" className="gap-1.5">
+            <Palette className="h-4 w-4" />
+            ブランド設定
           </TabsTrigger>
         </TabsList>
 
@@ -577,91 +595,146 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="operators" className="mt-4 space-y-6">
-          {/* Current user role */}
+          {/* Team members list */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">あなたのアカウント</CardTitle>
-              <CardDescription>現在ログイン中のユーザー情報</CardDescription>
+              <CardTitle className="text-base">チームメンバー</CardTitle>
+              <CardDescription>現在のメンバー一覧</CardDescription>
             </CardHeader>
             <CardContent>
-              {currentUser ? (
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{currentUser.email}</span>
-                  </div>
-                  <Badge variant={currentUser.role === 'owner' ? 'default' : 'secondary'}>
-                    {currentUser.role === 'owner' ? 'オーナー' :
-                     currentUser.role === 'admin' ? '管理者' :
-                     currentUser.role === 'operator' ? 'オペレーター' :
-                     currentUser.role === 'viewer' ? '閲覧者' :
-                     currentUser.role || 'owner'}
-                  </Badge>
-                  {currentUser.displayName && (
-                    <span className="text-sm text-muted-foreground">({currentUser.displayName})</span>
-                  )}
-                </div>
+              {teamMembers.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>メール</TableHead>
+                      <TableHead>表示名</TableHead>
+                      <TableHead>ロール</TableHead>
+                      <TableHead>操作</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {teamMembers.map((member) => (
+                      <TableRow key={member.id}>
+                        <TableCell className="text-sm">{member.email}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{member.displayName || '-'}</TableCell>
+                        <TableCell>
+                          <Badge variant={member.role === 'owner' ? 'default' : 'secondary'}>
+                            {member.role === 'owner' ? 'オーナー' : member.role === 'admin' ? '管理者' : 'オペレーター'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {member.role !== 'owner' && currentUser?.role === 'owner' && (
+                            <div className="flex items-center gap-1">
+                              <select
+                                defaultValue={member.role}
+                                onChange={async (e) => {
+                                  try {
+                                    await api.team.updateRole(member.id, e.target.value);
+                                    setTeamMembers((prev) => prev.map((m) => m.id === member.id ? { ...m, role: e.target.value } : m));
+                                    toast.success('ロールを更新しました');
+                                  } catch { toast.error('ロール更新に失敗しました'); }
+                                }}
+                                className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                              >
+                                <option value="admin">管理者</option>
+                                <option value="operator">オペレーター</option>
+                              </select>
+                              <Button
+                                variant="ghost" size="sm"
+                                className="text-destructive hover:text-destructive"
+                                onClick={async () => {
+                                  if (!confirm(`${member.email} を削除しますか？`)) return;
+                                  try {
+                                    await api.team.removeMember(member.id);
+                                    setTeamMembers((prev) => prev.filter((m) => m.id !== member.id));
+                                    toast.success('メンバーを削除しました');
+                                  } catch { toast.error('削除に失敗しました'); }
+                                }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               ) : (
                 <p className="text-sm text-muted-foreground">読み込み中...</p>
               )}
             </CardContent>
           </Card>
 
-          {/* Role descriptions */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">権限ロール一覧</CardTitle>
-              <CardDescription>各ロールの権限範囲</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-start gap-3 p-3 rounded-lg border border-border">
-                  <Badge className="mt-0.5 shrink-0">オーナー</Badge>
-                  <div>
-                    <p className="text-sm font-medium">全権限</p>
-                    <p className="text-xs text-muted-foreground">アカウント設定、プラン変更、メンバー管理、メッセージ配信、全ての操作が可能</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg border border-border">
-                  <Badge variant="secondary" className="mt-0.5 shrink-0">管理者</Badge>
-                  <div>
-                    <p className="text-sm font-medium">設定変更、メッセージ配信</p>
-                    <p className="text-xs text-muted-foreground">LINE設定の変更、ブロードキャスト配信、友だち管理、タグ管理などが可能。プラン変更・メンバー管理は不可</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg border border-border">
-                  <Badge variant="secondary" className="mt-0.5 shrink-0">オペレーター</Badge>
-                  <div>
-                    <p className="text-sm font-medium">メッセージ対応のみ</p>
-                    <p className="text-xs text-muted-foreground">個別チャットでの返信、友だち情報の閲覧が可能。ブロードキャスト配信や設定変更は不可</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg border border-border">
-                  <Badge variant="outline" className="mt-0.5 shrink-0">閲覧者</Badge>
-                  <div>
-                    <p className="text-sm font-medium">閲覧のみ</p>
-                    <p className="text-xs text-muted-foreground">ダッシュボード、分析データ、メッセージ履歴の閲覧のみ可能。メッセージ送信や設定変更は不可</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Pending invitations */}
+          {invitations.filter((i) => i.status === 'pending').length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">保留中の招待</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>メール</TableHead>
+                      <TableHead>ロール</TableHead>
+                      <TableHead>有効期限</TableHead>
+                      <TableHead>操作</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {invitations.filter((i) => i.status === 'pending').map((inv) => (
+                      <TableRow key={inv.id}>
+                        <TableCell className="text-sm">{inv.email}</TableCell>
+                        <TableCell><Badge variant="outline">{inv.role === 'admin' ? '管理者' : 'オペレーター'}</Badge></TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3 inline mr-1" />
+                          {new Date(inv.expiresAt).toLocaleDateString('ja-JP')}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost" size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={async () => {
+                              try {
+                                await api.team.cancelInvitation(inv.id);
+                                setInvitations((prev) => prev.filter((i) => i.id !== inv.id));
+                                toast.success('招待を取り消しました');
+                              } catch { toast.error('取り消しに失敗しました'); }
+                            }}
+                          >
+                            <XCircle className="h-3.5 w-3.5 mr-1" />
+                            取消
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Invite member (MVP - UI only) */}
+          {/* Invite member */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">メンバーを招待</CardTitle>
               <CardDescription>チームメンバーを招待して、アカウントを共同管理できます</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={(e) => {
+              <form onSubmit={async (e) => {
                 e.preventDefault();
                 setInviting(true);
-                // MVP: show coming soon message
-                setTimeout(() => {
-                  toast('招待機能は近日公開予定です。現在開発中です。');
+                try {
+                  const inv = await api.team.invite({ email: inviteEmail, role: inviteRole });
+                  setInvitations((prev) => [inv, ...prev]);
+                  setInviteEmail('');
+                  toast.success(`${inviteEmail} に招待を送信しました`);
+                } catch (err: unknown) {
+                  toast.error(err instanceof Error ? err.message : '招待の送信に失敗しました');
+                } finally {
                   setInviting(false);
-                }, 500);
+                }
               }} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -683,18 +756,141 @@ export default function SettingsPage() {
                     >
                       <option value="admin">管理者</option>
                       <option value="operator">オペレーター</option>
-                      <option value="viewer">閲覧者</option>
                     </select>
                   </div>
                 </div>
-                <Button type="submit" disabled className="gap-2">
+                <Button type="submit" disabled={inviting} className="gap-2">
                   <Plus className="h-4 w-4" />
-                  招待を送信
+                  {inviting ? '送信中...' : '招待を送信'}
                 </Button>
               </form>
               <p className="text-[11px] text-muted-foreground mt-3">
-                ※ 招待機能は近日公開予定です
+                ※ 招待リンクの有効期限は7日間です。招待されたユーザーはリンクからアカウントを作成できます。
               </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="branding" className="mt-4 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">ホワイトラベル設定</CardTitle>
+              <CardDescription>ダッシュボードのロゴ・カラーをカスタマイズして、自社ブランドで提供できます</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                setSavingBranding(true);
+                try {
+                  const updated = await api.accounts.updateBranding(branding);
+                  setBranding(updated);
+                  toast.success('ブランド設定を保存しました。ページを再読み込みすると反映されます。');
+                } catch (err: unknown) {
+                  toast.error(err instanceof Error ? err.message : '保存に失敗しました');
+                } finally {
+                  setSavingBranding(false);
+                }
+              }} className="space-y-6">
+                <div className="space-y-2">
+                  <Label>アプリ名</Label>
+                  <Input
+                    type="text"
+                    value={branding.appName || ''}
+                    onChange={(e) => setBranding({ ...branding, appName: e.target.value || null })}
+                    placeholder="LinQ（デフォルト）"
+                    maxLength={100}
+                  />
+                  <p className="text-[11px] text-muted-foreground">サイドバーに表示されるアプリ名。空欄でLinQが表示されます。</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>ロゴURL</Label>
+                  <Input
+                    type="url"
+                    value={branding.logoUrl || ''}
+                    onChange={(e) => setBranding({ ...branding, logoUrl: e.target.value || null })}
+                    placeholder="https://example.com/logo.png"
+                  />
+                  <p className="text-[11px] text-muted-foreground">サイドバーに表示するロゴ画像のURL。推奨サイズ: 120x28px、透過PNG。</p>
+                  {branding.logoUrl && (
+                    <div className="mt-2 p-3 bg-slate-900 rounded-md inline-block">
+                      <img src={branding.logoUrl} alt="ロゴプレビュー" className="h-7 max-w-[120px] object-contain" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>プライマリカラー</Label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={branding.primaryColor || '#06C755'}
+                        onChange={(e) => setBranding({ ...branding, primaryColor: e.target.value })}
+                        className="h-10 w-10 rounded border border-input cursor-pointer"
+                      />
+                      <Input
+                        type="text"
+                        value={branding.primaryColor || '#06C755'}
+                        onChange={(e) => setBranding({ ...branding, primaryColor: e.target.value })}
+                        placeholder="#06C755"
+                        maxLength={7}
+                        className="flex-1"
+                      />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">ロゴテキストのアクセントカラー</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>サイドバー背景色</Label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={branding.sidebarColor || '#0f172a'}
+                        onChange={(e) => setBranding({ ...branding, sidebarColor: e.target.value })}
+                        className="h-10 w-10 rounded border border-input cursor-pointer"
+                      />
+                      <Input
+                        type="text"
+                        value={branding.sidebarColor || '#0f172a'}
+                        onChange={(e) => setBranding({ ...branding, sidebarColor: e.target.value })}
+                        placeholder="#0f172a"
+                        maxLength={7}
+                        className="flex-1"
+                      />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">サイドバーの背景色</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>ファビコンURL</Label>
+                  <Input
+                    type="url"
+                    value={branding.faviconUrl || ''}
+                    onChange={(e) => setBranding({ ...branding, faviconUrl: e.target.value || null })}
+                    placeholder="https://example.com/favicon.ico"
+                  />
+                  <p className="text-[11px] text-muted-foreground">ブラウザタブに表示されるアイコン</p>
+                </div>
+
+                {/* Preview */}
+                <div className="border rounded-lg p-4 space-y-2">
+                  <Label className="text-muted-foreground">プレビュー</Label>
+                  <div className="rounded-lg p-4 inline-flex items-center gap-3" style={{ backgroundColor: branding.sidebarColor || '#0f172a' }}>
+                    {branding.logoUrl ? (
+                      <img src={branding.logoUrl} alt="ロゴ" className="h-7 max-w-[120px] object-contain" />
+                    ) : (
+                      <span className="text-xl font-extrabold" style={{ color: branding.primaryColor || '#06C755' }}>
+                        {branding.appName || 'LinQ'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <Button type="submit" disabled={savingBranding}>
+                  {savingBranding ? '保存中...' : 'ブランド設定を保存'}
+                </Button>
+              </form>
             </CardContent>
           </Card>
         </TabsContent>

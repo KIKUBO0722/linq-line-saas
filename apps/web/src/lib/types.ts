@@ -13,12 +13,49 @@ export interface AdminUser {
   id: string;
   email: string;
   tenantId: string;
+  role?: string;
+  displayName?: string;
   createdAt: string;
 }
 
 export interface Tenant {
   id: string;
   name: string;
+  slug?: string;
+  status?: string;
+  industry?: string;
+  parentTenantId?: string | null;
+  // White-label branding
+  appName?: string | null;
+  logoUrl?: string | null;
+  primaryColor?: string | null;
+  sidebarColor?: string | null;
+  faviconUrl?: string | null;
+  createdAt: string;
+}
+
+export interface TenantBranding {
+  appName?: string | null;
+  logoUrl?: string | null;
+  primaryColor?: string | null;
+  sidebarColor?: string | null;
+  faviconUrl?: string | null;
+}
+
+export interface TeamMember {
+  id: string;
+  email: string;
+  role: string;
+  displayName?: string | null;
+  createdAt: string;
+}
+
+export interface TenantInvitation {
+  id: string;
+  email: string;
+  role: string;
+  status: string;
+  expiresAt: string;
   createdAt: string;
 }
 

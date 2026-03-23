@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { DatabaseModule } from './database/database.module';
 import { WebhookModule } from './modules/webhook/webhook.module';
 import { LineModule } from './modules/line/line.module';
@@ -24,6 +25,9 @@ import { GreetingsModule } from './modules/greetings/greetings.module';
 import { GachaModule } from './modules/gacha/gacha.module';
 import { ExitPopupsModule } from './modules/exit-popups/exit-popups.module';
 import { AgencyModule } from './modules/agency/agency.module';
+import { OnboardingModule } from './modules/onboarding/onboarding.module';
+import { HealthModule } from './modules/health/health.module';
+import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
 import { validateEnv } from './config/env.validation';
 
 @Module({
@@ -33,6 +37,7 @@ import { validateEnv } from './config/env.validation';
       validate: validateEnv,
     }),
     ScheduleModule.forRoot(),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     DatabaseModule,
     LineModule,
     AuthModule,
@@ -56,6 +61,12 @@ import { validateEnv } from './config/env.validation';
     GachaModule,
     ExitPopupsModule,
     AgencyModule,
+    OnboardingModule,
+    HealthModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestLoggerMiddleware).forRoutes('*');
+  }
+}
