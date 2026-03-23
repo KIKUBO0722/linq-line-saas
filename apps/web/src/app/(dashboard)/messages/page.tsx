@@ -30,6 +30,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/components/ui/empty-state';
 
 // Template picker dropdown component
 function TemplatePicker({
@@ -92,9 +93,13 @@ function TemplatePicker({
               <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
             </div>
           ) : templates.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              テンプレートがありません
-            </p>
+            <div className="py-4">
+              <EmptyState
+                illustration="templates"
+                title="テンプレートがありません"
+                description="テンプレートページから作成できます"
+              />
+            </div>
           ) : (
             Object.entries(grouped).map(([category, items]) => (
               <div key={category}>
@@ -514,7 +519,11 @@ export default function MessagesPage() {
                       <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
                     </div>
                   ) : friends.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-8">友だちがいません</p>
+                    <EmptyState
+                      illustration="friends"
+                      title="友だちがいません"
+                      description="LINE公式アカウントを接続して友だちを同期しましょう"
+                    />
                   ) : (
                     friends
                       .filter((f) => {
@@ -590,7 +599,11 @@ export default function MessagesPage() {
                           <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
                         </div>
                       ) : messages.length === 0 ? (
-                        <p className="text-center text-sm text-muted-foreground py-8">まだメッセージがありません</p>
+                        <EmptyState
+                          illustration="messages"
+                          title="まだメッセージがありません"
+                          description="友だちにメッセージを送信してみましょう"
+                        />
                       ) : (
                         <div className="space-y-3">
                           {messages.map((msg) => (

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { AiService } from './ai.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { TenantId } from '../../common/decorators/tenant.decorator';
@@ -51,6 +51,26 @@ export class AiController {
   @Post('chat-suggest')
   async chatSuggest(@TenantId() tenantId: string, @Body() body: ChatSuggestDto) {
     return this.aiService.chatSuggest(tenantId, body);
+  }
+
+  @Post('suggest-segments')
+  async suggestSegments(@TenantId() tenantId: string) {
+    return this.aiService.suggestSegments(tenantId);
+  }
+
+  @Post('analyze-traffic')
+  async analyzeTraffic(@TenantId() tenantId: string) {
+    return this.aiService.analyzeTraffic(tenantId);
+  }
+
+  @Post('generate-report')
+  async generateReport(@TenantId() tenantId: string, @Query('period') period?: string) {
+    return this.aiService.generateReport(tenantId, period === 'monthly' ? 'monthly' : 'weekly');
+  }
+
+  @Post('optimize-form/:formId')
+  async optimizeForm(@TenantId() tenantId: string, @Param('formId') formId: string) {
+    return this.aiService.optimizeForm(tenantId, formId);
   }
 
   @Post('execute-action')

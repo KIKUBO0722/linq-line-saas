@@ -7,7 +7,7 @@ import {
   BarChart3, Users, MessageSquare, ArrowUpRight, ArrowDownRight,
   Zap, TrendingUp, Radio, Calendar, RefreshCw, Eye, Route, Plus, Trash2, QrCode, Copy,
   Link2, ExternalLink, MousePointerClick, Target, ToggleLeft, ToggleRight,
-  Clock, Tags, Activity,
+  Clock, Tags, Activity, Download, Sparkles, Loader2, FileText,
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -145,6 +145,12 @@ export default function AnalyticsPage() {
   });
   const [loadingDelivery, setLoadingDelivery] = useState(false);
 
+  // AI features
+  const [aiTrafficInsights, setAiTrafficInsights] = useState<{ summary: string; insights: Array<{ title: string; description: string; actionable: string }> } | null>(null);
+  const [aiTrafficLoading, setAiTrafficLoading] = useState(false);
+  const [aiReport, setAiReport] = useState<{ title: string; period: string; sections: Array<{ heading: string; content: string }>; recommendations: string[] } | null>(null);
+  const [aiReportLoading, setAiReportLoading] = useState(false);
+
   useEffect(() => {
     let failCount = 0;
     const track = <T,>(fallback: T) => () => { failCount++; return fallback as T; };
@@ -204,10 +210,99 @@ export default function AnalyticsPage() {
 
   return (
     <div className="p-2 max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">分析</h1>
-        <p className="text-sm text-muted-foreground">過去30日間のパフォーマンス</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">分析</h1>
+          <p className="text-sm text-muted-foreground">過去30日間のパフォーマンス</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={async () => {
+            try {
+              const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
+              const res = await fetch(`${API_BASE}/api/v1/analytics/daily/export/csv`, { credentials: 'include' });
+              if (!res.ok) throw new Error('エクスポートに失敗しました');
+              const blob = await res.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `analytics_${new Date().toISOString().slice(0, 10)}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+              toast.success('CSVをダウンロードしました');
+            } catch {
+              toast.error('CSVエクスポートに失敗しました');
+            }
+          }}
+        >
+          <Download className="h-4 w-4" />
+          CSVエクスポート
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          disabled={aiReportLoading}
+          onClick={async () => {
+            setAiReportLoading(true);
+            try {
+              const result = await api.ai.generateReport('weekly');
+              setAiReport(result);
+            } catch {
+              toast.error('AIレポート生成に失敗しました');
+            } finally {
+              setAiReportLoading(false);
+            }
+          }}
+        >
+          {aiReportLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+          AIレポート
+        </Button>
       </div>
+
+      {/* AI Report */}
+      {aiReport && (
+        <Card className="border-[#06C755]/30 bg-[#06C755]/5">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="h-4 w-4 text-[#06C755]" />
+                {aiReport.title}
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-[10px]">{aiReport.period}</Badge>
+                <Button variant="ghost" size="sm" onClick={() => setAiReport(null)}>✕</Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {aiReport.sections.map((section, i) => (
+              <div key={i}>
+                <h4 className="text-sm font-semibold mb-1">{section.heading}</h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">{section.content}</p>
+              </div>
+            ))}
+            {aiReport.recommendations.length > 0 && (
+              <div className="border-t pt-3">
+                <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-[#06C755]" />
+                  改善アクション
+                </h4>
+                <ul className="space-y-1.5">
+                  {aiReport.recommendations.map((rec, i) => (
+                    <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
+                      <span className="text-[#06C755] font-bold mt-0.5">→</span>
+                      {rec}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Main metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -363,15 +458,47 @@ export default function AnalyticsPage() {
         <TabsContent value="broadcasts" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">配信履歴</CardTitle>
-              <CardDescription>一斉配信・予約配信の送信履歴</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base">配信履歴</CardTitle>
+                  <CardDescription>一斉配信・予約配信の送信履歴</CardDescription>
+                </div>
+                {broadcasts.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={async () => {
+                      try {
+                        const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
+                        const res = await fetch(`${API_BASE}/api/v1/analytics/broadcasts/export/csv`, { credentials: 'include' });
+                        if (!res.ok) throw new Error();
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `broadcasts_${new Date().toISOString().slice(0, 10)}.csv`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        toast.success('CSVをダウンロードしました');
+                      } catch {
+                        toast.error('CSVエクスポートに失敗しました');
+                      }
+                    }}
+                  >
+                    <Download className="h-4 w-4" />
+                    CSV
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {broadcasts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Radio className="h-10 w-10 text-muted-foreground/30 mb-3" />
-                  <p className="text-sm text-muted-foreground">配信履歴がありません</p>
-                </div>
+                <EmptyState
+                  illustration="messages"
+                  title="配信履歴がありません"
+                  description="メッセージページから一斉配信を送信しましょう"
+                />
               ) : (
                 <Table>
                   <TableHeader>
@@ -492,11 +619,63 @@ export default function AnalyticsPage() {
         <TabsContent value="traffic" className="mt-4 space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">友だち追加の流入経路を追跡・分析します</p>
-            <Button onClick={() => setShowSourceForm(true)} size="sm" className="gap-1.5">
-              <Plus className="h-4 w-4" />
-              経路を追加
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                disabled={aiTrafficLoading}
+                onClick={async () => {
+                  setAiTrafficLoading(true);
+                  try {
+                    const result = await api.ai.analyzeTraffic();
+                    setAiTrafficInsights(result);
+                  } catch {
+                    toast.error('AI流入分析に失敗しました');
+                  } finally {
+                    setAiTrafficLoading(false);
+                  }
+                }}
+              >
+                {aiTrafficLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                AI分析
+              </Button>
+              <Button onClick={() => setShowSourceForm(true)} size="sm" className="gap-1.5">
+                <Plus className="h-4 w-4" />
+                経路を追加
+              </Button>
+            </div>
           </div>
+
+          {/* AI Traffic Insights */}
+          {aiTrafficInsights && (
+            <Card className="border-[#06C755]/30 bg-[#06C755]/5">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-[#06C755]" />
+                    AI流入分析
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setAiTrafficInsights(null)}>✕</Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">{aiTrafficInsights.summary}</p>
+                <div className="space-y-3">
+                  {aiTrafficInsights.insights.map((insight, i) => (
+                    <div key={i} className="rounded-lg border bg-background p-3">
+                      <h4 className="text-sm font-semibold mb-1">{insight.title}</h4>
+                      <p className="text-xs text-muted-foreground mb-2">{insight.description}</p>
+                      <p className="text-xs font-medium text-[#06C755] flex items-start gap-1.5">
+                        <span className="mt-0.5">→</span>
+                        {insight.actionable}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {showSourceForm && (
             <Card>

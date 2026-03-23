@@ -1107,13 +1107,13 @@ export default function RichMenusPage() {
         <TabsContent value="groups" className="mt-4">
           {groups.length === 0 ? (
             <Card>
-              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                <Layers className="h-12 w-12 text-muted-foreground/30 mb-4" />
-                <h3 className="text-lg font-semibold">タブグループがありません</h3>
-                <p className="text-sm text-muted-foreground mt-1 mb-4">
-                  タブ切替型のリッチメニューを作成して、<br />複数のメニューをタブで切り替えられるようにしましょう
-                </p>
-                <Button onClick={startCreateGroup} className="gap-1.5"><Layers className="h-4 w-4" />最初のグループを作成</Button>
+              <CardContent>
+                <EmptyState
+                  illustration="rich-menus"
+                  title="タブグループがありません"
+                  description="タブ切替型のリッチメニューで複数のメニューを切り替えられます"
+                  action={{ label: '最初のグループを作成', onClick: startCreateGroup, icon: Layers }}
+                />
               </CardContent>
             </Card>
           ) : (

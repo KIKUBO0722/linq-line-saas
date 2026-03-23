@@ -3,9 +3,11 @@
 import { toast } from 'sonner';
 
 import { useEffect, useState } from 'react';
-import { Settings, Plus, Check, Copy, CreditCard, Zap, Users, MessageSquare, RefreshCw, Shield, Mail, Trash2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Settings, Plus, Check, Copy, CreditCard, Zap, Users, MessageSquare, RefreshCw, Shield, Mail, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import type { LineAccount } from '@/lib/types';
 import { api } from '@/lib/api-client';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface BillingPlan {
   id: string;
@@ -66,6 +68,23 @@ export default function SettingsPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('operator');
   const [inviting, setInviting] = useState(false);
+
+  const searchParams = useSearchParams();
+
+  // Handle Stripe billing redirect
+  useEffect(() => {
+    const billing = searchParams.get('billing');
+    if (billing === 'success') {
+      setTab('billing');
+      toast.success('お支払いが完了しました。プランが更新されます。');
+      // Clean URL
+      window.history.replaceState({}, '', '/settings');
+    } else if (billing === 'cancel') {
+      setTab('billing');
+      toast('お支払いがキャンセルされました。');
+      window.history.replaceState({}, '', '/settings');
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     api.accounts.list().then(setAccounts).catch(() => { toast.error('アカウント情報の取得に失敗しました'); });
@@ -197,11 +216,12 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               {accounts.length === 0 && !showForm ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Settings className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold">LINE公式アカウントが接続されていません</h3>
-                  <p className="text-sm text-muted-foreground mt-1">「アカウント追加」から接続してください</p>
-                </div>
+                <EmptyState
+                  illustration="generic"
+                  title="LINE公式アカウントが接続されていません"
+                  description="「アカウント追加」から接続してください"
+                  action={{ label: 'アカウント追加', onClick: () => setShowForm(true), icon: Plus }}
+                />
               ) : (
                 <>
                   {accounts.length > 0 && (

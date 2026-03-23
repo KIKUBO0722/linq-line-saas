@@ -3,7 +3,7 @@
 import { toast } from 'sonner';
 
 import { useEffect, useState } from 'react';
-import { Filter, Plus, Trash2, Send, Eye, Users, Ban } from 'lucide-react';
+import { Filter, Plus, Trash2, Send, Eye, Users, Ban, Sparkles, Loader2, Check } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import type { Segment, Tag } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,12 @@ export default function SegmentsPage() {
   const [broadcastSegmentId, setBroadcastSegmentId] = useState<string | null>(null);
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [broadcasting, setBroadcasting] = useState(false);
+
+  // AI Suggestions
+  const [aiSuggestions, setAiSuggestions] = useState<Array<{ name: string; description: string; tagNames: string[]; matchType: 'any' | 'all'; reasoning: string; estimatedFriendCount: number }>>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showAiPanel, setShowAiPanel] = useState(false);
+  const [creatingFromAi, setCreatingFromAi] = useState<number | null>(null);
 
   useEffect(() => {
     loadData();
@@ -190,11 +196,116 @@ export default function SegmentsPage() {
           <h1 className="text-2xl font-bold">セグメント配信</h1>
           <p className="text-sm text-muted-foreground">タグでフィルタしたグループにターゲット配信</p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="gap-1.5">
-          <Plus className="h-4 w-4" />
-          セグメント作成
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={async () => {
+              setShowAiPanel(true);
+              setAiLoading(true);
+              try {
+                const result = await api.ai.suggestSegments();
+                setAiSuggestions(result.suggestions);
+              } catch {
+                toast.error('AIセグメント提案の取得に失敗しました');
+              } finally {
+                setAiLoading(false);
+              }
+            }}
+            className="gap-1.5"
+          >
+            <Sparkles className="h-4 w-4" />
+            AI提案
+          </Button>
+          <Button onClick={() => setShowCreate(true)} className="gap-1.5">
+            <Plus className="h-4 w-4" />
+            セグメント作成
+          </Button>
+        </div>
       </div>
+
+      {/* AI Segment Suggestions */}
+      {showAiPanel && (
+        <Card className="border-[#06C755]/30 bg-[#06C755]/5">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-[#06C755]" />
+                AIセグメント提案
+              </CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => setShowAiPanel(false)}>✕</Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {aiLoading ? (
+              <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span className="text-sm">データを分析中...</span>
+              </div>
+            ) : aiSuggestions.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">提案を生成できませんでした</p>
+            ) : (
+              <div className="space-y-3">
+                {aiSuggestions.map((s, i) => (
+                  <div key={i} className="rounded-lg border bg-background p-3 space-y-2">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-sm font-semibold">{s.name}</p>
+                        <p className="text-xs text-muted-foreground">{s.description}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge variant="secondary" className="text-[10px]">
+                          <Users className="h-3 w-3 mr-0.5" />
+                          約{s.estimatedFriendCount}人
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={creatingFromAi === i}
+                          onClick={async () => {
+                            setCreatingFromAi(i);
+                            try {
+                              const tagIds = s.tagNames
+                                .map((name) => tags.find((t) => t.name === name)?.id)
+                                .filter((id): id is string => !!id);
+                              if (tagIds.length === 0) {
+                                toast.error('対応するタグが見つかりません');
+                                return;
+                              }
+                              await api.segments.create({
+                                name: s.name,
+                                description: s.description,
+                                tagIds,
+                                matchType: s.matchType,
+                              });
+                              toast.success(`「${s.name}」を作成しました`);
+                              await loadData();
+                            } catch {
+                              toast.error('セグメント作成に失敗しました');
+                            } finally {
+                              setCreatingFromAi(null);
+                            }
+                          }}
+                          className="gap-1"
+                        >
+                          {creatingFromAi === i ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                          作成
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {s.tagNames.map((tag) => (
+                        <Badge key={tag} variant="outline" className="text-[10px]">{tag}</Badge>
+                      ))}
+                      <Badge variant="secondary" className="text-[10px]">{s.matchType === 'all' ? 'AND' : 'OR'}</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{s.reasoning}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Create form */}
       {showCreate && (

@@ -56,6 +56,26 @@ export class AnalyticsController {
     res.send(bom + header + rows);
   }
 
+  @Get('broadcasts/export/csv')
+  async exportBroadcastsCsv(@TenantId() tenantId: string, @Res() res: { setHeader: (k: string, v: string) => void; send: (d: string) => void }) {
+    const broadcasts = await this.analyticsService.getBroadcastHistory(tenantId);
+    const escCsv = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+    const header = '配信日時,ステータス,配信タイプ,メッセージ内容\n';
+    const rows = broadcasts.map((b) =>
+      [
+        escCsv(b.sentAt ? new Date(b.sentAt).toLocaleString('ja-JP') : b.createdAt ? new Date(b.createdAt).toLocaleString('ja-JP') : ''),
+        escCsv(b.status || ''),
+        escCsv(b.sendType || 'immediate'),
+        escCsv(typeof b.content === 'string' ? b.content : JSON.stringify(b.content || '')),
+      ].join(',')
+    ).join('\n');
+
+    const bom = '\uFEFF';
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=broadcasts_${new Date().toISOString().slice(0, 10)}.csv`);
+    res.send(bom + header + rows);
+  }
+
   @Get('cohort')
   async cohort(@TenantId() tenantId: string, @Query('weeks') weeks?: string) {
     return this.analyticsService.getCohortAnalysis(tenantId, weeks ? parseInt(weeks, 10) : 8);

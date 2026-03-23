@@ -3,7 +3,7 @@
 import { toast } from 'sonner';
 
 import { useEffect, useState } from 'react';
-import { FileText, Plus, Trash2, Eye, ChevronLeft, GripVertical, X, Copy, Check, ExternalLink, Tag } from 'lucide-react';
+import { FileText, Plus, Trash2, Eye, ChevronLeft, GripVertical, X, Copy, Check, ExternalLink, Tag, Download, Sparkles, Loader2, AlertTriangle, AlertCircle, Info } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import type { Form, FormResponse, Tag as TagType } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -44,6 +44,15 @@ export default function FormsPage() {
   const [saving, setSaving] = useState(false);
   const [tagOnSubmitId, setTagOnSubmitId] = useState<string>('');
   const [availableTags, setAvailableTags] = useState<TagType[]>([]);
+
+  // AI optimization
+  const [aiOptimization, setAiOptimization] = useState<{
+    formName: string;
+    score: number;
+    issues: Array<{ severity: 'high' | 'medium' | 'low'; issue: string; suggestion: string }>;
+    improvedFields?: Array<{ label: string; type: string; placeholder?: string; required?: boolean }>;
+  } | null>(null);
+  const [aiOptLoading, setAiOptLoading] = useState(false);
 
   useEffect(() => {
     loadForms();
@@ -176,17 +185,122 @@ export default function FormsPage() {
           <Button variant="ghost" size="sm" onClick={() => { setView('list'); setSelectedForm(null); }} aria-label="戻る">
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold">{selectedForm.name}</h1>
             <p className="text-sm text-muted-foreground">{responses.length}件の回答</p>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            disabled={aiOptLoading}
+            onClick={async () => {
+              setAiOptLoading(true);
+              try {
+                const result = await api.ai.optimizeForm(selectedForm.id);
+                setAiOptimization(result);
+              } catch {
+                toast.error('AI最適化分析に失敗しました');
+              } finally {
+                setAiOptLoading(false);
+              }
+            }}
+          >
+            {aiOptLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            AI最適化
+          </Button>
+          {responses.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={async () => {
+                try {
+                  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
+                  const res = await fetch(`${API_BASE}/api/v1/forms/${selectedForm.id}/responses/export/csv`, { credentials: 'include' });
+                  if (!res.ok) throw new Error();
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `form_${selectedForm.name}_${new Date().toISOString().slice(0, 10)}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  toast.success('CSVをダウンロードしました');
+                } catch {
+                  toast.error('CSVエクスポートに失敗しました');
+                }
+              }}
+            >
+              <Download className="h-4 w-4" />
+              CSV
+            </Button>
+          )}
         </div>
+
+        {/* AI Form Optimization Panel */}
+        {aiOptimization && (
+          <Card className="border-[#06C755]/30 bg-[#06C755]/5">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-[#06C755]" />
+                  AI最適化レポート
+                  <Badge variant={aiOptimization.score >= 80 ? 'default' : aiOptimization.score >= 50 ? 'secondary' : 'destructive'} className="text-[10px]">
+                    スコア: {aiOptimization.score}/100
+                  </Badge>
+                </CardTitle>
+                <Button variant="ghost" size="sm" onClick={() => setAiOptimization(null)}>✕</Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Issues */}
+              <div className="space-y-2">
+                {aiOptimization.issues.map((issue, i) => (
+                  <div key={i} className="flex items-start gap-2 rounded-lg border bg-background p-3">
+                    {issue.severity === 'high' ? (
+                      <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                    ) : issue.severity === 'medium' ? (
+                      <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                    ) : (
+                      <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                    )}
+                    <div>
+                      <p className="text-sm font-medium">{issue.issue}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{issue.suggestion}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Improved fields suggestion */}
+              {aiOptimization.improvedFields && aiOptimization.improvedFields.length > 0 && (
+                <div className="border-t pt-3">
+                  <h4 className="text-sm font-semibold mb-2">改善後のフィールド構成案</h4>
+                  <div className="space-y-1.5">
+                    {aiOptimization.improvedFields.map((field, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs">
+                        <Badge variant="outline" className="text-[10px] shrink-0">{field.type}</Badge>
+                        <span className="font-medium">{field.label}</span>
+                        {field.required && <Badge variant="secondary" className="text-[9px]">必須</Badge>}
+                        {field.placeholder && <span className="text-muted-foreground truncate">({field.placeholder})</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {responses.length === 0 ? (
           <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-              <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold">まだ回答がありません</h3>
+            <CardContent>
+              <EmptyState
+                illustration="forms"
+                title="まだ回答がありません"
+                description="フォームを公開して回答を集めましょう"
+              />
             </CardContent>
           </Card>
         ) : (

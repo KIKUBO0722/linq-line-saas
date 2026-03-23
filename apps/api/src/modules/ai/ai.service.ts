@@ -5,7 +5,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import {
   aiConfigs, aiConversations, friends, messages, stepScenarios, stepMessages,
-  aiKnowledge, coupons, segments, richMenus, tags, forms,
+  aiKnowledge, coupons, segments, richMenus, tags, forms, friendTags, formResponses,
 } from '@line-saas/db';
 import { SEED_KNOWLEDGE } from './seed-knowledge';
 
@@ -527,6 +527,382 @@ ${businessInfo.menu ? `メニュー: ${businessInfo.menu}` : ''}
       });
     }
     return { inserted: SEED_KNOWLEDGE.length };
+  }
+
+  /**
+   * AIセグメント提案: 友だちのタグ分布・エンゲージメントデータを分析し、
+   * 最適なセグメントを自動提案する
+   */
+  async suggestSegments(tenantId: string): Promise<{
+    suggestions: Array<{
+      name: string;
+      description: string;
+      tagNames: string[];
+      matchType: 'any' | 'all';
+      reasoning: string;
+      estimatedFriendCount: number;
+    }>;
+  }> {
+    // 1. Gather tag distribution data
+    const allTags = await this.db.select().from(tags).where(eq(tags.tenantId, tenantId));
+    if (allTags.length === 0) {
+      return { suggestions: [{ name: '全友だち', description: 'タグが未作成のため、まずタグを追加してください', tagNames: [], matchType: 'any', reasoning: 'タグが登録されていないため、セグメント提案ができません。友だちにタグを付与すると、AI分析が可能になります。', estimatedFriendCount: 0 }] };
+    }
+
+    // 2. Get tag-friend counts and engagement data
+    const tagStats = await this.db
+      .select({
+        tagId: friendTags.tagId,
+        friendCount: sql<number>`count(distinct ${friendTags.friendId})`,
+      })
+      .from(friendTags)
+      .innerJoin(friends, and(eq(friends.id, friendTags.friendId), eq(friends.tenantId, tenantId)))
+      .groupBy(friendTags.tagId);
+
+    const tagStatsMap = new Map(tagStats.map((ts) => [ts.tagId, Number(ts.friendCount)]));
+
+    // 3. Get per-tag message engagement
+    const tagEngagement = await this.db
+      .select({
+        tagId: friendTags.tagId,
+        inbound: sql<number>`count(case when ${messages.direction} = 'inbound' then 1 end)`,
+        outbound: sql<number>`count(case when ${messages.direction} = 'outbound' then 1 end)`,
+      })
+      .from(friendTags)
+      .innerJoin(friends, and(eq(friends.id, friendTags.friendId), eq(friends.tenantId, tenantId)))
+      .leftJoin(messages, eq(messages.friendId, friendTags.friendId))
+      .groupBy(friendTags.tagId);
+
+    const engagementMap = new Map(tagEngagement.map((te) => [te.tagId, { inbound: Number(te.inbound), outbound: Number(te.outbound) }]));
+
+    // 4. Get total friend count
+    const [{ total: totalFriends }] = await this.db
+      .select({ total: sql<number>`count(*)` })
+      .from(friends)
+      .where(eq(friends.tenantId, tenantId));
+
+    // 5. Build analytics context for Gemini
+    const tagAnalytics = allTags.map((t) => ({
+      name: t.name,
+      friendCount: tagStatsMap.get(t.id) || 0,
+      inboundMessages: engagementMap.get(t.id)?.inbound || 0,
+      outboundMessages: engagementMap.get(t.id)?.outbound || 0,
+      responseRate: (() => {
+        const e = engagementMap.get(t.id);
+        if (!e || e.outbound === 0) return 0;
+        return Math.round((e.inbound / e.outbound) * 100);
+      })(),
+    }));
+
+    const systemPrompt = `あなたはLINEマーケティングのセグメント戦略の専門家です。
+友だちデータとタグの統計情報を分析して、効果的なセグメント（配信対象グループ）を3〜5個提案してください。
+
+## 提案の観点
+1. **高エンゲージメント層**: 応答率が高いタグの組み合わせ → リピート促進・VIP施策向け
+2. **休眠層**: フォロー中だがメッセージ応答が少ない → 再活性化キャンペーン向け
+3. **新規獲得層**: 最近追加されたタグ・友だち → ウェルカム施策向け
+4. **クロスセル層**: 特定タグの組み合わせ → 関連商品・サービスの案内向け
+5. **離脱リスク層**: スコアが低い・応答なしが続く → 離脱防止施策向け
+
+## 出力形式（厳密に従うこと）
+JSON形式のみで出力してください。JSON以外のテキストは含めないでください。
+{
+  "suggestions": [
+    {
+      "name": "セグメント名（日本語、20文字以内）",
+      "description": "配信対象の説明（1文）",
+      "tagNames": ["タグ名1", "タグ名2"],
+      "matchType": "any" または "all",
+      "reasoning": "このセグメントを提案する理由（データに基づく根拠を2〜3文で）",
+      "estimatedFriendCount": 推定人数
+    }
+  ]
+}
+
+## ルール
+- tagNamesには実在するタグ名のみ使用すること
+- matchType: "all" = すべてのタグを持つ友だち、"any" = いずれかのタグを持つ友だち
+- estimatedFriendCountはタグ人数から合理的に推定すること
+- 実用的で即配信に使えるセグメント名をつけること`;
+
+    const userPrompt = `以下のLINEアカウントデータを分析して、最適なセグメント提案をしてください。
+
+## アカウント概要
+- 総友だち数: ${Number(totalFriends)}人
+
+## タグ別統計
+${tagAnalytics.map((t) => `- ${t.name}: ${t.friendCount}人 / 送信${t.outboundMessages}件 / 受信${t.inboundMessages}件 / 応答率${t.responseRate}%`).join('\n')}
+
+## 利用可能なタグ名一覧
+${allTags.map((t) => t.name).join(', ')}
+
+JSON形式のみで出力してください。`;
+
+    try {
+      const text = await this.generate(systemPrompt, userPrompt);
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('JSON抽出失敗');
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (!parsed.suggestions || !Array.isArray(parsed.suggestions)) throw new Error('不正な形式');
+
+      // Validate tagNames exist
+      const validTagNames = new Set(allTags.map((t) => t.name));
+      for (const s of parsed.suggestions) {
+        s.tagNames = (s.tagNames || []).filter((n: string) => validTagNames.has(n));
+      }
+
+      return parsed;
+    } catch (err) {
+      this.logger.error(`suggestSegments failed: ${err}`);
+      throw new InternalServerErrorException('AIセグメント提案に失敗しました。もう一度お試しください。');
+    }
+  }
+
+  /**
+   * AI流入分析: トラフィックソース×コンバージョンの分析レポートを生成
+   */
+  async analyzeTraffic(tenantId: string): Promise<{ summary: string; insights: Array<{ title: string; description: string; actionable: string }> }> {
+    // Gather traffic data
+    const friendsBySource = await this.db
+      .select({
+        source: friends.acquisitionSource,
+        count: sql<number>`count(*)`,
+        avgScore: sql<number>`avg(${friends.score})`,
+      })
+      .from(friends)
+      .where(and(eq(friends.tenantId, tenantId), eq(friends.isFollowing, true)))
+      .groupBy(friends.acquisitionSource);
+
+    const [{ total: totalFriends }] = await this.db
+      .select({ total: sql<number>`count(*)` })
+      .from(friends)
+      .where(and(eq(friends.tenantId, tenantId), eq(friends.isFollowing, true)));
+
+    // Monthly growth
+    const monthlyGrowth = await this.db
+      .select({
+        month: sql<string>`to_char(${friends.createdAt}, 'YYYY-MM')`,
+        count: sql<number>`count(*)`,
+      })
+      .from(friends)
+      .where(eq(friends.tenantId, tenantId))
+      .groupBy(sql`to_char(${friends.createdAt}, 'YYYY-MM')`)
+      .orderBy(sql`to_char(${friends.createdAt}, 'YYYY-MM')`);
+
+    const systemPrompt = `あなたはLINEマーケティングの流入分析の専門家です。
+友だちの流入経路データを分析して、実用的なインサイトを提供してください。
+
+## 出力形式（厳密に従うこと）
+JSON形式のみで出力してください。
+{
+  "summary": "全体の分析サマリー（3〜5文で簡潔に）",
+  "insights": [
+    {
+      "title": "インサイトのタイトル（短く）",
+      "description": "データに基づく分析（2〜3文）",
+      "actionable": "具体的なアクション提案（1〜2文）"
+    }
+  ]
+}
+
+3〜5個のインサイトを生成してください。`;
+
+    const userPrompt = `## 流入経路別データ
+${friendsBySource.map((s) => `- ${s.source || '不明'}: ${Number(s.count)}人 (平均スコア: ${Math.round(Number(s.avgScore) || 0)})`).join('\n')}
+
+## 月別友だち増加
+${monthlyGrowth.map((m) => `- ${m.month}: +${Number(m.count)}人`).join('\n')}
+
+## 総友だち数: ${Number(totalFriends)}人
+
+JSON形式のみで出力してください。`;
+
+    try {
+      const text = await this.generate(systemPrompt, userPrompt);
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('JSON抽出失敗');
+      return JSON.parse(jsonMatch[0]);
+    } catch (err) {
+      this.logger.error(`analyzeTraffic failed: ${err}`);
+      throw new InternalServerErrorException('AI流入分析に失敗しました。もう一度お試しください。');
+    }
+  }
+
+  /**
+   * AIレポート生成: 週次/月次の運用レポートを自動生成
+   */
+  async generateReport(tenantId: string, period: 'weekly' | 'monthly' = 'weekly'): Promise<{
+    title: string;
+    period: string;
+    sections: Array<{ heading: string; content: string }>;
+    recommendations: string[];
+  }> {
+    const days = period === 'weekly' ? 7 : 30;
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+
+    // Gather all relevant metrics
+    const [friendStats] = await this.db
+      .select({
+        total: sql<number>`count(*)`,
+        newFriends: sql<number>`count(case when ${friends.createdAt} >= ${since} then 1 end)`,
+        unfollowed: sql<number>`count(case when ${friends.isFollowing} = false and ${friends.unfollowedAt} >= ${since} then 1 end)`,
+      })
+      .from(friends)
+      .where(eq(friends.tenantId, tenantId));
+
+    const [msgStats] = await this.db
+      .select({
+        sent: sql<number>`count(case when ${messages.direction} = 'outbound' and ${messages.sentAt} >= ${since} then 1 end)`,
+        received: sql<number>`count(case when ${messages.direction} = 'inbound' and ${messages.sentAt} >= ${since} then 1 end)`,
+      })
+      .from(messages)
+      .where(eq(messages.tenantId, tenantId));
+
+    const periodLabel = period === 'weekly' ? '週次' : '月次';
+    const dateRange = `${since.toISOString().slice(0, 10)} 〜 ${new Date().toISOString().slice(0, 10)}`;
+
+    const systemPrompt = `あなたはLINEマーケティングの運用レポートを作成する専門家です。
+データに基づいた分析レポートを作成してください。
+
+## 出力形式（厳密に従うこと）
+JSON形式のみで出力してください。
+{
+  "title": "${periodLabel}レポート",
+  "period": "${dateRange}",
+  "sections": [
+    { "heading": "セクション名", "content": "分析内容（3〜5文）" }
+  ],
+  "recommendations": ["具体的な改善アクション1", "改善アクション2", "改善アクション3"]
+}
+
+## セクション構成
+1. 友だち増減 - 新規追加数、ブロック数、純増数
+2. メッセージ分析 - 送受信数、応答率
+3. エンゲージメント評価 - 全体的な活性度
+
+recommendationsは3〜5個、すぐに実行可能な具体的アクションを提案してください。`;
+
+    const userPrompt = `## ${periodLabel}データ（${dateRange}）
+- 総友だち数: ${Number(friendStats.total)}人
+- 新規友だち: ${Number(friendStats.newFriends)}人
+- ブロック: ${Number(friendStats.unfollowed)}人
+- 送信メッセージ: ${Number(msgStats.sent)}件
+- 受信メッセージ: ${Number(msgStats.received)}件
+- 応答率: ${Number(msgStats.sent) > 0 ? Math.round((Number(msgStats.received) / Number(msgStats.sent)) * 100) : 0}%
+
+JSON形式のみで出力してください。`;
+
+    try {
+      const text = await this.generate(systemPrompt, userPrompt);
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('JSON抽出失敗');
+      return JSON.parse(jsonMatch[0]);
+    } catch (err) {
+      this.logger.error(`generateReport failed: ${err}`);
+      throw new InternalServerErrorException('AIレポート生成に失敗しました。もう一度お試しください。');
+    }
+  }
+
+  /**
+   * AIフォーム最適化: フォームの構造と回答データを分析し、回答率改善の提案を生成
+   */
+  async optimizeForm(tenantId: string, formId: string): Promise<{
+    formName: string;
+    score: number;
+    issues: Array<{ severity: 'high' | 'medium' | 'low'; issue: string; suggestion: string }>;
+    improvedFields?: Array<{ label: string; type: string; placeholder?: string; required?: boolean }>;
+  }> {
+    // Get form details
+    const [form] = await this.db.select().from(forms).where(eq(forms.id, formId)).limit(1);
+    if (!form) throw new BadRequestException('フォームが見つかりません');
+
+    // Get response stats
+    const [responseStats] = await this.db
+      .select({
+        total: sql<number>`count(*)`,
+        withFriend: sql<number>`count(${formResponses.friendId})`,
+      })
+      .from(formResponses)
+      .where(eq(formResponses.formId, formId));
+
+    // Get all forms for this tenant to compare
+    const allForms = await this.db.select().from(forms).where(eq(forms.tenantId, tenantId));
+    const formResponseCounts = await this.db
+      .select({
+        formId: formResponses.formId,
+        count: sql<number>`count(*)`,
+      })
+      .from(formResponses)
+      .groupBy(formResponses.formId);
+    const countMap = new Map(formResponseCounts.map((r) => [r.formId, Number(r.count)]));
+
+    const formFields = Array.isArray(form.fields) ? form.fields : [];
+
+    const systemPrompt = `あなたはLINEフォーム最適化の専門家です。
+フォームの構造と回答データを分析して、回答率を改善するための具体的な提案を行ってください。
+
+## 評価基準
+1. **フィールド数**: 3-5個が最適。多すぎると離脱率↑
+2. **フィールドタイプ**: 選択式（radio/select）はテキスト入力より回答率が高い
+3. **必須項目**: 多すぎると離脱。本当に必要なものだけ
+4. **ラベル/プレースホルダー**: 分かりやすく具体的か
+5. **回答完了メッセージ**: 設定されているか
+6. **タグ自動付与**: 設定されているか
+
+## 出力形式（厳密に従うこと）
+JSON形式のみで出力してください。
+{
+  "formName": "フォーム名",
+  "score": 回答率改善スコア(0-100),
+  "issues": [
+    {
+      "severity": "high" | "medium" | "low",
+      "issue": "問題点（1文）",
+      "suggestion": "具体的な改善提案（1-2文）"
+    }
+  ],
+  "improvedFields": [
+    {
+      "label": "改善後のラベル",
+      "type": "text|email|tel|select|radio|textarea|number",
+      "placeholder": "プレースホルダー例",
+      "required": true|false
+    }
+  ]
+}
+
+issuesは2-5個。improvedFieldsはフィールド構成の改善案（現在のフィールド数と同等か少なく）。`;
+
+    const avgResponses = allForms.length > 0
+      ? Math.round(Array.from(countMap.values()).reduce((a, b) => a + b, 0) / allForms.length)
+      : 0;
+
+    const userPrompt = `## フォーム情報
+- フォーム名: ${form.name}
+- 説明: ${form.description || 'なし'}
+- フィールド数: ${formFields.length}個
+- フィールド詳細: ${JSON.stringify(formFields)}
+- 完了メッセージ: ${form.thankYouMessage || '未設定'}
+- タグ自動付与: ${form.tagOnSubmitId ? '設定済み' : '未設定'}
+- 状態: ${form.isActive ? '公開中' : '非公開'}
+
+## 回答データ
+- 総回答数: ${Number(responseStats.total)}件
+- 友だち紐付き: ${Number(responseStats.withFriend)}件
+- アカウント平均回答数: ${avgResponses}件
+
+JSON形式のみで出力してください。`;
+
+    try {
+      const text = await this.generate(systemPrompt, userPrompt);
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('JSON抽出失敗');
+      return JSON.parse(jsonMatch[0]);
+    } catch (err) {
+      this.logger.error(`optimizeForm failed: ${err}`);
+      throw new InternalServerErrorException('AIフォーム最適化に失敗しました。もう一度お試しください。');
+    }
   }
 
   // Execute AI-proposed action: actually create resources in DB

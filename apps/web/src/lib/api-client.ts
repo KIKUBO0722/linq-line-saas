@@ -263,6 +263,14 @@ export const api = {
       fetchApi<{ success: boolean; type: string; id: string; details?: Record<string, unknown> }>('/api/v1/ai/execute-action', { method: 'POST', body: JSON.stringify(data) }),
     chatSuggest: (data: { friendId: string; recentMessages: { role: string; content: string }[]; friendInfo?: Partial<Friend> }) =>
       fetchApi<{ suggestions: string[] }>('/api/v1/ai/chat-suggest', { method: 'POST', body: JSON.stringify(data) }),
+    suggestSegments: () =>
+      fetchApi<{ suggestions: Array<{ name: string; description: string; tagNames: string[]; matchType: 'any' | 'all'; reasoning: string; estimatedFriendCount: number }> }>('/api/v1/ai/suggest-segments', { method: 'POST' }),
+    analyzeTraffic: () =>
+      fetchApi<{ summary: string; insights: Array<{ title: string; description: string; actionable: string }> }>('/api/v1/ai/analyze-traffic', { method: 'POST' }),
+    generateReport: (period?: 'weekly' | 'monthly') =>
+      fetchApi<{ title: string; period: string; sections: Array<{ heading: string; content: string }>; recommendations: string[] }>(`/api/v1/ai/generate-report${period ? `?period=${period}` : ''}`, { method: 'POST' }),
+    optimizeForm: (formId: string) =>
+      fetchApi<{ formName: string; score: number; issues: Array<{ severity: 'high' | 'medium' | 'low'; issue: string; suggestion: string }>; improvedFields?: Array<{ label: string; type: string; placeholder?: string; required?: boolean }> }>(`/api/v1/ai/optimize-form/${formId}`, { method: 'POST' }),
   },
   conversions: {
     listGoals: () => fetchApi<ConversionGoal[]>('/api/v1/conversions/goals'),
