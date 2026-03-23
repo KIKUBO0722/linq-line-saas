@@ -457,30 +457,30 @@ export default function MessagesPage() {
   })();
 
   return (
-    <div className="flex flex-col h-[calc(100vh-48px)] lg:h-screen overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2 border-b shrink-0">
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold whitespace-nowrap">メッセージ</h1>
+    <div className="px-1 pt-1 space-y-3">
+      <div>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold">メッセージ</h1>
           <HelpTip content="友だちとの1対1のチャット画面です。メッセージの送受信、AI応答の管理ができます" />
-          <Tabs value={tab} onValueChange={(v) => setTab(v as 'chat' | 'broadcast')} className="ml-2">
-            <TabsList className="h-8">
-              <TabsTrigger value="chat" className="gap-1 text-xs h-7">
-                <MessageSquare className="h-3.5 w-3.5" />
-                個別チャット
-              </TabsTrigger>
-              <TabsTrigger value="broadcast" className="gap-1 text-xs h-7">
-                <Radio className="h-3.5 w-3.5" />
-                一斉配信
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
         </div>
+        <p className="text-sm text-muted-foreground">友だちとの会話・一斉配信</p>
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as 'chat' | 'broadcast')} className="flex-1 overflow-hidden flex flex-col">
-        <TabsContent value="chat" className="mt-0 flex-1 overflow-hidden">
-          <div className="overflow-hidden h-full">
-            <div className="flex h-full">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as 'chat' | 'broadcast')}>
+        <TabsList>
+          <TabsTrigger value="chat" className="gap-1.5">
+            <MessageSquare className="h-4 w-4" />
+            個別チャット
+          </TabsTrigger>
+          <TabsTrigger value="broadcast" className="gap-1.5">
+            <Radio className="h-4 w-4" />
+            一斉配信
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="chat" className="mt-4">
+          <div className="border rounded-lg overflow-hidden">
+            <div className="flex h-[calc(100vh-220px)]">
               {/* Friends sidebar */}
               <div className="w-72 border-r flex flex-col">
                 <div className="p-3 border-b space-y-2">
@@ -948,7 +948,7 @@ export default function MessagesPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="broadcast" className="mt-0 flex-1 overflow-auto p-3">
+        <TabsContent value="broadcast" className="mt-4">
           <Card>
             <CardHeader>
               <CardTitle>一斉配信</CardTitle>
