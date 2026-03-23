@@ -250,7 +250,7 @@ export default function AiPage() {
   }
 
   return (
-    <div className="p-2 space-y-4">
+    <div className="px-1 pt-1 space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
