@@ -7,10 +7,11 @@ import { TenantId } from '../../common/decorators/tenant.decorator';
 import { InviteUserDto, UpdateRoleDto } from './dto/auth.dto';
 
 const COOKIE_NAME = 'session_id';
+const isProduction = process.env.NODE_ENV === 'production';
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
+  secure: isProduction,
+  sameSite: isProduction ? ('none' as const) : ('strict' as const),
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   path: '/',
 };
