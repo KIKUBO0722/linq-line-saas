@@ -499,13 +499,13 @@ export default function MessagesPage() {
                       { value: 'unread' as const, label: '未対応' },
                       { value: 'in_progress' as const, label: '対応中' },
                       { value: 'done' as const, label: '完了' },
-                      { value: 'needs_followup' as const, label: '要F/U' },
+                      { value: 'needs_followup' as const, label: '要フォロー' },
                     ].map((f) => (
                       <button
                         key={f.value}
                         onClick={() => setStatusFilter(f.value)}
                         className={cn(
-                          'text-[10px] px-1.5 py-0.5 rounded-full border transition-colors whitespace-nowrap',
+                          'text-[8px] px-1.5 py-0.5 rounded-full border transition-colors whitespace-nowrap',
                           statusFilter === f.value
                             ? 'bg-primary text-primary-foreground border-primary'
                             : 'text-muted-foreground border-border hover:bg-muted',
