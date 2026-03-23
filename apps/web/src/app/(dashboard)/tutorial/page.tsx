@@ -158,7 +158,7 @@ export default function TutorialPage() {
   }
 
   return (
-    <div className="px-1 pt-1 space-y-3">
+    <div className="px-[5%] pt-2 space-y-3">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold">チュートリアル</h1>

@@ -208,7 +208,7 @@ export default function OverviewPage() {
   const allSetupDone = completedSetup === setupItems.length;
 
   return (
-    <div className="px-1 pt-1 space-y-3">
+    <div className="px-[5%] pt-2 space-y-3">
       {/* Header */}
       <div>
         <div className="flex items-center gap-2">

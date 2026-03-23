@@ -847,7 +847,7 @@ export default function TemplatesPage() {
   const sortedGroups = categoryOrder.filter((k) => grouped[k]);
 
   return (
-    <div className="px-1 pt-1 space-y-3">
+    <div className="px-[5%] pt-2 space-y-3">
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
