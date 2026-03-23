@@ -23,3 +23,13 @@ export function getApiUrl(): string {
   // This ensures cookies are first-party and not blocked as third-party cookies
   return '';
 }
+
+/**
+ * Returns the full API URL for OAuth redirects.
+ *
+ * OAuth flows require the browser to redirect to the API server directly
+ * (not through Vercel rewrites), so we always return the full URL.
+ */
+export function getOAuthBaseUrl(): string {
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
+}

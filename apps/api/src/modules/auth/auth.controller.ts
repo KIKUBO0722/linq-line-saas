@@ -71,6 +71,8 @@ export class AuthController {
         email: result.user.email,
         role: result.user.role,
         displayName: result.user.displayName,
+        avatarUrl: result.user.avatarUrl,
+        authProvider: result.user.authProvider,
       },
       tenant: {
         id: result.tenant.id,
