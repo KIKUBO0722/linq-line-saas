@@ -11,7 +11,6 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 
 export default function SignupPage() {
   const router = useRouter();
-  const [tenantName, setTenantName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -22,7 +21,7 @@ export default function SignupPage() {
     setError('');
     setLoading(true);
     try {
-      await api.auth.signup({ email, password, tenantName });
+      await api.auth.signup({ email, password, tenantName: email.split('@')[0] });
       router.push('/overview');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : '登録に失敗しました');
@@ -40,17 +39,13 @@ export default function SignupPage() {
               <span className="text-[#06C755]">Lin</span>
               <span className="text-slate-900">Q</span>
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">14日間無料トライアル</p>
+            <p className="text-sm text-muted-foreground mt-1">無料ではじめる</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">{error}</div>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="tenantName">会社名・店舗名</Label>
-              <Input id="tenantName" type="text" required value={tenantName} onChange={(e) => setTenantName(e.target.value)} placeholder="例: 田中ビューティーサロン" />
-            </div>
             <div className="space-y-2">
               <Label htmlFor="email">メールアドレス</Label>
               <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />

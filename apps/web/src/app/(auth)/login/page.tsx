@@ -59,11 +59,14 @@ export default function LoginPage() {
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="justify-center">
+        <CardFooter className="flex flex-col items-center gap-2">
           <p className="text-sm text-muted-foreground">
             アカウントをお持ちでない方は{' '}
             <Link href="/signup" className="text-primary font-medium hover:underline">新規登録</Link>
           </p>
+          <Link href="/forgot-password" className="text-sm text-muted-foreground hover:text-primary hover:underline">
+            パスワードをお忘れの方
+          </Link>
         </CardFooter>
       </Card>
     </div>
