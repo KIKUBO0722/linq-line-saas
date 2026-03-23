@@ -493,19 +493,19 @@ export default function MessagesPage() {
                       className="pl-9"
                     />
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 flex-nowrap">
                     {[
                       { value: 'all' as const, label: '全て' },
                       { value: 'unread' as const, label: '未対応' },
                       { value: 'in_progress' as const, label: '対応中' },
                       { value: 'done' as const, label: '完了' },
-                      { value: 'needs_followup' as const, label: '要フォロー' },
+                      { value: 'needs_followup' as const, label: '要F/U' },
                     ].map((f) => (
                       <button
                         key={f.value}
                         onClick={() => setStatusFilter(f.value)}
                         className={cn(
-                          'text-[11px] px-2 py-0.5 rounded-full border transition-colors',
+                          'text-[10px] px-1.5 py-0.5 rounded-full border transition-colors whitespace-nowrap',
                           statusFilter === f.value
                             ? 'bg-primary text-primary-foreground border-primary'
                             : 'text-muted-foreground border-border hover:bg-muted',
