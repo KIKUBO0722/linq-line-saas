@@ -457,32 +457,31 @@ export default function MessagesPage() {
   })();
 
   return (
-    <div className="px-1 pt-1 space-y-3">
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold">メッセージ</h1>
-          <HelpTip content="友だちとの1対1のチャット画面です。メッセージの送受信、AI応答の管理ができます" />
-        </div>
-        <p className="text-sm text-muted-foreground">友だちとの会話・一斉配信</p>
+    <div className="h-[calc(100vh-48px)] lg:h-screen flex flex-col overflow-hidden">
+      {/* Compact header bar */}
+      <div className="flex items-center gap-3 px-3 h-10 border-b shrink-0 bg-background">
+        <h1 className="text-sm font-semibold whitespace-nowrap">メッセージ</h1>
+        <HelpTip content="友だちとの1対1のチャット画面です。メッセージの送受信、AI応答の管理ができます" />
+        <Tabs value={tab} onValueChange={(v) => setTab(v as 'chat' | 'broadcast')}>
+          <TabsList className="h-7">
+            <TabsTrigger value="chat" className="gap-1 text-xs h-6 px-2">
+              <MessageSquare className="h-3 w-3" />
+              チャット
+            </TabsTrigger>
+            <TabsTrigger value="broadcast" className="gap-1 text-xs h-6 px-2">
+              <Radio className="h-3 w-3" />
+              一斉配信
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as 'chat' | 'broadcast')}>
-        <TabsList>
-          <TabsTrigger value="chat" className="gap-1.5">
-            <MessageSquare className="h-4 w-4" />
-            個別チャット
-          </TabsTrigger>
-          <TabsTrigger value="broadcast" className="gap-1.5">
-            <Radio className="h-4 w-4" />
-            一斉配信
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="chat" className="mt-4">
-          <div className="border rounded-lg overflow-hidden">
-            <div className="flex h-[calc(100vh-220px)]">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as 'chat' | 'broadcast')} className="flex-1 overflow-hidden">
+        <TabsContent value="chat" className="mt-0 h-full">
+          <div className="h-full">
+            <div className="flex h-full">
               {/* Friends sidebar */}
-              <div className="w-72 border-r flex flex-col">
+              <div className="w-72 border-r flex flex-col shrink-0">
                 <div className="p-3 border-b space-y-2">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -856,7 +855,7 @@ export default function MessagesPage() {
 
               {/* Right side panel - friend details */}
               {selectedFriend && (
-                <div className="w-64 border-l flex flex-col bg-muted/30">
+                <div className="w-72 border-l flex flex-col bg-muted/30 shrink-0">
                   <div className="p-3 border-b">
                     <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">友だち詳細</h4>
                   </div>
@@ -948,7 +947,7 @@ export default function MessagesPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="broadcast" className="mt-4">
+        <TabsContent value="broadcast" className="mt-0 h-full overflow-auto p-4">
           <Card>
             <CardHeader>
               <CardTitle>一斉配信</CardTitle>
