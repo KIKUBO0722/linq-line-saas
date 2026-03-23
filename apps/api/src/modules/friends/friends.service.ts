@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException, InternalServerErrorException, HttpException } from '@nestjs/common';
 import { eq, and, ilike, sql, desc } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { friends, friendTags, tags, lineAccounts, messages } from '@line-saas/db';
@@ -34,67 +34,82 @@ export class FriendsService {
   }
 
   async upsertFriend(dto: UpsertFriendDto) {
-    const existing = await this.db
-      .select()
-      .from(friends)
-      .where(
-        and(eq(friends.lineAccountId, dto.lineAccountId), eq(friends.lineUserId, dto.lineUserId)),
-      )
-      .limit(1);
+    try {
+      const existing = await this.db
+        .select()
+        .from(friends)
+        .where(
+          and(eq(friends.lineAccountId, dto.lineAccountId), eq(friends.lineUserId, dto.lineUserId)),
+        )
+        .limit(1);
 
-    if (existing.length > 0) {
-      const [updated] = await this.db
-        .update(friends)
-        .set({
-          displayName: dto.displayName ?? existing[0].displayName,
-          pictureUrl: dto.pictureUrl ?? existing[0].pictureUrl,
-          statusMessage: dto.statusMessage ?? existing[0].statusMessage,
-          language: dto.language ?? existing[0].language,
+      if (existing.length > 0) {
+        const [updated] = await this.db
+          .update(friends)
+          .set({
+            displayName: dto.displayName ?? existing[0].displayName,
+            pictureUrl: dto.pictureUrl ?? existing[0].pictureUrl,
+            statusMessage: dto.statusMessage ?? existing[0].statusMessage,
+            language: dto.language ?? existing[0].language,
+            isFollowing: dto.isFollowing,
+            followedAt: dto.followedAt ?? existing[0].followedAt,
+            unfollowedAt: null,
+            profileSyncedAt: new Date(),
+          })
+          .where(eq(friends.id, existing[0].id))
+          .returning();
+        return updated ?? existing[0];
+      }
+
+      const [newFriend] = await this.db
+        .insert(friends)
+        .values({
+          tenantId: dto.tenantId,
+          lineAccountId: dto.lineAccountId,
+          lineUserId: dto.lineUserId,
+          displayName: dto.displayName,
+          pictureUrl: dto.pictureUrl,
+          statusMessage: dto.statusMessage,
+          language: dto.language,
           isFollowing: dto.isFollowing,
-          followedAt: dto.followedAt ?? existing[0].followedAt,
-          unfollowedAt: null,
+          followedAt: dto.followedAt,
+          acquisitionSource: dto.acquisitionSource,
           profileSyncedAt: new Date(),
         })
-        .where(eq(friends.id, existing[0].id))
         .returning();
-      return updated ?? existing[0];
+
+      return newFriend;
+    } catch (error) {
+      this.logger.error(`Failed to upsert friend: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
     }
-
-    const [newFriend] = await this.db
-      .insert(friends)
-      .values({
-        tenantId: dto.tenantId,
-        lineAccountId: dto.lineAccountId,
-        lineUserId: dto.lineUserId,
-        displayName: dto.displayName,
-        pictureUrl: dto.pictureUrl,
-        statusMessage: dto.statusMessage,
-        language: dto.language,
-        isFollowing: dto.isFollowing,
-        followedAt: dto.followedAt,
-        acquisitionSource: dto.acquisitionSource,
-        profileSyncedAt: new Date(),
-      })
-      .returning();
-
-    return newFriend;
   }
 
   async updateChatStatus(friendId: string, status: string, tenantId: string) {
-    await this.findByIdOrThrow(friendId, tenantId);
-    await this.db
-      .update(friends)
-      .set({ chatStatus: status })
-      .where(and(eq(friends.id, friendId), eq(friends.tenantId, tenantId)));
+    try {
+      await this.findByIdOrThrow(friendId, tenantId);
+      await this.db
+        .update(friends)
+        .set({ chatStatus: status })
+        .where(and(eq(friends.id, friendId), eq(friends.tenantId, tenantId)));
+    } catch (error) {
+      this.logger.error(`Failed to update chat status for friend ${friendId}: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
   }
 
   async markUnfollowed(lineAccountId: string, lineUserId: string) {
-    await this.db
-      .update(friends)
-      .set({ isFollowing: false, unfollowedAt: new Date() })
-      .where(
-        and(eq(friends.lineAccountId, lineAccountId), eq(friends.lineUserId, lineUserId)),
-      );
+    try {
+      await this.db
+        .update(friends)
+        .set({ isFollowing: false, unfollowedAt: new Date() })
+        .where(
+          and(eq(friends.lineAccountId, lineAccountId), eq(friends.lineUserId, lineUserId)),
+        );
+    } catch (error) {
+      this.logger.error(`Failed to mark unfollowed for user ${lineUserId}: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
   }
 
   async findByTenant(
@@ -129,42 +144,57 @@ export class FriendsService {
   }
 
   async updateScore(friendId: string, delta: number) {
-    await this.db
-      .update(friends)
-      .set({ score: sql`${friends.score} + ${delta}` })
-      .where(eq(friends.id, friendId));
+    try {
+      await this.db
+        .update(friends)
+        .set({ score: sql`${friends.score} + ${delta}` })
+        .where(eq(friends.id, friendId));
+    } catch (error) {
+      this.logger.error(`Failed to update score for friend ${friendId}: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
   }
 
   async updateCustomFields(friendId: string, fields: Record<string, any>, tenantId: string) {
-    const friend = await this.findByIdOrThrow(friendId, tenantId);
-    const existing = (friend.customFields as Record<string, any>) || {};
-    const merged = { ...existing, ...fields };
-    // Remove keys explicitly set to null
-    for (const key of Object.keys(merged)) {
-      if (merged[key] === null) delete merged[key];
+    try {
+      const friend = await this.findByIdOrThrow(friendId, tenantId);
+      const existing = (friend.customFields as Record<string, any>) || {};
+      const merged = { ...existing, ...fields };
+      // Remove keys explicitly set to null
+      for (const key of Object.keys(merged)) {
+        if (merged[key] === null) delete merged[key];
+      }
+      await this.db
+        .update(friends)
+        .set({ customFields: merged })
+        .where(and(eq(friends.id, friendId), eq(friends.tenantId, tenantId)));
+      return merged;
+    } catch (error) {
+      this.logger.error(`Failed to update custom fields for friend ${friendId}: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
     }
-    await this.db
-      .update(friends)
-      .set({ customFields: merged })
-      .where(and(eq(friends.id, friendId), eq(friends.tenantId, tenantId)));
-    return merged;
   }
 
   async getCustomFieldDefinitions(tenantId: string) {
-    // Get distinct keys from customFields across all friends for this tenant
-    const result = await this.db
-      .select({ customFields: friends.customFields })
-      .from(friends)
-      .where(eq(friends.tenantId, tenantId));
-    const keys = new Set<string>();
-    for (const row of result) {
-      if (row.customFields && typeof row.customFields === 'object') {
-        for (const key of Object.keys(row.customFields as Record<string, any>)) {
-          keys.add(key);
+    try {
+      // Get distinct keys from customFields across all friends for this tenant
+      const result = await this.db
+        .select({ customFields: friends.customFields })
+        .from(friends)
+        .where(eq(friends.tenantId, tenantId));
+      const keys = new Set<string>();
+      for (const row of result) {
+        if (row.customFields && typeof row.customFields === 'object') {
+          for (const key of Object.keys(row.customFields as Record<string, any>)) {
+            keys.add(key);
+          }
         }
       }
+      return Array.from(keys);
+    } catch (error) {
+      this.logger.error(`Failed to get custom field definitions: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
     }
-    return Array.from(keys);
   }
 
   /**

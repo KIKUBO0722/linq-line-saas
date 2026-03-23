@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException, InternalServerErrorException, HttpException } from '@nestjs/common';
 import { eq, inArray, and, notInArray, sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { segments, segmentBroadcasts, friends, friendTags, lineAccounts, messages } from '@line-saas/db';
@@ -14,76 +14,97 @@ export class SegmentsService {
   ) {}
 
   async list(tenantId: string) {
-    return this.db.select().from(segments).where(eq(segments.tenantId, tenantId)).orderBy(segments.createdAt);
+    try {
+      return await this.db.select().from(segments).where(eq(segments.tenantId, tenantId)).orderBy(segments.createdAt);
+    } catch (error) {
+      this.logger.error(`Failed to list segments: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
   }
 
   async create(tenantId: string, data: { name: string; description?: string; tagIds: string[]; matchType?: string; excludeTagIds?: string[] }) {
-    const [segment] = await this.db
-      .insert(segments)
-      .values({
-        tenantId,
-        name: data.name,
-        description: data.description,
-        tagIds: data.tagIds,
-        matchType: data.matchType || 'any',
-        excludeTagIds: data.excludeTagIds || [],
-      })
-      .returning();
-    return segment;
+    try {
+      const [segment] = await this.db
+        .insert(segments)
+        .values({
+          tenantId,
+          name: data.name,
+          description: data.description,
+          tagIds: data.tagIds,
+          matchType: data.matchType || 'any',
+          excludeTagIds: data.excludeTagIds || [],
+        })
+        .returning();
+      return segment;
+    } catch (error) {
+      this.logger.error(`Failed to create segment: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
   }
 
   async delete(id: string) {
-    await this.db.delete(segments).where(eq(segments.id, id));
+    try {
+      await this.db.delete(segments).where(eq(segments.id, id));
+    } catch (error) {
+      this.logger.error(`Failed to delete segment ${id}: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
   }
 
   async getMatchingFriends(tenantId: string, tagIds: string[], matchType: string = 'any', excludeTagIds: string[] = []) {
-    if (!tagIds.length) return [];
+    try {
+      if (!tagIds.length) return [];
 
-    let rows: { id: string; displayName: string | null; lineUserId: string; lineAccountId: string }[];
+      let rows: { id: string; displayName: string | null; lineUserId: string; lineAccountId: string }[];
 
-    if (matchType === 'all') {
-      // AND logic: friend must have ALL specified tags
-      rows = await this.db
-        .select({
-          id: friends.id,
-          displayName: friends.displayName,
-          lineUserId: friends.lineUserId,
-          lineAccountId: friends.lineAccountId,
-        })
-        .from(friends)
-        .innerJoin(friendTags, eq(friends.id, friendTags.friendId))
-        .where(and(eq(friends.tenantId, tenantId), eq(friends.isFollowing, true), inArray(friendTags.tagId, tagIds)))
-        .groupBy(friends.id, friends.displayName, friends.lineUserId, friends.lineAccountId)
-        .having(sql`count(distinct ${friendTags.tagId}) = ${tagIds.length}`);
-    } else {
-      // OR logic: friend must have ANY of the specified tags
-      rows = await this.db
-        .selectDistinct({
-          id: friends.id,
-          displayName: friends.displayName,
-          lineUserId: friends.lineUserId,
-          lineAccountId: friends.lineAccountId,
-        })
-        .from(friends)
-        .innerJoin(friendTags, eq(friends.id, friendTags.friendId))
-        .where(and(eq(friends.tenantId, tenantId), eq(friends.isFollowing, true), inArray(friendTags.tagId, tagIds)));
+      if (matchType === 'all') {
+        // AND logic: friend must have ALL specified tags
+        rows = await this.db
+          .select({
+            id: friends.id,
+            displayName: friends.displayName,
+            lineUserId: friends.lineUserId,
+            lineAccountId: friends.lineAccountId,
+          })
+          .from(friends)
+          .innerJoin(friendTags, eq(friends.id, friendTags.friendId))
+          .where(and(eq(friends.tenantId, tenantId), eq(friends.isFollowing, true), inArray(friendTags.tagId, tagIds)))
+          .groupBy(friends.id, friends.displayName, friends.lineUserId, friends.lineAccountId)
+          .having(sql`count(distinct ${friendTags.tagId}) = ${tagIds.length}`);
+      } else {
+        // OR logic: friend must have ANY of the specified tags
+        rows = await this.db
+          .selectDistinct({
+            id: friends.id,
+            displayName: friends.displayName,
+            lineUserId: friends.lineUserId,
+            lineAccountId: friends.lineAccountId,
+          })
+          .from(friends)
+          .innerJoin(friendTags, eq(friends.id, friendTags.friendId))
+          .where(and(eq(friends.tenantId, tenantId), eq(friends.isFollowing, true), inArray(friendTags.tagId, tagIds)));
+      }
+
+      // Exclude friends who have any of the exclude tags
+      if (excludeTagIds.length > 0) {
+        const excludedFriendRows = await this.db
+          .selectDistinct({ friendId: friendTags.friendId })
+          .from(friendTags)
+          .where(inArray(friendTags.tagId, excludeTagIds));
+
+        const excludedIds = new Set(excludedFriendRows.map((r) => r.friendId));
+        rows = rows.filter((r) => !excludedIds.has(r.id));
+      }
+
+      return rows;
+    } catch (error) {
+      this.logger.error(`Failed to get matching friends for segment: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
     }
-
-    // Exclude friends who have any of the exclude tags
-    if (excludeTagIds.length > 0) {
-      const excludedFriendRows = await this.db
-        .selectDistinct({ friendId: friendTags.friendId })
-        .from(friendTags)
-        .where(inArray(friendTags.tagId, excludeTagIds));
-
-      const excludedIds = new Set(excludedFriendRows.map((r) => r.friendId));
-      rows = rows.filter((r) => !excludedIds.has(r.id));
-    }
-
-    return rows;
   }
 
   async broadcast(tenantId: string, segmentId: string, message: string) {
+    try {
     const [segment] = await this.db.select().from(segments).where(eq(segments.id, segmentId));
     if (!segment) throw new NotFoundException('Segment not found');
 
@@ -153,5 +174,9 @@ export class SegmentsService {
     }
 
     return { broadcast: broadcastRecord, recipientCount: matchingFriends.length, sentCount };
+    } catch (error) {
+      this.logger.error(`Failed to broadcast to segment ${segmentId}: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
   }
 }

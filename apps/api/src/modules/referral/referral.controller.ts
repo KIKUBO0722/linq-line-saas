@@ -1,9 +1,11 @@
 import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { ReferralService } from './referral.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { TenantId, CurrentUser } from '../../common/decorators/tenant.decorator';
 import { CreateProgramDto } from './dto/referral.dto';
 
+@ApiTags('Referral')
 @Controller('api/v1')
 @UseGuards(AuthGuard)
 export class ReferralController {

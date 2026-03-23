@@ -20,6 +20,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageSkeleton } from '@/components/ui/skeleton';
+import { HelpTip } from '@/components/ui/help-tip';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
 
@@ -1012,7 +1013,10 @@ export default function RichMenusPage() {
     <div className="p-2 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">リッチメニュー</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold">リッチメニュー</h1>
+            <HelpTip content="LINEトーク画面の下部に表示されるメニューボタンを作成・管理します" />
+          </div>
           <p className="text-sm text-muted-foreground">LINEトーク下部に表示されるメニューの作成・管理</p>
         </div>
         <div className="flex gap-2">

@@ -1,7 +1,9 @@
 import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { FormsService } from './forms.service';
 import { SubmitFormDto } from './dto/forms.dto';
 
+@ApiTags('PublicForms')
 @Controller('api/v1/public/forms')
 export class PublicFormsController {
   constructor(private readonly formsService: FormsService) {}

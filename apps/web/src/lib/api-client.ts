@@ -318,6 +318,34 @@ export const api = {
       fetchApi(`/api/v1/agency/clients/${clientTenantId}`, { method: 'POST' }),
     removeClient: (clientTenantId: string) =>
       fetchApi(`/api/v1/agency/clients/${clientTenantId}`, { method: 'DELETE' }),
+    listMargins: () =>
+      fetchApi<Array<{
+        clientTenantId: string;
+        clientName: string;
+        marginType: string;
+        marginValue: string;
+        notes: string | null;
+        updatedAt: string;
+      }>>('/api/v1/agency/margins'),
+    getMargin: (clientTenantId: string) =>
+      fetchApi<{ marginType: string; marginValue: string; notes: string | null }>(`/api/v1/agency/margins/${clientTenantId}`),
+    setMargin: (clientTenantId: string, data: { marginType: string; marginValue: number; notes?: string }) =>
+      fetchApi(`/api/v1/agency/margins/${clientTenantId}`, { method: 'PUT', body: JSON.stringify(data) }),
+    getCommissions: () =>
+      fetchApi<Array<{
+        id: string;
+        clientTenantId: string;
+        clientName: string;
+        period: string;
+        clientRevenue: number;
+        commissionAmount: number;
+        marginType: string;
+        marginValue: string;
+        status: string;
+        createdAt: string;
+      }>>('/api/v1/agency/commissions'),
+    getCommissionSummary: () =>
+      fetchApi<{ totalEarned: number; totalPending: number; totalPaid: number; totalClients: number }>('/api/v1/agency/commissions/summary'),
   },
   conversions: {
     listGoals: () => fetchApi<ConversionGoal[]>('/api/v1/conversions/goals'),

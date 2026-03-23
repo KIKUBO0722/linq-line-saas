@@ -1,9 +1,11 @@
 import { Controller, Get, Post, Delete, Query, Res, Body, Param, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { AnalyticsService } from './analytics.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { TenantId } from '../../common/decorators/tenant.decorator';
 import { CreateTrafficSourceDto } from './dto/analytics.dto';
 
+@ApiTags('Analytics')
 @Controller('api/v1/analytics')
 @UseGuards(AuthGuard)
 export class AnalyticsController {

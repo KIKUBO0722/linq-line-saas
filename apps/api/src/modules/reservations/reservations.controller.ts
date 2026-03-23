@@ -1,10 +1,21 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { IsString, IsOptional } from 'class-validator';
 import { ReservationsService } from './reservations.service';
 import { GoogleCalendarService } from './google-calendar.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { TenantId } from '../../common/decorators/tenant.decorator';
 import { CreateSlotDto, CreateReservationDto, SaveCalendarIntegrationDto, UpdateReservationStatusDto } from './dto/reservations.dto';
 
+class PublicBookingDto {
+  @IsString() slotId: string;
+  @IsString() guestName: string;
+  @IsString() date: string;
+  @IsString() startTime: string;
+  @IsOptional() @IsString() note?: string;
+}
+
+@ApiTags('Reservations')
 @Controller('api/v1/reservations')
 @UseGuards(AuthGuard)
 export class ReservationsController {
@@ -72,5 +83,30 @@ export class ReservationsController {
   async deleteReservation(@Param('id') id: string) {
     await this.reservationsService.deleteReservation(id);
     return { ok: true };
+  }
+}
+
+// --- Public booking endpoints (no auth) ---
+@ApiTags('PublicBooking')
+@Controller('api/v1/booking')
+export class PublicBookingController {
+  constructor(private readonly reservationsService: ReservationsService) {}
+
+  @Get(':tenantId')
+  async getBookingPage(@Param('tenantId') tenantId: string) {
+    return this.reservationsService.getPublicBookingPage(tenantId);
+  }
+
+  @Get(':tenantId/slots/:slotId/available')
+  async getAvailableTimes(
+    @Param('slotId') slotId: string,
+    @Query('date') date: string,
+  ) {
+    return this.reservationsService.getAvailableTimes(slotId, date);
+  }
+
+  @Post(':tenantId/book')
+  async createBooking(@Body() body: PublicBookingDto) {
+    return this.reservationsService.createPublicBooking(body);
   }
 }

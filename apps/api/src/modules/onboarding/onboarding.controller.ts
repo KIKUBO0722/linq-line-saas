@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { IsString } from 'class-validator';
 import { OnboardingService } from './onboarding.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
@@ -9,6 +10,7 @@ class ApplyTemplateDto {
   industryId: string;
 }
 
+@ApiTags('Onboarding')
 @Controller('api/v1/onboarding')
 @UseGuards(AuthGuard)
 export class OnboardingController {

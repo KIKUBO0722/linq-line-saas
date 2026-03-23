@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/table';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageSkeleton } from '@/components/ui/skeleton';
+import { HelpTip } from '@/components/ui/help-tip';
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -173,7 +174,10 @@ export default function CouponsPage() {
     <div className="p-2 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">クーポン管理</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold">クーポン管理</h1>
+            <HelpTip content="友だちに配布するデジタルクーポンを作成・管理します。使用回数や有効期限を設定できます" />
+          </div>
           <p className="text-sm text-muted-foreground">割引クーポンの作成・管理</p>
         </div>
         <Button onClick={() => setShowCreate(true)} className="gap-1.5">

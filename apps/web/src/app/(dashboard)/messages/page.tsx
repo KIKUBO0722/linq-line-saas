@@ -31,6 +31,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
+import { HelpTip } from '@/components/ui/help-tip';
 
 // Template picker dropdown component
 function TemplatePicker({
@@ -458,7 +459,10 @@ export default function MessagesPage() {
   return (
     <div className="p-2 max-w-5xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">メッセージ</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold">メッセージ</h1>
+          <HelpTip content="友だちとの1対1のチャット画面です。メッセージの送受信、AI応答の管理ができます" />
+        </div>
         <p className="text-sm text-muted-foreground">友だちとの会話・一斉配信</p>
       </div>
 

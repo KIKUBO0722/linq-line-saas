@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { AiService } from './ai.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { TenantId } from '../../common/decorators/tenant.decorator';
@@ -7,6 +8,7 @@ import {
   OnboardingDto, AssistantDto, ChatSuggestDto, ExecuteActionDto,
 } from './dto/ai.dto';
 
+@ApiTags('AI')
 @Controller('api/v1/ai')
 @UseGuards(AuthGuard)
 export class AiController {
@@ -24,13 +26,13 @@ export class AiController {
   }
 
   @Post('generate-message')
-  async generateMessage(@Body() body: GenerateMessageDto) {
-    return this.aiService.generateMessage('', body);
+  async generateMessage(@TenantId() tenantId: string, @Body() body: GenerateMessageDto) {
+    return this.aiService.generateMessage(tenantId, body);
   }
 
   @Post('suggest-scenario')
-  async suggestScenario(@Body() body: SuggestScenarioDto) {
-    return this.aiService.suggestScenario('', body);
+  async suggestScenario(@TenantId() tenantId: string, @Body() body: SuggestScenarioDto) {
+    return this.aiService.suggestScenario(tenantId, body);
   }
 
   @Post('analyze-friend/:friendId')
@@ -84,6 +86,7 @@ export class AiController {
   }
 }
 
+@ApiTags('AIPublic')
 @Controller('api/v1/ai-public')
 export class AiPublicController {
   constructor(private readonly aiService: AiService) {}

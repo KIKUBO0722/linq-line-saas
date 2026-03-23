@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageSkeleton } from '@/components/ui/skeleton';
+import { HelpTip } from '@/components/ui/help-tip';
 
 const CATEGORIES = [
   { value: '', label: 'すべて' },
@@ -849,7 +850,10 @@ export default function TemplatesPage() {
     <div className="p-2 max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">テンプレート</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold">テンプレート</h1>
+            <HelpTip content="よく使うメッセージのひな型を保存して、配信やチャットで素早く呼び出せます" />
+          </div>
           <p className="text-sm text-muted-foreground">再利用可能なメッセージテンプレートを管理</p>
         </div>
         <Button onClick={() => setShowCreate(true)} className="gap-1.5">

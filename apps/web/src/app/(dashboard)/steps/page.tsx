@@ -16,6 +16,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageSkeleton } from '@/components/ui/skeleton';
+import { HelpTip } from '@/components/ui/help-tip';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
 
@@ -727,7 +728,10 @@ export default function StepsPage() {
     <div className="p-2 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">ステップ配信</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold">ステップ配信</h1>
+            <HelpTip content="友だち追加後に自動で順番にメッセージを送るシナリオを設定します。教育コンテンツや商品紹介に最適です" />
+          </div>
           <p className="text-sm text-muted-foreground">シナリオベースの自動メッセージ配信</p>
         </div>
         <div className="flex gap-2">

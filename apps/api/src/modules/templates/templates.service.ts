@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Logger, InternalServerErrorException, HttpException } from '@nestjs/common';
 import { eq, desc } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { messageTemplates } from '@line-saas/db';
@@ -134,55 +134,77 @@ type LineMessage =
 
 @Injectable()
 export class TemplatesService {
+  private readonly logger = new Logger(TemplatesService.name);
+
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
   async list(tenantId: string) {
-    return this.db
-      .select()
-      .from(messageTemplates)
-      .where(eq(messageTemplates.tenantId, tenantId))
-      .orderBy(desc(messageTemplates.updatedAt));
+    try {
+      return await this.db
+        .select()
+        .from(messageTemplates)
+        .where(eq(messageTemplates.tenantId, tenantId))
+        .orderBy(desc(messageTemplates.updatedAt));
+    } catch (error) {
+      this.logger.error(`Failed to list templates: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
   }
 
   async create(
     tenantId: string,
     data: { name: string; content: string; category?: string; messageType?: string; messageData?: Record<string, unknown> },
   ) {
-    const [template] = await this.db
-      .insert(messageTemplates)
-      .values({
-        tenantId,
-        name: data.name,
-        content: data.content,
-        category: data.category,
-        messageType: data.messageType || 'text',
-        messageData: data.messageData || null,
-      })
-      .returning();
-    return template;
+    try {
+      const [template] = await this.db
+        .insert(messageTemplates)
+        .values({
+          tenantId,
+          name: data.name,
+          content: data.content,
+          category: data.category,
+          messageType: data.messageType || 'text',
+          messageData: data.messageData || null,
+        })
+        .returning();
+      return template;
+    } catch (error) {
+      this.logger.error(`Failed to create template: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
   }
 
   async update(
     id: string,
     data: { name?: string; content?: string; category?: string; messageType?: string; messageData?: Record<string, unknown> },
   ) {
-    const values: Record<string, unknown> = { updatedAt: new Date() };
-    if (data.name !== undefined) values.name = data.name;
-    if (data.content !== undefined) values.content = data.content;
-    if (data.category !== undefined) values.category = data.category;
-    if (data.messageType !== undefined) values.messageType = data.messageType;
-    if (data.messageData !== undefined) values.messageData = data.messageData;
+    try {
+      const values: Record<string, unknown> = { updatedAt: new Date() };
+      if (data.name !== undefined) values.name = data.name;
+      if (data.content !== undefined) values.content = data.content;
+      if (data.category !== undefined) values.category = data.category;
+      if (data.messageType !== undefined) values.messageType = data.messageType;
+      if (data.messageData !== undefined) values.messageData = data.messageData;
 
-    const [template] = await this.db
-      .update(messageTemplates)
-      .set(values)
-      .where(eq(messageTemplates.id, id))
-      .returning();
-    return template;
+      const [template] = await this.db
+        .update(messageTemplates)
+        .set(values)
+        .where(eq(messageTemplates.id, id))
+        .returning();
+      return template;
+    } catch (error) {
+      this.logger.error(`Failed to update template ${id}: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
   }
 
   async delete(id: string) {
-    await this.db.delete(messageTemplates).where(eq(messageTemplates.id, id));
+    try {
+      await this.db.delete(messageTemplates).where(eq(messageTemplates.id, id));
+    } catch (error) {
+      this.logger.error(`Failed to delete template ${id}: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
   }
 
   /**

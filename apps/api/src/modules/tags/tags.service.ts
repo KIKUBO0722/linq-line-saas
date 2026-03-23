@@ -1,10 +1,12 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, Logger, InternalServerErrorException, HttpException } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { tags, friendTags } from '@line-saas/db';
 
 @Injectable()
 export class TagsService {
+  private readonly logger = new Logger(TagsService.name);
+
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
   async list(tenantId: string) {
@@ -12,8 +14,13 @@ export class TagsService {
   }
 
   async create(tenantId: string, data: { name: string; color?: string }) {
-    const [tag] = await this.db.insert(tags).values({ tenantId, ...data }).returning();
-    return tag;
+    try {
+      const [tag] = await this.db.insert(tags).values({ tenantId, ...data }).returning();
+      return tag;
+    } catch (error) {
+      this.logger.error(`Failed to create tag: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
   }
 
   async verifyOwnership(tagId: string, tenantId: string) {
@@ -27,32 +34,57 @@ export class TagsService {
   }
 
   async update(id: string, data: { name?: string; color?: string }, tenantId: string) {
-    await this.verifyOwnership(id, tenantId);
-    await this.db.update(tags).set(data).where(and(eq(tags.id, id), eq(tags.tenantId, tenantId)));
+    try {
+      await this.verifyOwnership(id, tenantId);
+      await this.db.update(tags).set(data).where(and(eq(tags.id, id), eq(tags.tenantId, tenantId)));
+    } catch (error) {
+      this.logger.error(`Failed to update tag ${id}: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
   }
 
   async delete(id: string, tenantId: string) {
-    await this.verifyOwnership(id, tenantId);
-    await this.db.delete(friendTags).where(eq(friendTags.tagId, id));
-    await this.db.delete(tags).where(and(eq(tags.id, id), eq(tags.tenantId, tenantId)));
+    try {
+      await this.verifyOwnership(id, tenantId);
+      await this.db.delete(friendTags).where(eq(friendTags.tagId, id));
+      await this.db.delete(tags).where(and(eq(tags.id, id), eq(tags.tenantId, tenantId)));
+    } catch (error) {
+      this.logger.error(`Failed to delete tag ${id}: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
   }
 
   async assignToFriend(friendId: string, tagId: string) {
-    await this.db.insert(friendTags).values({ friendId, tagId }).onConflictDoNothing();
+    try {
+      await this.db.insert(friendTags).values({ friendId, tagId }).onConflictDoNothing();
+    } catch (error) {
+      this.logger.error(`Failed to assign tag ${tagId} to friend ${friendId}: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
   }
 
   async removeFromFriend(friendId: string, tagId: string) {
-    await this.db
-      .delete(friendTags)
-      .where(and(eq(friendTags.friendId, friendId), eq(friendTags.tagId, tagId)));
+    try {
+      await this.db
+        .delete(friendTags)
+        .where(and(eq(friendTags.friendId, friendId), eq(friendTags.tagId, tagId)));
+    } catch (error) {
+      this.logger.error(`Failed to remove tag ${tagId} from friend ${friendId}: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
   }
 
   async listForFriend(friendId: string) {
-    const rows = await this.db
-      .select({ tag: tags })
-      .from(friendTags)
-      .innerJoin(tags, eq(friendTags.tagId, tags.id))
-      .where(eq(friendTags.friendId, friendId));
-    return rows.map((r) => r.tag);
+    try {
+      const rows = await this.db
+        .select({ tag: tags })
+        .from(friendTags)
+        .innerJoin(tags, eq(friendTags.tagId, tags.id))
+        .where(eq(friendTags.friendId, friendId));
+      return rows.map((r) => r.tag);
+    } catch (error) {
+      this.logger.error(`Failed to list tags for friend ${friendId}: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
   }
 }

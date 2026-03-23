@@ -1,9 +1,11 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { GachaService } from './gacha.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { TenantId } from '../../common/decorators/tenant.decorator';
 import { CreateCampaignDto, UpdateCampaignDto, AddPrizeDto, UpdatePrizeDto, DrawDto } from './dto/gacha.dto';
 
+@ApiTags('Gacha')
 @Controller('api/v1/gacha')
 @UseGuards(AuthGuard)
 export class GachaController {

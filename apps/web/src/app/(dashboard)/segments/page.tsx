@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/table';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageSkeleton } from '@/components/ui/skeleton';
+import { HelpTip } from '@/components/ui/help-tip';
 
 export default function SegmentsPage() {
   const [segments, setSegments] = useState<Segment[]>([]);
@@ -193,7 +194,10 @@ export default function SegmentsPage() {
     <div className="p-2 max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">セグメント配信</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold">セグメント配信</h1>
+            <HelpTip content="条件に合う友だちだけにメッセージを送る絞り込み配信の設定画面です" />
+          </div>
           <p className="text-sm text-muted-foreground">タグでフィルタしたグループにターゲット配信</p>
         </div>
         <div className="flex gap-2">

@@ -59,6 +59,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { EmptyState } from '@/components/ui/empty-state';
+import { HelpTip } from '@/components/ui/help-tip';
 
 export default function AnalyticsPage() {
   // The analytics overview API returns a different shape than AnalyticsOverview type
@@ -212,7 +213,10 @@ export default function AnalyticsPage() {
     <div className="p-2 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">分析</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold">分析</h1>
+            <HelpTip content="LINE公式アカウントの配信・友だち・エンゲージメントなどの成果を確認できるダッシュボードです" />
+          </div>
           <p className="text-sm text-muted-foreground">過去30日間のパフォーマンス</p>
         </div>
         <Button
@@ -306,10 +310,10 @@ export default function AnalyticsPage() {
 
       {/* Main metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <MetricCard icon={<Users className="h-8 w-8 text-blue-500" />} value={stats?.friends?.total || 0} label="友だち数" />
-        <MetricCard icon={<ArrowUpRight className="h-8 w-8 text-green-500" />} value={stats?.messages?.outbound || 0} label="配信数 (送信)" />
-        <MetricCard icon={<ArrowDownRight className="h-8 w-8 text-purple-500" />} value={stats?.messages?.inbound || 0} label="受信数" />
-        <MetricCard icon={<BarChart3 className="h-8 w-8 text-amber-500" />} value={stats?.events?.total || 0} label="Webhookイベント" />
+        <MetricCard icon={<Users className="h-8 w-8 text-blue-500" />} value={stats?.friends?.total || 0} label="友だち数" help="LINE公式アカウントを友だち追加しているユーザーの合計数" />
+        <MetricCard icon={<ArrowUpRight className="h-8 w-8 text-green-500" />} value={stats?.messages?.outbound || 0} label="配信数 (送信)" help="あなたから友だちに送信したメッセージの合計数" />
+        <MetricCard icon={<ArrowDownRight className="h-8 w-8 text-purple-500" />} value={stats?.messages?.inbound || 0} label="受信数" help="友だちからあなたに届いたメッセージの合計数" />
+        <MetricCard icon={<BarChart3 className="h-8 w-8 text-amber-500" />} value={stats?.events?.total || 0} label="Webhookイベント" help="友だち追加・メッセージ受信などLINEから届いた全イベント数" />
       </div>
 
       <Tabs defaultValue="overview">
@@ -326,31 +330,31 @@ export default function AnalyticsPage() {
             <Radio className="h-4 w-4" />
             配信履歴
           </TabsTrigger>
-          <TabsTrigger value="delivery" className="gap-1.5">
+          <TabsTrigger value="delivery" className="gap-1.5" title="LINE公式アカウントの配信到達数をAPIの種類別に確認します">
             <Eye className="h-4 w-4" />
             配信到達
           </TabsTrigger>
-          <TabsTrigger value="traffic" className="gap-1.5">
+          <TabsTrigger value="traffic" className="gap-1.5" title="友だちがどこから来たか（広告、SNS、QRコードなど）を追跡します">
             <Route className="h-4 w-4" />
             流入経路
           </TabsTrigger>
-          <TabsTrigger value="url-tracking" className="gap-1.5">
+          <TabsTrigger value="url-tracking" className="gap-1.5" title="メッセージ内のURLが何回クリックされたかを測定します">
             <Link2 className="h-4 w-4" />
             URL測定
           </TabsTrigger>
-          <TabsTrigger value="conversions" className="gap-1.5">
+          <TabsTrigger value="conversions" className="gap-1.5" title="友だちが目標アクション（購入・予約など）を達成した数を追跡します">
             <Target className="h-4 w-4" />
             CV
           </TabsTrigger>
-          <TabsTrigger value="cohort" className="gap-1.5">
+          <TabsTrigger value="cohort" className="gap-1.5" title="友だち追加した週ごとに、どれだけの人が使い続けているかを見る表です">
             <Activity className="h-4 w-4" />
             コホート
           </TabsTrigger>
-          <TabsTrigger value="engagement" className="gap-1.5">
+          <TabsTrigger value="engagement" className="gap-1.5" title="タグごとの反応率を比較して、どのグループが活発かを確認します">
             <Tags className="h-4 w-4" />
             エンゲージメント
           </TabsTrigger>
-          <TabsTrigger value="send-time" className="gap-1.5">
+          <TabsTrigger value="send-time" className="gap-1.5" title="友だちの返信率が高い時間帯を分析し、最適な配信時間を見つけます">
             <Clock className="h-4 w-4" />
             配信最適化
           </TabsTrigger>
@@ -1270,7 +1274,10 @@ export default function AnalyticsPage() {
           {/* Cohort Retention Heatmap */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">週次コホートリテンション</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                週次コホートリテンション
+                <HelpTip content="同じ週に友だち追加した人たちが、その後も反応し続けているかを週ごとに追跡する表です。数値が高いほど、友だちが長く活発に利用しています" />
+              </CardTitle>
               <CardDescription>友だち追加週ごとの継続率（過去8週）</CardDescription>
             </CardHeader>
             <CardContent>
@@ -1339,7 +1346,10 @@ export default function AnalyticsPage() {
               <Card className="linq-card-hover">
                 <CardContent className="pt-5 pb-4">
                   <div className="flex items-start justify-between mb-2">
-                    <span className="text-xs font-medium text-muted-foreground">疑似CTR</span>
+                    <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                      疑似CTR
+                      <HelpTip content="メッセージ内のURLクリック数÷配信数で算出。友だちがメッセージにどれだけ反応しているかの目安です" iconClassName="h-3 w-3" />
+                    </span>
                     <TrendingUp className="h-8 w-8 text-amber-500" />
                   </div>
                   <p className="text-2xl font-bold tracking-tight">{ctr.summary.overallCtr}%</p>
@@ -1393,7 +1403,10 @@ export default function AnalyticsPage() {
           {/* Segment Comparison */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">タグ別エンゲージメント</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                タグ別エンゲージメント
+                <HelpTip content="友だちに付けたタグごとに、メッセージへの反応率を比較します。どのグループが活発か、どのタグの効果が高いかが分かります" />
+              </CardTitle>
               <CardDescription>タグごとの友だち数・応答率を比較</CardDescription>
             </CardHeader>
             <CardContent>
@@ -1463,6 +1476,10 @@ export default function AnalyticsPage() {
 
         {/* Send Time Optimization tab */}
         <TabsContent value="send-time" className="mt-4 space-y-6">
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className="text-sm font-semibold text-slate-700">配信最適化</h3>
+            <HelpTip content="過去の配信データから、友だちが最も返信しやすい時間帯を分析します。この時間帯に配信すると反応率が上がる可能性があります" />
+          </div>
           {/* Best hours highlight */}
           {bestSendTime?.bestHours && bestSendTime.bestHours.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1572,12 +1589,15 @@ function parseUA(ua: string): string {
   return ua.slice(0, 30);
 }
 
-function MetricCard({ icon, value, label, trend, color }: { icon: React.ReactNode; value: number; label: string; trend?: number; color?: string }) {
+function MetricCard({ icon, value, label, trend, color, help }: { icon: React.ReactNode; value: number; label: string; trend?: number; color?: string; help?: string }) {
   return (
     <Card className="linq-card-hover">
       <CardContent className="pt-5 pb-4">
         <div className="flex items-start justify-between mb-2">
-          <span className="text-xs font-medium text-muted-foreground">{label}</span>
+          <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+            {label}
+            {help && <HelpTip content={help} iconClassName="h-3 w-3" />}
+          </span>
           {icon}
         </div>
         <p className="text-2xl font-bold tracking-tight">{value.toLocaleString()}</p>

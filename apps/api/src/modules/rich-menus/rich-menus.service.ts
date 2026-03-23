@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException, BadRequestException, InternalServerErrorException, HttpException } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { richMenus, richMenuGroups, lineAccounts, friends } from '@line-saas/db';
@@ -23,11 +23,16 @@ export class RichMenusService {
   ) {}
 
   async findByTenant(tenantId: string) {
-    return this.db
-      .select()
-      .from(richMenus)
-      .where(eq(richMenus.tenantId, tenantId))
-      .orderBy(richMenus.createdAt);
+    try {
+      return await this.db
+        .select()
+        .from(richMenus)
+        .where(eq(richMenus.tenantId, tenantId))
+        .orderBy(richMenus.createdAt);
+    } catch (error) {
+      this.logger.error(`Failed to find rich menus for tenant: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
   }
 
   async create(
@@ -257,59 +262,69 @@ export class RichMenusService {
   }
 
   async setDefault(tenantId: string, id: string) {
-    const [menu] = await this.db
-      .select()
-      .from(richMenus)
-      .where(and(eq(richMenus.id, id), eq(richMenus.tenantId, tenantId)))
-      .limit(1);
+    try {
+      const [menu] = await this.db
+        .select()
+        .from(richMenus)
+        .where(and(eq(richMenus.id, id), eq(richMenus.tenantId, tenantId)))
+        .limit(1);
 
-    if (!menu) throw new NotFoundException('Rich menu not found');
-    if (!menu.lineRichMenuId) throw new BadRequestException('Rich menu not synced with LINE');
+      if (!menu) throw new NotFoundException('Rich menu not found');
+      if (!menu.lineRichMenuId) throw new BadRequestException('Rich menu not synced with LINE');
 
-    const [account] = await this.db
-      .select()
-      .from(lineAccounts)
-      .where(eq(lineAccounts.id, menu.lineAccountId))
-      .limit(1);
+      const [account] = await this.db
+        .select()
+        .from(lineAccounts)
+        .where(eq(lineAccounts.id, menu.lineAccountId))
+        .limit(1);
 
-    if (!account) throw new NotFoundException('Account not found');
+      if (!account) throw new NotFoundException('Account not found');
 
-    const client = this.lineService.getClient({
-      channelSecret: account.channelSecret,
-      channelAccessToken: account.channelAccessToken,
-    });
+      const client = this.lineService.getClient({
+        channelSecret: account.channelSecret,
+        channelAccessToken: account.channelAccessToken,
+      });
 
-    await client.setDefaultRichMenu(menu.lineRichMenuId);
+      await client.setDefaultRichMenu(menu.lineRichMenuId);
 
-    await this.db
-      .update(richMenus)
-      .set({ isDefault: false })
-      .where(eq(richMenus.lineAccountId, menu.lineAccountId));
+      await this.db
+        .update(richMenus)
+        .set({ isDefault: false })
+        .where(eq(richMenus.lineAccountId, menu.lineAccountId));
 
-    await this.db.update(richMenus).set({ isDefault: true }).where(eq(richMenus.id, id));
+      await this.db.update(richMenus).set({ isDefault: true }).where(eq(richMenus.id, id));
 
-    return { success: true };
+      return { success: true };
+    } catch (error) {
+      this.logger.error(`Failed to set default rich menu ${id}: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
   }
 
   // Group CRUD
   async listGroups(tenantId: string) {
-    const groups = await this.db
-      .select()
-      .from(richMenuGroups)
-      .where(eq(richMenuGroups.tenantId, tenantId))
-      .orderBy(richMenuGroups.createdAt);
-
-    // For each group, fetch its menus
-    const result = [];
-    for (const group of groups) {
-      const groupMenus = await this.db
+    try {
+      const groups = await this.db
         .select()
-        .from(richMenus)
-        .where(and(eq(richMenus.tenantId, tenantId), eq(richMenus.groupId, group.id)))
-        .orderBy(richMenus.tabIndex);
-      result.push({ ...group, menus: groupMenus });
+        .from(richMenuGroups)
+        .where(eq(richMenuGroups.tenantId, tenantId))
+        .orderBy(richMenuGroups.createdAt);
+
+      // For each group, fetch its menus
+      const result = [];
+      for (const group of groups) {
+        const groupMenus = await this.db
+          .select()
+          .from(richMenus)
+          .where(and(eq(richMenus.tenantId, tenantId), eq(richMenus.groupId, group.id)))
+          .orderBy(richMenus.tabIndex);
+        result.push({ ...group, menus: groupMenus });
+      }
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to list rich menu groups: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
     }
-    return result;
   }
 
   async createGroup(
@@ -479,34 +494,39 @@ export class RichMenusService {
     tenantId: string,
     data: { friendId: string; richMenuId: string },
   ) {
-    const [menu] = await this.db
-      .select()
-      .from(richMenus)
-      .where(and(eq(richMenus.id, data.richMenuId), eq(richMenus.tenantId, tenantId)))
-      .limit(1);
+    try {
+      const [menu] = await this.db
+        .select()
+        .from(richMenus)
+        .where(and(eq(richMenus.id, data.richMenuId), eq(richMenus.tenantId, tenantId)))
+        .limit(1);
 
-    if (!menu || !menu.lineRichMenuId) throw new NotFoundException('Rich menu not found or not synced');
+      if (!menu || !menu.lineRichMenuId) throw new NotFoundException('Rich menu not found or not synced');
 
-    const [account] = await this.db
-      .select()
-      .from(lineAccounts)
-      .where(eq(lineAccounts.id, menu.lineAccountId))
-      .limit(1);
+      const [account] = await this.db
+        .select()
+        .from(lineAccounts)
+        .where(eq(lineAccounts.id, menu.lineAccountId))
+        .limit(1);
 
-    if (!account) throw new NotFoundException('Account not found');
+      if (!account) throw new NotFoundException('Account not found');
 
-    // Get friend's LINE user ID
-    const [friend] = await this.db
-      .select()
-      .from(friends)
-      .where(and(eq(friends.id, data.friendId), eq(friends.tenantId, tenantId)))
-      .limit(1);
+      // Get friend's LINE user ID
+      const [friend] = await this.db
+        .select()
+        .from(friends)
+        .where(and(eq(friends.id, data.friendId), eq(friends.tenantId, tenantId)))
+        .limit(1);
 
-    if (!friend) throw new NotFoundException('Friend not found');
+      if (!friend) throw new NotFoundException('Friend not found');
 
-    const creds = { channelSecret: account.channelSecret, channelAccessToken: account.channelAccessToken };
-    await this.lineService.linkRichMenuToUser(creds, friend.lineUserId, menu.lineRichMenuId);
+      const creds = { channelSecret: account.channelSecret, channelAccessToken: account.channelAccessToken };
+      await this.lineService.linkRichMenuToUser(creds, friend.lineUserId, menu.lineRichMenuId);
 
-    return { success: true };
+      return { success: true };
+    } catch (error) {
+      this.logger.error(`Failed to assign rich menu to user: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
   }
 }

@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Body, Req, UseGuards, Headers } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { TenantId } from '../../common/decorators/tenant.decorator';
@@ -7,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import { Request } from 'express';
 
+@ApiTags('Billing')
 @Controller('api/v1/billing')
 export class BillingController {
   constructor(

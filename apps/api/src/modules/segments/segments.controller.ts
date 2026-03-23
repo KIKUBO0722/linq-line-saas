@@ -1,9 +1,11 @@
 import { Controller, Get, Post, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { SegmentsService } from './segments.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { TenantId } from '../../common/decorators/tenant.decorator';
 import { CreateSegmentDto, BroadcastSegmentDto } from './dto/segments.dto';
 
+@ApiTags('Segments')
 @Controller('api/v1/segments')
 @UseGuards(AuthGuard)
 export class SegmentsController {

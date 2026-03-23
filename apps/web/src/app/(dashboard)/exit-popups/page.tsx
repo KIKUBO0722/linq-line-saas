@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { PageSkeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
+import { HelpTip } from '@/components/ui/help-tip';
 
 export default function ExitPopupsPage() {
   const [popups, setPopups] = useState<any[]>([]);
@@ -67,10 +68,13 @@ export default function ExitPopupsPage() {
     <div className="p-2 max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <ShieldAlert className="h-6 w-6 text-primary" />
-            離脱防止ポップアップ
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <ShieldAlert className="h-6 w-6 text-primary" />
+              離脱防止ポップアップ
+            </h1>
+            <HelpTip content="Webページから離脱しようとしたユーザーにポップアップを表示して、LINE友だち追加を促します" />
+          </div>
           <p className="text-sm text-muted-foreground">フォームやLPからの離脱時にクーポンや特典でユーザーを引き留め</p>
         </div>
         <Button onClick={() => setShowForm(!showForm)} className="gap-1.5">

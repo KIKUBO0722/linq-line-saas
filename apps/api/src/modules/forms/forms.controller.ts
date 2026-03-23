@@ -1,10 +1,12 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Res, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { FormsService } from './forms.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { TenantId } from '../../common/decorators/tenant.decorator';
 import { CreateFormDto, UpdateFormDto, SubmitFormDto } from './dto/forms.dto';
 
+@ApiTags('Forms')
 @Controller('api/v1/forms')
 @UseGuards(AuthGuard)
 export class FormsController {

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ReservationsController } from './reservations.controller';
+import { ReservationsController, PublicBookingController } from './reservations.controller';
 import { ReservationsService } from './reservations.service';
 import { ReservationsScheduler } from './reservations.scheduler';
 import { GoogleCalendarService } from './google-calendar.service';
@@ -8,7 +8,7 @@ import { LineModule } from '../line/line.module';
 
 @Module({
   imports: [AuthModule, LineModule],
-  controllers: [ReservationsController],
+  controllers: [ReservationsController, PublicBookingController],
   providers: [ReservationsService, ReservationsScheduler, GoogleCalendarService],
   exports: [ReservationsService, GoogleCalendarService],
 })

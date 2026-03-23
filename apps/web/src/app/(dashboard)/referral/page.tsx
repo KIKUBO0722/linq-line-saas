@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { EmptyState } from '@/components/ui/empty-state';
+import { HelpTip } from '@/components/ui/help-tip';
 
 export default function ReferralPage() {
   const [programs, setPrograms] = useState<ReferralProgram[]>([]);
@@ -259,7 +260,10 @@ export default function ReferralPage() {
     <div className="p-2 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">紹介プログラム</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold">紹介プログラム</h1>
+            <HelpTip content="既存の友だちが新しい友だちを紹介する仕組みを作ります。紹介者と被紹介者に特典を付与できます" />
+          </div>
           <p className="text-sm text-muted-foreground">お友だち紹介の仕組みを管理</p>
         </div>
         <Button onClick={() => setView('create')}>

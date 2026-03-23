@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { PageSkeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
+import { HelpTip } from '@/components/ui/help-tip';
 
 type View = 'list' | 'create' | 'detail';
 
@@ -319,10 +320,13 @@ export default function GachaPage() {
     <div className="p-2 max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Dices className="h-6 w-6 text-primary" />
-            ガチャ
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Dices className="h-6 w-6 text-primary" />
+              ガチャ
+            </h1>
+            <HelpTip content="友だちが楽しめるガチャ（くじ引き）キャンペーンを作成します。当選確率や景品を設定できます" />
+          </div>
           <p className="text-sm text-muted-foreground">抽選型キャンペーンの作成・管理</p>
         </div>
         <Button onClick={() => setView('create')} className="gap-1.5">

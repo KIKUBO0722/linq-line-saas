@@ -1,9 +1,11 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { CouponsService } from './coupons.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { TenantId } from '../../common/decorators/tenant.decorator';
 import { CreateCouponDto, UpdateCouponDto, ToggleCouponDto } from './dto/coupons.dto';
 
+@ApiTags('Coupons')
 @Controller('api/v1/coupons')
 @UseGuards(AuthGuard)
 export class CouponsController {

@@ -1,9 +1,11 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Req, Res, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { UrlTrackingService } from './url-tracking.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { TenantId } from '../../common/decorators/tenant.decorator';
 import { CreateTrackedUrlDto, UpdateTrackedUrlDto } from './dto/url-tracking.dto';
 
+@ApiTags('Messages')
 @Controller()
 export class UrlTrackingController {
   constructor(private readonly urlTrackingService: UrlTrackingService) {}

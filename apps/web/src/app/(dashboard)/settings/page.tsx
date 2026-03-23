@@ -8,6 +8,7 @@ import { Settings, Plus, Check, Copy, CreditCard, Zap, Users, MessageSquare, Ref
 import type { LineAccount, TenantBranding, TeamMember, TenantInvitation } from '@/lib/types';
 import { api } from '@/lib/api-client';
 import { EmptyState } from '@/components/ui/empty-state';
+import { HelpTip } from '@/components/ui/help-tip';
 
 interface BillingPlan {
   id: string;
@@ -197,7 +198,10 @@ export default function SettingsPage() {
   return (
     <div className="p-2 max-w-5xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">設定</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold">設定</h1>
+          <HelpTip content="LINE公式アカウントの接続、ブランディング、チーム管理、プラン変更などの各種設定を行います" />
+        </div>
         <p className="text-sm text-muted-foreground">アカウント・プランの管理</p>
       </div>
 

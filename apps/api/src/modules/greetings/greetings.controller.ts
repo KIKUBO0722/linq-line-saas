@@ -1,9 +1,11 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { GreetingsService } from './greetings.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { TenantId } from '../../common/decorators/tenant.decorator';
 import { CreateGreetingDto, UpdateGreetingDto } from './dto/greetings.dto';
 
+@ApiTags('Greetings')
 @Controller('api/v1/greetings')
 @UseGuards(AuthGuard)
 export class GreetingsController {

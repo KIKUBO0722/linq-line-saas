@@ -2,6 +2,7 @@ import {
   Controller, Get, Post, Patch, Delete, Body, Param, UseGuards,
   UseInterceptors, UploadedFile, Req,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { RichMenusService } from './rich-menus.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
@@ -9,6 +10,7 @@ import { TenantId } from '../../common/decorators/tenant.decorator';
 import { CreateRichMenuGroupDto, AssignMenuDto, CreateRichMenuDto, UpdateRichMenuDto } from './dto/rich-menus.dto';
 import { Request } from 'express';
 
+@ApiTags('RichMenus')
 @Controller('api/v1/rich-menus')
 @UseGuards(AuthGuard)
 export class RichMenusController {

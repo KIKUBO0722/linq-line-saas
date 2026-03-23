@@ -30,6 +30,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageSkeleton } from '@/components/ui/skeleton';
+import { HelpTip } from '@/components/ui/help-tip';
 
 export default function FriendsPage() {
   const [friends, setFriends] = useState<FriendWithTags[]>([]);
@@ -302,7 +303,10 @@ export default function FriendsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">友だち</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold">友だち</h1>
+            <HelpTip content="LINE公式アカウントの友だち一覧です。タグ付け、セグメント分類、詳細情報の確認ができます" />
+          </div>
           <p className="text-sm text-muted-foreground">{friends.length}人</p>
         </div>
         <div className="flex gap-2">

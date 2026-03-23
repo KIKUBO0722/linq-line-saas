@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { EmptyState } from '@/components/ui/empty-state';
+import { HelpTip } from '@/components/ui/help-tip';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
 
@@ -209,7 +210,10 @@ export default function OverviewPage() {
     <div className="p-2 max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">ダッシュボード</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold tracking-tight">ダッシュボード</h1>
+          <HelpTip content="LINE公式アカウントの主要な数値をまとめて確認できる画面です" />
+        </div>
         <p className="text-sm text-muted-foreground">
           {hasAccount ? (
             <>

@@ -1,9 +1,11 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { ExitPopupsService } from './exit-popups.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { TenantId } from '../../common/decorators/tenant.decorator';
 import { CreateExitPopupDto, UpdateExitPopupDto } from './dto/exit-popups.dto';
 
+@ApiTags('ExitPopups')
 @Controller()
 export class ExitPopupsController {
   constructor(private readonly exitPopupsService: ExitPopupsService) {}

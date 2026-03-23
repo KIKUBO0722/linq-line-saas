@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Patch, Delete, Param, Query, Body, Req, Res, UseGuards, Logger, NotFoundException } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { FriendsService } from './friends.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { TenantId } from '../../common/decorators/tenant.decorator';
@@ -17,6 +18,7 @@ interface LineProfile {
   language?: string;
 }
 
+@ApiTags('Friends')
 @Controller('api/v1/friends')
 @UseGuards(AuthGuard)
 export class FriendsController {

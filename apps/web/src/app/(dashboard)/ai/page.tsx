@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { HelpTip } from '@/components/ui/help-tip';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
 
@@ -252,7 +253,10 @@ export default function AiPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">AI・自動化</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold">AI・自動化</h1>
+            <HelpTip content="AI自動応答の設定、ナレッジベースの管理、チャットボットの挙動をカスタマイズできます" />
+          </div>
           <p className="text-sm text-muted-foreground">自動応答・キーワード応答・コンテンツ生成</p>
         </div>
         <Button onClick={handleSave} disabled={saving} className="gap-1.5">

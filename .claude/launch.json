@@ -4,7 +4,7 @@
     {
       "name": "api",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["dist/src/main.js"],
+      "runtimeArgs": ["dist/main.js"],
       "port": 3601,
       "cwd": "apps/api",
       "env": {

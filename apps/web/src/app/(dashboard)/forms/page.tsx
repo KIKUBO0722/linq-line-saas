@@ -17,6 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageSkeleton } from '@/components/ui/skeleton';
+import { HelpTip } from '@/components/ui/help-tip';
 
 type FieldType = 'text' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'email' | 'phone' | 'number';
 
@@ -548,7 +549,10 @@ export default function FormsPage() {
     <div className="p-2 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">フォーム</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold">フォーム</h1>
+            <HelpTip content="友だちから情報を収集するWebフォームを作成・管理します。回答データの確認やCSV出力も可能です" />
+          </div>
           <p className="text-sm text-muted-foreground">アンケート・申し込みフォームの作成</p>
         </div>
         <Button onClick={() => setView('create')}>

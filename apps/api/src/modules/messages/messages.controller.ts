@@ -1,10 +1,12 @@
 import { Controller, Get, Post, Body, Param, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { MessagesService } from './messages.service';
 import { BillingService } from '../billing/billing.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { TenantId } from '../../common/decorators/tenant.decorator';
 import { SendTextDto, SendMessageDto, BroadcastMessageDto, BroadcastTextDto, TestSendDto } from './dto/messages.dto';
 
+@ApiTags('Messages')
 @Controller('api/v1/messages')
 @UseGuards(AuthGuard)
 export class MessagesController {

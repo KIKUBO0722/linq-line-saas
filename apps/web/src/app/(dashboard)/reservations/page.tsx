@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/table';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageSkeleton } from '@/components/ui/skeleton';
+import { HelpTip } from '@/components/ui/help-tip';
 
 // Extended reservation type with computed slot fields from the API response
 interface ReservationWithSlot extends Reservation {
@@ -244,7 +245,10 @@ export default function ReservationsPage() {
   return (
     <div className="p-2 max-w-5xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">予約管理</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold">予約管理</h1>
+          <HelpTip content="友だちからの予約を受付・管理する画面です。予約枠の設定やリマインダー送信ができます" />
+        </div>
         <p className="text-sm text-muted-foreground">予約メニューの管理と予約の受付・確認</p>
       </div>
 

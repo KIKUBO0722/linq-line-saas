@@ -1,9 +1,11 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { ConversionService } from './conversion.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { TenantId } from '../../common/decorators/tenant.decorator';
 import { CreateGoalDto, UpdateGoalDto, RecordConversionDto } from './dto/conversion.dto';
 
+@ApiTags('Analytics')
 @Controller('api/v1/conversions')
 @UseGuards(AuthGuard)
 export class ConversionController {

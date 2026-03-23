@@ -1,7 +1,9 @@
 import { Controller, Post, Param, Req, Res, Logger, HttpStatus } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { WebhookService } from './webhook.service';
 
+@ApiTags('Webhook')
 @Controller('webhook')
 export class WebhookController {
   private readonly logger = new Logger(WebhookController.name);

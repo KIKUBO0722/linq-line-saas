@@ -1,9 +1,11 @@
 import { Controller, Get, Post, Delete, Patch, Param, Body, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { AccountsService } from './accounts.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { TenantId } from '../../common/decorators/tenant.decorator';
 import { CreateAccountDto, UpdateBrandingDto } from './dto/accounts.dto';
 
+@ApiTags('Accounts')
 @Controller('api/v1/accounts')
 @UseGuards(AuthGuard)
 export class AccountsController {
