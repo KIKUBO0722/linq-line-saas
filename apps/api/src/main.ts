@@ -14,8 +14,14 @@ async function bootstrap() {
   app.use(helmet());
   app.use(cookieParser());
   const webUrl = process.env.WEB_URL || 'http://localhost:3000';
+  const allowedOrigins = [
+    webUrl,
+    'https://linq-line-saas.vercel.app',
+    'http://localhost:3600',
+    'http://localhost:3000',
+  ].filter(Boolean);
   app.enableCors({
-    origin: [webUrl, 'http://localhost:3600', 'http://localhost:3000'],
+    origin: allowedOrigins,
     credentials: true,
   });
   app.useGlobalPipes(
