@@ -1,8 +1,11 @@
-import { Injectable, Inject, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, Inject, ForbiddenException, BadRequestException, ConflictException, Logger } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
+import { messagingApi } from '@line/bot-sdk';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { lineAccounts, tenants } from '@line-saas/db';
 import { ConfigService } from '@nestjs/config';
+
+const { MessagingApiClient } = messagingApi;
 
 @Injectable()
 export class AccountsService {
@@ -13,25 +16,65 @@ export class AccountsService {
     private readonly config: ConfigService,
   ) {}
 
+  /**
+   * Validate LINE credentials by calling the Bot Info API
+   */
+  private async validateLineCredentials(channelAccessToken: string): Promise<{ displayName: string; userId: string }> {
+    try {
+      const client = new MessagingApiClient({ channelAccessToken });
+      const botInfo = await client.getBotInfo();
+      return { displayName: botInfo.displayName, userId: botInfo.userId };
+    } catch (error) {
+      this.logger.error('LINE credential validation failed', error);
+      throw new BadRequestException(
+        'LINE APIの認証に失敗しました。チャネルアクセストークンが正しいか確認してください。',
+      );
+    }
+  }
+
   async create(tenantId: string, data: { channelId: string; channelSecret: string; channelAccessToken: string; botName?: string }) {
+    // 1. Validate credentials against LINE API
+    const botInfo = await this.validateLineCredentials(data.channelAccessToken);
+
+    // 2. Check for duplicate channelId
+    const [existing] = await this.db
+      .select({ id: lineAccounts.id })
+      .from(lineAccounts)
+      .where(eq(lineAccounts.channelId, data.channelId))
+      .limit(1);
+
+    if (existing) {
+      throw new ConflictException('このチャネルIDは既に登録されています。');
+    }
+
+    // 3. Insert with validated bot name
     const webhookUrl = `${this.config.get('API_URL')}/webhook`;
 
-    const [account] = await this.db
-      .insert(lineAccounts)
-      .values({
-        tenantId,
-        channelId: data.channelId,
-        channelSecret: data.channelSecret,
-        channelAccessToken: data.channelAccessToken,
-        botName: data.botName,
-      })
-      .returning();
+    try {
+      const [account] = await this.db
+        .insert(lineAccounts)
+        .values({
+          tenantId,
+          channelId: data.channelId,
+          channelSecret: data.channelSecret,
+          channelAccessToken: data.channelAccessToken,
+          botName: data.botName || botInfo.displayName,
+        })
+        .returning();
 
-    // Return account with webhook URL for the user to set in LINE Developers
-    return {
-      ...account,
-      webhookUrl: `${webhookUrl}/${account.id}`,
-    };
+      this.logger.log(`LINE account connected: ${botInfo.displayName} (${data.channelId}) for tenant ${tenantId}`);
+
+      return {
+        ...account,
+        webhookUrl: `${webhookUrl}/${account.id}`,
+      };
+    } catch (error) {
+      this.logger.error('Failed to create LINE account', error);
+      if ((error as { code?: string }).code === '23505') {
+        throw new ConflictException('このチャネルIDは既に登録されています。');
+      }
+      throw new BadRequestException('アカウントの登録に失敗しました。入力内容を確認してください。');
+    }
   }
 
   async findByTenant(tenantId: string) {

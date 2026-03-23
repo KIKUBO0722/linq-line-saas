@@ -100,7 +100,7 @@ export default function ReferralPage() {
   // Stats view
   if (view === 'stats' && selectedProgram) {
     return (
-      <div className="p-2 max-w-5xl mx-auto space-y-6">
+      <div className="p-2 space-y-4">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => { setView('list'); setSelectedProgram(null); }}>
             <ChevronLeft className="h-4 w-4" />
@@ -181,7 +181,7 @@ export default function ReferralPage() {
   // Create view
   if (view === 'create') {
     return (
-      <div className="p-2 max-w-5xl mx-auto space-y-6">
+      <div className="p-2 space-y-4">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => setView('list')}>
             <ChevronLeft className="h-4 w-4" />
@@ -257,7 +257,7 @@ export default function ReferralPage() {
 
   // List view
   return (
-    <div className="p-2 max-w-5xl mx-auto space-y-6">
+    <div className="p-2 space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">

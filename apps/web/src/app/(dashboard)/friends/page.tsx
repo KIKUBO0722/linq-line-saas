@@ -300,7 +300,7 @@ export default function FriendsPage() {
   const tagColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
   return (
-    <div className="p-2 max-w-5xl mx-auto space-y-6">
+    <div className="p-2 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
