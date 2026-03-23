@@ -94,6 +94,18 @@ const pageHints: Record<string, { label: string; suggestions: string[] }> = {
     label: 'リッチメニュー',
     suggestions: ['おすすめのメニュー構成', 'エリア分割のコツ', 'テンプレートを提案'],
   },
+  '/exit-popups': {
+    label: '離脱防止ポップアップ',
+    suggestions: ['効果的なポップアップ設計', '離脱率を下げるコツ', 'クーポン表示のタイミング'],
+  },
+  '/gacha': {
+    label: 'ガチャ',
+    suggestions: ['ガチャキャンペーンの設計', '景品の配分バランス', '参加率を上げるコツ'],
+  },
+  '/agency': {
+    label: '代理店管理',
+    suggestions: ['クライアント管理のコツ', 'マージン設計の考え方', '代理店運用の効率化'],
+  },
 };
 
 const actionLabels: Record<string, string> = {
