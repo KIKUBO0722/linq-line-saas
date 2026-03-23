@@ -21,8 +21,9 @@ import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageSkeleton } from '@/components/ui/skeleton';
 import { HelpTip } from '@/components/ui/help-tip';
+import { getApiUrl } from '@/lib/api-url';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
+const API_BASE = getApiUrl();
 
 // Predefined layout templates
 const LAYOUT_TEMPLATES = [

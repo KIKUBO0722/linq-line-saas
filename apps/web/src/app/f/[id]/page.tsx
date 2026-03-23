@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { CheckCircle2, Loader2 } from 'lucide-react';
+import { getApiUrl } from '@/lib/api-url';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
+const API_URL = getApiUrl();
 
 interface FormField {
   label: string;

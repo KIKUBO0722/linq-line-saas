@@ -19,8 +19,9 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { EmptyState } from '@/components/ui/empty-state';
 import { HelpTip } from '@/components/ui/help-tip';
+import { getApiUrl } from '@/lib/api-url';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
+const API_BASE = getApiUrl();
 
 interface SetupItem {
   key: string;

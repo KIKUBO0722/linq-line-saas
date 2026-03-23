@@ -60,6 +60,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { EmptyState } from '@/components/ui/empty-state';
 import { HelpTip } from '@/components/ui/help-tip';
+import { getApiUrl } from '@/lib/api-url';
 
 export default function AnalyticsPage() {
   // The analytics overview API returns a different shape than AnalyticsOverview type
@@ -225,7 +226,7 @@ export default function AnalyticsPage() {
           className="gap-1.5"
           onClick={async () => {
             try {
-              const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
+              const API_BASE = getApiUrl();
               const res = await fetch(`${API_BASE}/api/v1/analytics/daily/export/csv`, { credentials: 'include' });
               if (!res.ok) throw new Error('エクスポートに失敗しました');
               const blob = await res.blob();
@@ -474,7 +475,7 @@ export default function AnalyticsPage() {
                     className="gap-1.5"
                     onClick={async () => {
                       try {
-                        const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
+                        const API_BASE = getApiUrl();
                         const res = await fetch(`${API_BASE}/api/v1/analytics/broadcasts/export/csv`, { credentials: 'include' });
                         if (!res.ok) throw new Error();
                         const blob = await res.blob();

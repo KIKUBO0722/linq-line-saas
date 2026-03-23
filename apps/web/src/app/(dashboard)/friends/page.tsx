@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageSkeleton } from '@/components/ui/skeleton';
 import { HelpTip } from '@/components/ui/help-tip';
+import { getApiUrl } from '@/lib/api-url';
 
 export default function FriendsPage() {
   const [friends, setFriends] = useState<FriendWithTags[]>([]);
@@ -131,7 +132,7 @@ export default function FriendsPage() {
     setAnalyzingAi(true);
     setAiAnalysis(null);
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
+      const API_BASE = getApiUrl();
       const res = await fetch(`${API_BASE}/api/v1/ai/analyze-friend/${selected.id}`, {
         method: 'POST',
         credentials: 'include',
@@ -266,7 +267,7 @@ export default function FriendsPage() {
   }
 
   async function handleExportCsv() {
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
+    const API_BASE = getApiUrl();
     const res = await fetch(`${API_BASE}/api/v1/friends/export/csv`, { credentials: 'include' });
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);

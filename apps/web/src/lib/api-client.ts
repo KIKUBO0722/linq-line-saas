@@ -56,7 +56,9 @@ import type {
   UsageRecord,
 } from './types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
+import { getApiUrl } from './api-url';
+
+const API_URL = getApiUrl();
 
 async function fetchApi<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {

@@ -17,8 +17,9 @@ import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageSkeleton } from '@/components/ui/skeleton';
 import { HelpTip } from '@/components/ui/help-tip';
+import { getApiUrl } from '@/lib/api-url';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
+const API = getApiUrl();
 
 async function fetchApi(path: string, options: RequestInit = {}) {
   const res = await fetch(`${API}${path}`, {

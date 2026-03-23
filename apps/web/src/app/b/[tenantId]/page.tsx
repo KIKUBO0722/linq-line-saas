@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Calendar, Clock, User, FileText, CheckCircle2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { getApiUrl } from '@/lib/api-url';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
+const API_BASE = getApiUrl();
 
 interface SlotInfo {
   id: string;

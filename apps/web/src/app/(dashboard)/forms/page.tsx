@@ -18,6 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageSkeleton } from '@/components/ui/skeleton';
 import { HelpTip } from '@/components/ui/help-tip';
+import { getApiUrl } from '@/lib/api-url';
 
 type FieldType = 'text' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'email' | 'phone' | 'number';
 
@@ -217,7 +218,7 @@ export default function FormsPage() {
               className="gap-1.5"
               onClick={async () => {
                 try {
-                  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
+                  const API_BASE = getApiUrl();
                   const res = await fetch(`${API_BASE}/api/v1/forms/${selectedForm.id}/responses/export/csv`, { credentials: 'include' });
                   if (!res.ok) throw new Error();
                   const blob = await res.blob();

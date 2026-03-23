@@ -19,8 +19,9 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { HelpTip } from '@/components/ui/help-tip';
+import { getApiUrl } from '@/lib/api-url';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
+const API_BASE = getApiUrl();
 
 interface KeywordRule {
   keyword: string;
