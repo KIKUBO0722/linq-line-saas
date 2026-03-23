@@ -15,7 +15,7 @@ import {
   LayoutDashboard, Users, MessageSquare, GitBranch, Menu,
   FileText, Bot, BarChart3, Settings, LogOut,
   ChevronDown, Send, Filter, FileStack, Ticket,
-  CalendarCheck, X, PanelLeftClose, PanelLeft, Dices, ShieldAlert,
+  CalendarCheck, X, PanelLeftClose, PanelLeft, Dices, ShieldAlert, Building2,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -52,6 +52,7 @@ const navigation: NavEntry[] = [
   { name: 'AI・自動化', href: '/ai', icon: Bot },
   { name: '予約管理', href: '/reservations', icon: CalendarCheck },
   { name: '分析', href: '/analytics', icon: BarChart3 },
+  { name: '代理店', href: '/agency', icon: Building2 },
   { name: '設定', href: '/settings', icon: Settings },
 ];
 

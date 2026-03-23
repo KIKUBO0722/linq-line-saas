@@ -272,6 +272,30 @@ export const api = {
     optimizeForm: (formId: string) =>
       fetchApi<{ formName: string; score: number; issues: Array<{ severity: 'high' | 'medium' | 'low'; issue: string; suggestion: string }>; improvedFields?: Array<{ label: string; type: string; placeholder?: string; required?: boolean }> }>(`/api/v1/ai/optimize-form/${formId}`, { method: 'POST' }),
   },
+  agency: {
+    status: () => fetchApi<{ isAgency: boolean }>('/api/v1/agency/status'),
+    overview: () => fetchApi<{
+      totalClients: number;
+      totalFriends: number;
+      totalMessagesSent: number;
+      totalMessagesReceived: number;
+      clients: Array<{
+        tenantId: string;
+        tenantName: string;
+        industry: string | null;
+        status: string;
+        friendCount: number;
+        messagesSent: number;
+        messagesReceived: number;
+        planName: string | null;
+        createdAt: string;
+      }>;
+    }>('/api/v1/agency/overview'),
+    addClient: (clientTenantId: string) =>
+      fetchApi(`/api/v1/agency/clients/${clientTenantId}`, { method: 'POST' }),
+    removeClient: (clientTenantId: string) =>
+      fetchApi(`/api/v1/agency/clients/${clientTenantId}`, { method: 'DELETE' }),
+  },
   conversions: {
     listGoals: () => fetchApi<ConversionGoal[]>('/api/v1/conversions/goals'),
     createGoal: (data: { name: string; type: ConversionGoalType; targetId?: string }) =>
