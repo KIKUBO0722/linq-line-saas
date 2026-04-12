@@ -4,8 +4,7 @@ import { toast } from 'sonner';
 
 import { useEffect, useState } from 'react';
 import {
-  Users, MessageSquare, Bot, ArrowRight, Sparkles, Wand2, Check, Loader2,
-  Send, FileText, Menu, Settings, UserPlus, Bell, ChevronRight, GitBranch,
+  Users, Bot, Sparkles, Wand2, Check, Loader2, ChevronRight,
 } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import type { Friend, AnalyticsOverview, UsageRecord } from '@/lib/types';
@@ -229,50 +228,38 @@ export default function OverviewPage() {
 
       {/* Setup checklist - show until all done */}
       {!allSetupDone && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base">初期設定</CardTitle>
-                <CardDescription>{completedSetup}/{setupItems.length} 完了</CardDescription>
-              </div>
-              <div className="flex gap-1">
-                {setupItems.map((item) => (
-                  <div
-                    key={item.key}
-                    className={`h-2 w-8 rounded-full ${item.done ? 'bg-emerald-500' : 'bg-muted'}`}
-                  />
-                ))}
-              </div>
+        <div className="border rounded-lg">
+          <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
+            <span className="text-sm font-medium">初期設定 ({completedSetup}/{setupItems.length})</span>
+            <div className="flex gap-1">
+              {setupItems.map((item) => (
+                <div
+                  key={item.key}
+                  className={`h-1.5 w-6 rounded-full ${item.done ? 'bg-emerald-500' : 'bg-muted'}`}
+                />
+              ))}
             </div>
-          </CardHeader>
-          <CardContent className="space-y-1 pt-0">
-            {setupItems.map((item) => (
-              <a
-                key={item.key}
-                href={item.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
-                  item.done
-                    ? 'opacity-60'
-                    : 'hover:bg-muted/50 cursor-pointer'
-                }`}
-              >
-                <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                  item.done ? 'border-emerald-500 bg-emerald-500' : 'border-muted-foreground/30'
-                }`}>
-                  {item.done && <Check className="h-3 w-3 text-white" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium ${item.done ? 'line-through text-muted-foreground' : ''}`}>
-                    {item.label}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{item.description}</p>
-                </div>
-                {!item.done && <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
-              </a>
-            ))}
-          </CardContent>
-        </Card>
+          </div>
+          {setupItems.map((item, i) => (
+            <a
+              key={item.key}
+              href={item.href}
+              className={`flex items-center gap-2.5 px-3 py-2 transition-colors ${
+                i < setupItems.length - 1 ? 'border-b' : ''
+              } ${item.done ? 'opacity-50' : 'hover:bg-muted/50 cursor-pointer'}`}
+            >
+              <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                item.done ? 'border-emerald-500 bg-emerald-500' : 'border-muted-foreground/30'
+              }`}>
+                {item.done && <Check className="h-2.5 w-2.5 text-white" />}
+              </div>
+              <span className={`text-sm flex-1 ${item.done ? 'line-through text-muted-foreground' : ''}`}>
+                {item.label}
+              </span>
+              {!item.done && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+            </a>
+          ))}
+        </div>
       )}
 
       {/* AI Onboarding Wizard */}
@@ -467,131 +454,59 @@ export default function OverviewPage() {
         </Card>
       )}
 
-      {/* KPI Stats Cards */}
+      {/* KPI Inline Stats */}
       {hasAccount && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="flex items-center gap-6 border-b pb-2">
           {[
-            {
-              label: '友だち数',
-              value: friendCount,
-              icon: Users,
-              color: 'text-emerald-600',
-              bg: 'from-emerald-50 to-green-50',
-              border: 'border-emerald-200',
-              suffix: '人',
-            },
-            {
-              label: '配信数（今月）',
-              value: stats?.messagesSent ?? 0,
-              icon: Send,
-              color: 'text-blue-600',
-              bg: 'from-blue-50 to-indigo-50',
-              border: 'border-blue-200',
-              suffix: '通',
-            },
-            {
-              label: 'AI応答',
-              value: 0,
-              icon: Bot,
-              color: 'text-purple-600',
-              bg: 'from-purple-50 to-violet-50',
-              border: 'border-purple-200',
-              suffix: '回',
-            },
-            {
-              label: 'ステップ稼働',
-              value: 0,
-              icon: GitBranch,
-              color: 'text-orange-600',
-              bg: 'from-orange-50 to-amber-50',
-              border: 'border-orange-200',
-              suffix: '本',
-            },
+            { label: '友だち', value: friendCount, suffix: '人' },
+            { label: '配信（今月）', value: stats?.messagesSent ?? 0, suffix: '通' },
+            { label: 'AI応答', value: 0, suffix: '回' },
+            { label: 'ステップ稼働', value: 0, suffix: '本' },
           ].map((kpi) => (
-            <Card key={kpi.label} className={`${kpi.border} linq-card-hover overflow-hidden`}>
-              <CardContent className="p-0">
-                <div className={`bg-gradient-to-br ${kpi.bg} p-4`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-muted-foreground">{kpi.label}</span>
-                    <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
-                  </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-bold tracking-tight">{kpi.value.toLocaleString()}</span>
-                    <span className="text-xs text-muted-foreground">{kpi.suffix}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <div key={kpi.label} className="flex items-baseline gap-1.5">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">{kpi.label}</span>
+              <span className="text-lg font-semibold tabular-nums">{kpi.value.toLocaleString()}</span>
+              <span className="text-xs text-muted-foreground">{kpi.suffix}</span>
+            </div>
           ))}
         </div>
       )}
 
-      {/* Quick actions - contextual based on setup state */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { href: '/messages', label: 'チャット', icon: Send, color: 'text-blue-600' },
-          { href: '/friends', label: '友だち管理', icon: Users, color: 'text-emerald-600' },
-          { href: '/ai', label: 'AI設定', icon: Bot, color: 'text-purple-600' },
-          { href: '/rich-menus', label: 'リッチメニュー', icon: Menu, color: 'text-orange-600' },
-        ].map((action) => (
-          <a key={action.href} href={action.href}>
-            <Card className="linq-card-hover hover:border-primary/50 cursor-pointer h-full">
-              <CardContent className="p-4 flex flex-col items-center gap-2 text-center">
-                <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                  <action.icon className={`h-5 w-5 ${action.color}`} />
-                </div>
-                <p className="text-sm font-medium">{action.label}</p>
-              </CardContent>
-            </Card>
-          </a>
-        ))}
-      </div>
 
       {/* Recent friends */}
       {recentFriends.length > 0 && (
-        <Card>
-          <CardContent className="p-0">
-            <div className="flex items-center justify-between px-4 py-3">
-              <h2 className="text-sm font-semibold flex items-center gap-2">
-                <UserPlus className="h-4 w-4 text-muted-foreground" />
-                最近の友だち
-              </h2>
-              <a href="/friends" className="text-xs text-primary hover:underline">すべて見る</a>
-            </div>
-            <Separator />
-            {recentFriends.map((f: Friend, i: number) => (
-              <div key={f.id}>
-                <a href={`/friends?id=${f.id}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/50 transition-colors cursor-pointer">
-                  <Avatar className="h-8 w-8">
-                    {f.pictureUrl && <AvatarImage src={f.pictureUrl} />}
-                    <AvatarFallback className="text-xs"><Users className="h-3.5 w-3.5" /></AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm font-medium flex-1">{f.displayName || '名前未設定'}</span>
-                  {!f.isFollowing && (
-                    <Badge variant="destructive" className="text-xs">ブロック</Badge>
-                  )}
-                  <span className="text-xs text-muted-foreground">
-                    {f.createdAt ? new Date(f.createdAt).toLocaleDateString('ja-JP') : '-'}
-                  </span>
-                </a>
-                {i < recentFriends.length - 1 && <Separator />}
-              </div>
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <h2 className="text-sm font-medium text-muted-foreground">最近の友だち</h2>
+            <a href="/friends" className="text-xs text-primary hover:underline">すべて見る</a>
+          </div>
+          <div className="border rounded-lg divide-y">
+            {recentFriends.map((f: Friend) => (
+              <a key={f.id} href={`/friends?id=${f.id}`} className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-muted/50 transition-colors cursor-pointer">
+                <Avatar className="h-6 w-6">
+                  {f.pictureUrl && <AvatarImage src={f.pictureUrl} />}
+                  <AvatarFallback className="text-[10px]"><Users className="h-3 w-3" /></AvatarFallback>
+                </Avatar>
+                <span className="text-sm flex-1 truncate">{f.displayName || '名前未設定'}</span>
+                {!f.isFollowing && (
+                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0">ブロック</Badge>
+                )}
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {f.createdAt ? new Date(f.createdAt).toLocaleDateString('ja-JP') : '-'}
+                </span>
+              </a>
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Empty state when no friends */}
       {recentFriends.length === 0 && hasAccount && (
-        <Card>
-          <CardContent>
-            <EmptyState
-              illustration="friends"
-              title="まだ友だちがいません"
-              description="LINE公式アカウントに友だちが追加されると、ここに表示されます"
-            />
-          </CardContent>
-        </Card>
+        <EmptyState
+          illustration="friends"
+          title="まだ友だちがいません"
+          description="LINE公式アカウントに友だちが追加されると、ここに表示されます"
+        />
       )}
     </div>
   );
