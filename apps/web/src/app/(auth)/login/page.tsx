@@ -26,6 +26,8 @@ function LoginForm() {
   const [error, setError] = useState(
     oauthError === 'oauth_failed' ? 'ソーシャルログインに失敗しました。もう一度お試しください。'
     : oauthError === 'oauth_cancelled' ? 'ログインがキャンセルされました。'
+    : oauthError === 'invalid_state' ? 'セキュリティ検証に失敗しました。もう一度お試しください。'
+    : oauthError === 'oauth_not_configured' ? 'ソーシャルログインは現在利用できません。メールアドレスでログインしてください。'
     : '',
   );
   const [loading, setLoading] = useState(false);

@@ -42,10 +42,15 @@ export class OAuthController {
 
   @Get('google')
   googleAuth(@Res() res: Response) {
-    const state = randomBytes(16).toString('hex');
-    res.cookie(STATE_COOKIE, state, STATE_COOKIE_OPTIONS);
-    const url = this.oauthService.getGoogleAuthUrl(state);
-    res.redirect(url);
+    try {
+      const state = randomBytes(16).toString('hex');
+      res.cookie(STATE_COOKIE, state, STATE_COOKIE_OPTIONS);
+      const url = this.oauthService.getGoogleAuthUrl(state);
+      res.redirect(url);
+    } catch (error) {
+      this.logger.error(`Google OAuth init failed: ${error}`);
+      res.redirect(`${this.getWebUrl()}/login?error=oauth_not_configured`);
+    }
   }
 
   @Get('google/callback')
@@ -82,10 +87,15 @@ export class OAuthController {
 
   @Get('line')
   lineAuth(@Res() res: Response) {
-    const state = randomBytes(16).toString('hex');
-    res.cookie(STATE_COOKIE, state, STATE_COOKIE_OPTIONS);
-    const url = this.oauthService.getLineAuthUrl(state);
-    res.redirect(url);
+    try {
+      const state = randomBytes(16).toString('hex');
+      res.cookie(STATE_COOKIE, state, STATE_COOKIE_OPTIONS);
+      const url = this.oauthService.getLineAuthUrl(state);
+      res.redirect(url);
+    } catch (error) {
+      this.logger.error(`LINE OAuth init failed: ${error}`);
+      res.redirect(`${this.getWebUrl()}/login?error=oauth_not_configured`);
+    }
   }
 
   @Get('line/callback')

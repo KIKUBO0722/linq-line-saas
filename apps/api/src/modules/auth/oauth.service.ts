@@ -9,6 +9,9 @@ export class OAuthService {
 
   private getGoogleClient(): OAuth2Client {
     if (!this.googleClient) {
+      if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+        throw new Error('Google OAuth is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.');
+      }
       this.googleClient = new OAuth2Client(
         process.env.GOOGLE_CLIENT_ID,
         process.env.GOOGLE_CLIENT_SECRET,
@@ -63,6 +66,9 @@ export class OAuthService {
 
   getLineAuthUrl(state: string): string {
     const channelId = process.env.LINE_LOGIN_CHANNEL_ID;
+    if (!channelId || !process.env.LINE_LOGIN_CHANNEL_SECRET) {
+      throw new Error('LINE Login is not configured. Set LINE_LOGIN_CHANNEL_ID and LINE_LOGIN_CHANNEL_SECRET.');
+    }
     const callbackUrl = `${process.env.OAUTH_CALLBACK_BASE_URL || 'http://localhost:3601'}/api/v1/auth/line/callback`;
 
     const params = new URLSearchParams({
