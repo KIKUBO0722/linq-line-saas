@@ -1,6 +1,6 @@
-import { Controller, Get, Query, Res, Logger } from '@nestjs/common';
+import { Controller, Get, Query, Req, Res, Logger } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { randomBytes } from 'crypto';
 import { OAuthService } from './oauth.service';
 import { AuthService } from './auth.service';
@@ -52,12 +52,20 @@ export class OAuthController {
   async googleCallback(
     @Query('code') code: string,
     @Query('state') state: string,
+    @Req() req: Request,
     @Res() res: Response,
   ) {
     try {
       if (!code) {
         return res.redirect(`${this.getWebUrl()}/login?error=oauth_cancelled`);
       }
+
+      const storedState = req.cookies?.[STATE_COOKIE];
+      if (!state || !storedState || state !== storedState) {
+        this.logger.warn('Google OAuth CSRF state mismatch');
+        return res.redirect(`${this.getWebUrl()}/login?error=invalid_state`);
+      }
+      res.clearCookie(STATE_COOKIE);
 
       const profile = await this.oauthService.handleGoogleCallback(code);
       const result = await this.authService.socialLogin(profile);
@@ -84,12 +92,20 @@ export class OAuthController {
   async lineCallback(
     @Query('code') code: string,
     @Query('state') state: string,
+    @Req() req: Request,
     @Res() res: Response,
   ) {
     try {
       if (!code) {
         return res.redirect(`${this.getWebUrl()}/login?error=oauth_cancelled`);
       }
+
+      const storedState = req.cookies?.[STATE_COOKIE];
+      if (!state || !storedState || state !== storedState) {
+        this.logger.warn('LINE OAuth CSRF state mismatch');
+        return res.redirect(`${this.getWebUrl()}/login?error=invalid_state`);
+      }
+      res.clearCookie(STATE_COOKIE);
 
       const profile = await this.oauthService.handleLineCallback(code);
       const result = await this.authService.socialLogin(profile);

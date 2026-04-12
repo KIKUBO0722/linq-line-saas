@@ -1,5 +1,12 @@
 # LinQ - AI-Powered LINE Marketing SaaS
 
+## 最重要ルール（絶対厳守）
+> **「L-Step」「エルメ」「Liny」を模倣しながら、AI機能でこれらを超えるLINE拡張システムを作ること。**
+> これがLinQのコンセプトであり、事業計画であり、全ての設計・実装判断の最上位基準である。
+> - 競合3社の機能は最低限カバーする（機能的劣位を作らない）
+> - AI（Copilot・自動応答・分析）で競合にない価値を提供し差別化する
+> - 判断に迷ったら「競合ユーザーが乗り換えたくなるか？」を基準にする
+
 ## Quick Reference
 - **Build**: `pnpm build` (Turborepo, all packages)
 - **Dev API**: `pnpm preview:start api` (port 3601, NestJS)
@@ -8,6 +15,8 @@
 - **Format**: `pnpm format`
 - **Lint**: `pnpm lint`
 - **DB migrate**: Drizzle Kit via `packages/db`
+- **Deploy Frontend**: `npx vercel --prod` (Git pushではデプロイされない)
+- **Deploy API**: Render自動デプロイ (`KIKUBO0722/linq-line-saas` push時)
 
 ## Architecture
 
@@ -43,7 +52,7 @@ referral, ai-knowledge
 - **AI**: Google Gemini 2.5 Flash (auto-reply, copilot, onboarding)
 - **LINE**: @line/bot-sdk v10 (messaging, rich menus, webhook)
 - **Billing**: Stripe (subscriptions, usage tracking)
-- **Auth**: Argon2 password hashing, session-based (7-day expiry)
+- **Auth**: Argon2 password hashing, session-based (7-day expiry), Google OAuth
 
 ## Multi-Tenant Design
 - ALL queries MUST filter by `tenantId`
@@ -66,9 +75,13 @@ referral, ai-knowledge
 - **Empty states**: Custom SVG illustrations with actionable CTAs
 - **Skeleton loaders**: Used on all data-fetching pages
 
+## Important Notes
+- **AI Copilot**: 応答失敗時はバックエンドのpageContextMap（ai.service.ts）を確認。全ページにコンテキスト定義が必要
+- **禁止**: UI上の短いラベル・バッジの改行回り込み → whitespace-nowrapで防ぐ
+
 ## Current Priorities
+- Fix AI Copilot response failures across all pages
 - Strengthen analytics (cohort analysis, pseudo-CTR, segment comparison)
 - Add friend timeline (action history)
-- Improve error handling across all services
 - Add class-validator DTOs to remaining endpoints
 - Reduce `any` types throughout codebase
