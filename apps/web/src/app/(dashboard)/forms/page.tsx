@@ -296,17 +296,13 @@ export default function FormsPage() {
         )}
 
         {responses.length === 0 ? (
-          <Card>
-            <CardContent>
-              <EmptyState
-                illustration="forms"
-                title="まだ回答がありません"
-                description="フォームを公開して回答を集めましょう"
-              />
-            </CardContent>
-          </Card>
+          <EmptyState
+            illustration="forms"
+            title="まだ回答がありません"
+            description="フォームを公開して回答を集めましょう"
+          />
         ) : (
-          <Card>
+          <div className="rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -331,7 +327,7 @@ export default function FormsPage() {
                 ))}
               </TableBody>
             </Table>
-          </Card>
+          </div>
         )}
       </div>
     );
@@ -351,7 +347,7 @@ export default function FormsPage() {
           </div>
         </div>
 
-        <form onSubmit={handleCreate} className="space-y-6">
+        <form onSubmit={handleCreate} className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">基本情報</CardTitle>
@@ -563,17 +559,13 @@ export default function FormsPage() {
       </div>
 
       {forms.length === 0 ? (
-        <Card>
-          <CardContent>
-            <EmptyState
-              illustration="forms"
-              title="フォームがありません"
-              description="「新規作成」からフォームを作成してください"
-            />
-          </CardContent>
-        </Card>
+        <EmptyState
+          illustration="forms"
+          title="フォームがありません"
+          description="「新規作成」からフォームを作成してください"
+        />
       ) : (
-        <Card>
+        <div className="rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -640,7 +632,7 @@ export default function FormsPage() {
               ))}
             </TableBody>
           </Table>
-        </Card>
+        </div>
       )}
     </div>
   );

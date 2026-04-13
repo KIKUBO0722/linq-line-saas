@@ -925,17 +925,13 @@ export default function StepsPage() {
       )}
 
       {scenarios.length === 0 ? (
-        <Card>
-          <CardContent>
-            <EmptyState
-              illustration="steps"
-              title="シナリオがありません"
-              description="「新規シナリオ」ボタンから作成してください"
-            />
-          </CardContent>
-        </Card>
+        <EmptyState
+          illustration="steps"
+          title="シナリオがありません"
+          description="「新規シナリオ」ボタンから作成してください"
+        />
       ) : (
-        <Card>
+        <div className="rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -983,7 +979,7 @@ export default function StepsPage() {
               ))}
             </TableBody>
           </Table>
-        </Card>
+        </div>
       )}
     </div>
   );

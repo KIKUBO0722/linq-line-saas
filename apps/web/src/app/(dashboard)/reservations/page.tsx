@@ -303,7 +303,7 @@ export default function ReservationsPage() {
             <Card>
               <CardContent className="pt-6">
                 <form onSubmit={handleCreateReservation} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium">メニュー</label>
                       <Select
@@ -346,7 +346,7 @@ export default function ReservationsPage() {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium">メモ</label>
                       <Input
@@ -387,21 +387,17 @@ export default function ReservationsPage() {
           )}
 
           {/* Reservations table */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">予約一覧</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <PageSkeleton />
-              ) : reservations.length === 0 ? (
-                <EmptyState
-                  illustration="reservations"
-                  title="予約がありません"
-                  description="「予約作成」から新しい予約を追加しましょう"
-                />
-              ) : (
-                <Table>
+          {loading ? (
+            <PageSkeleton />
+          ) : reservations.length === 0 ? (
+            <EmptyState
+              illustration="reservations"
+              title="予約がありません"
+              description="「予約作成」から新しい予約を追加しましょう"
+            />
+          ) : (
+            <div className="rounded-lg border">
+              <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>日付</TableHead>
@@ -461,9 +457,8 @@ export default function ReservationsPage() {
                     })}
                   </TableBody>
                 </Table>
-              )}
-            </CardContent>
-          </Card>
+              </div>
+          )}
         </TabsContent>
 
         {/* Tab 2: Slot Management */}
@@ -526,21 +521,17 @@ export default function ReservationsPage() {
           )}
 
           {/* Slots list */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">メニュー一覧</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {slotsLoading ? (
-                <PageSkeleton />
-              ) : slots.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Clock className="h-10 w-10 text-muted-foreground/30 mb-3" />
-                  <p className="text-sm text-muted-foreground">メニューがまだありません</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">「メニュー追加」から最初のメニューを作成しましょう</p>
-                </div>
-              ) : (
-                <Table>
+          {slotsLoading ? (
+            <PageSkeleton />
+          ) : slots.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Clock className="h-10 w-10 text-muted-foreground/30 mb-3" />
+              <p className="text-sm text-muted-foreground">メニューがまだありません</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">「メニュー追加」から最初のメニューを作成しましょう</p>
+            </div>
+          ) : (
+            <div className="rounded-lg border">
+              <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>メニュー名</TableHead>
@@ -576,9 +567,8 @@ export default function ReservationsPage() {
                     ))}
                   </TableBody>
                 </Table>
-              )}
-            </CardContent>
-          </Card>
+              </div>
+          )}
         </TabsContent>
 
         {/* Tab 3: Google Calendar Integration */}

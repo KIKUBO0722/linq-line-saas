@@ -1047,18 +1047,14 @@ export default function RichMenusPage() {
 
         <TabsContent value="single" className="mt-4">
           {singleMenus.length === 0 ? (
-            <Card>
-              <CardContent>
-                <EmptyState
-                  illustration="rich-menus"
-                  title="リッチメニューがありません"
-                  description="リッチメニューを作成して、LINEトーク画面にメニューを表示しましょう"
-                  action={{ label: '最初のメニューを作成', onClick: startCreate, icon: Plus }}
-                />
-              </CardContent>
-            </Card>
+            <EmptyState
+              illustration="rich-menus"
+              title="リッチメニューがありません"
+              description="リッチメニューを作成して、LINEトーク画面にメニューを表示しましょう"
+              action={{ label: '最初のメニューを作成', onClick: startCreate, icon: Plus }}
+            />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               {singleMenus.map((menu) => {
                 const menuAreas = menu.areas || [];
                 const menuSz = menu.size;
@@ -1111,18 +1107,14 @@ export default function RichMenusPage() {
 
         <TabsContent value="groups" className="mt-4">
           {groups.length === 0 ? (
-            <Card>
-              <CardContent>
-                <EmptyState
-                  illustration="rich-menus"
-                  title="タブグループがありません"
-                  description="タブ切替型のリッチメニューで複数のメニューを切り替えられます"
-                  action={{ label: '最初のグループを作成', onClick: startCreateGroup, icon: Layers }}
-                />
-              </CardContent>
-            </Card>
+            <EmptyState
+              illustration="rich-menus"
+              title="タブグループがありません"
+              description="タブ切替型のリッチメニューで複数のメニューを切り替えられます"
+              action={{ label: '最初のグループを作成', onClick: startCreateGroup, icon: Layers }}
+            />
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {groups.map((group) => {
                 const groupMenus = group.menus || [];
                 return (

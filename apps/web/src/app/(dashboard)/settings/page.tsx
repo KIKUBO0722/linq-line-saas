@@ -225,7 +225,7 @@ export default function SettingsPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="accounts" className="mt-4 space-y-6">
+        <TabsContent value="accounts" className="mt-4 space-y-4">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -476,7 +476,7 @@ export default function SettingsPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="billing" className="mt-4 space-y-6">
+        <TabsContent value="billing" className="mt-4 space-y-4">
           {loadingBilling ? (
             <div className="flex justify-center py-12">
               <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
@@ -598,7 +598,7 @@ export default function SettingsPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="operators" className="mt-4 space-y-6">
+        <TabsContent value="operators" className="mt-4 space-y-4">
           {/* Team members list */}
           <Card>
             <CardHeader>
@@ -740,7 +740,7 @@ export default function SettingsPage() {
                   setInviting(false);
                 }
               }} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>メールアドレス</Label>
                     <Input
@@ -775,7 +775,7 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="branding" className="mt-4 space-y-6">
+        <TabsContent value="branding" className="mt-4 space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">ホワイトラベル設定</CardTitle>
@@ -794,7 +794,7 @@ export default function SettingsPage() {
                 } finally {
                   setSavingBranding(false);
                 }
-              }} className="space-y-6">
+              }} className="space-y-4">
                 <div className="space-y-2">
                   <Label>アプリ名</Label>
                   <Input
@@ -823,7 +823,7 @@ export default function SettingsPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>プライマリカラー</Label>
                     <div className="flex items-center gap-2">
