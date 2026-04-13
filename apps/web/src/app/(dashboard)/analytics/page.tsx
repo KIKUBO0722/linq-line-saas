@@ -244,7 +244,7 @@ export default function AnalyticsPage() {
               ))}
             </div>
           </div>
-          <p className="text-sm text-muted-foreground">過去30日間のパフォーマンス</p>
+          <p className="text-sm text-muted-foreground">過去{periodDays}日間のパフォーマンス</p>
         </div>
         <Button
           variant="outline"
@@ -335,12 +335,40 @@ export default function AnalyticsPage() {
         </Card>
       )}
 
-      {/* Main metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <MetricCard icon={<Users className="h-8 w-8 text-blue-500" />} value={stats?.friends?.total || 0} label="友だち数" help="LINE公式アカウントを友だち追加しているユーザーの合計数" />
-        <MetricCard icon={<ArrowUpRight className="h-8 w-8 text-green-500" />} value={stats?.messages?.outbound || 0} label="配信数 (送信)" help="あなたから友だちに送信したメッセージの合計数" />
-        <MetricCard icon={<ArrowDownRight className="h-8 w-8 text-purple-500" />} value={stats?.messages?.inbound || 0} label="受信数" help="友だちからあなたに届いたメッセージの合計数" />
-        <MetricCard icon={<BarChart3 className="h-8 w-8 text-amber-500" />} value={stats?.events?.total || 0} label="Webhookイベント" help="友だち追加・メッセージ受信などLINEから届いた全イベント数" />
+      {/* Main metrics - inline bar */}
+      <div className="flex items-center gap-5 px-4 py-2.5 rounded-lg border bg-background overflow-x-auto">
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Users className="h-4 w-4 text-blue-500 shrink-0" />
+          <span className="text-xs text-muted-foreground whitespace-nowrap">友だち</span>
+          <span className="text-sm font-bold whitespace-nowrap">{(stats?.friends?.total || 0).toLocaleString()}</span>
+        </div>
+        <div className="h-4 w-px bg-border shrink-0" />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <ArrowUpRight className="h-4 w-4 text-green-500 shrink-0" />
+          <span className="text-xs text-muted-foreground whitespace-nowrap">送信</span>
+          <span className="text-sm font-bold whitespace-nowrap">{(stats?.messages?.outbound || 0).toLocaleString()}</span>
+        </div>
+        <div className="h-4 w-px bg-border shrink-0" />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <ArrowDownRight className="h-4 w-4 text-purple-500 shrink-0" />
+          <span className="text-xs text-muted-foreground whitespace-nowrap">受信</span>
+          <span className="text-sm font-bold whitespace-nowrap">{(stats?.messages?.inbound || 0).toLocaleString()}</span>
+        </div>
+        <div className="h-4 w-px bg-border shrink-0" />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Zap className="h-4 w-4 text-amber-500 shrink-0" />
+          <span className="text-xs text-muted-foreground whitespace-nowrap">イベント</span>
+          <span className="text-sm font-bold whitespace-nowrap">{(stats?.events?.total || 0).toLocaleString()}</span>
+        </div>
+        {kpi?.newFriends?.change !== undefined && (
+          <>
+            <div className="h-4 w-px bg-border shrink-0" />
+            <span className={`text-xs flex items-center gap-0.5 shrink-0 whitespace-nowrap ${(kpi.newFriends.change || 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+              {(kpi.newFriends.change || 0) >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+              {Math.abs(kpi.newFriends.change || 0)}% 前週比
+            </span>
+          </>
+        )}
       </div>
 
       <Tabs defaultValue="overview">
@@ -388,65 +416,54 @@ export default function AnalyticsPage() {
         </TabsList>
 
         {/* Overview tab */}
-        <TabsContent value="overview" className="mt-4 space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">メッセージ内訳</CardTitle>
-                <span className="text-sm font-medium">合計 {msgTotal.toLocaleString()}</span>
+        <TabsContent value="overview" className="mt-3 space-y-4">
+          <div className="rounded-lg border p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold">メッセージ内訳</h3>
+              <span className="text-xs text-muted-foreground">合計 {msgTotal.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center gap-6">
+              <div className="h-[120px] w-[120px] shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: '送信', value: stats?.messages?.outbound || 0 },
+                        { name: '受信', value: stats?.messages?.inbound || 0 },
+                      ]}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={30}
+                      outerRadius={50}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      <Cell fill="#06C755" />
+                      <Cell fill="#8B5CF6" />
+                    </Pie>
+                    <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-8">
-                <div className="h-[140px] w-[140px] shrink-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={[
-                          { name: '送信', value: stats?.messages?.outbound || 0 },
-                          { name: '受信', value: stats?.messages?.inbound || 0 },
-                        ]}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={35}
-                        outerRadius={60}
-                        paddingAngle={3}
-                        dataKey="value"
-                      >
-                        <Cell fill="#06C755" />
-                        <Cell fill="#8B5CF6" />
-                      </Pie>
-                      <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="flex-1 space-y-4">
-                  <ProgressBar label="送信メッセージ" value={stats?.messages?.outbound || 0} percentage={outboundPct} color="#06C755" />
-                  <ProgressBar label="受信メッセージ" value={stats?.messages?.inbound || 0} percentage={inboundPct} color="#8B5CF6" />
-                </div>
+              <div className="flex-1 space-y-3">
+                <ProgressBar label="送信メッセージ" value={stats?.messages?.outbound || 0} percentage={outboundPct} color="#06C755" />
+                <ProgressBar label="受信メッセージ" value={stats?.messages?.inbound || 0} percentage={inboundPct} color="#8B5CF6" />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">今月の利用状況</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {usage ? (
-                <div className="space-y-4">
-                  <UsageBar label="メッセージ送信" used={usage.messagesSent || 0} limit={usage.messagesLimit} icon={<MessageSquare className="h-4 w-4 text-blue-500" />} />
-                  <UsageBar label="AI応答" used={usage.aiTokensUsed || 0} limit={usage.aiTokensLimit} icon={<Zap className="h-4 w-4 text-yellow-500" />} />
-                  <UsageBar label="友だち数" used={stats?.friends?.total || 0} limit={usage.friendsLimit} icon={<Users className="h-4 w-4 text-green-500" />} />
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <TrendingUp className="h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">利用データがまだありません</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <div className="rounded-lg border p-4">
+            <h3 className="text-sm font-semibold mb-3">今月の利用状況</h3>
+            {usage ? (
+              <div className="space-y-3">
+                <UsageBar label="メッセージ送信" used={usage.messagesSent || 0} limit={usage.messagesLimit} icon={<MessageSquare className="h-4 w-4 text-blue-500" />} />
+                <UsageBar label="AI応答" used={usage.aiTokensUsed || 0} limit={usage.aiTokensLimit} icon={<Zap className="h-4 w-4 text-yellow-500" />} />
+                <UsageBar label="友だち数" used={stats?.friends?.total || 0} limit={usage.friendsLimit} icon={<Users className="h-4 w-4 text-green-500" />} />
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground py-4 text-center">利用データがまだありません</p>
+            )}
+          </div>
         </TabsContent>
 
         {/* Daily tab */}
