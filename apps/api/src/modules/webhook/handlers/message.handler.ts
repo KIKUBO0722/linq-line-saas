@@ -61,6 +61,7 @@ export class MessageHandler {
     if (friend?.id) {
       await this.friendsService.updateScore(friend.id, 1);
       await this.friendsService.updateChatStatus(friend.id, 'unread', account.tenantId);
+      await this.friendsService.updateEngagement(friend.id);
     }
 
     // Store inbound message

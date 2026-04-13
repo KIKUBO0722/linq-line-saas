@@ -123,6 +123,11 @@ export class AnalyticsController {
     return this.analyticsService.getBlockAnalysis(tenantId, days ? parseInt(days, 10) : 30);
   }
 
+  @Get('engagement-distribution')
+  async engagementDistribution(@TenantId() tenantId: string) {
+    return this.analyticsService.getEngagementDistribution(tenantId);
+  }
+
   @Get('broadcast-performance/:id')
   async broadcastPerformanceDetail(@TenantId() tenantId: string, @Param('id') id: string) {
     return this.analyticsService.getBroadcastPerformanceDetail(tenantId, id);

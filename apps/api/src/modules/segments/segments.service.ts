@@ -219,4 +219,24 @@ export class SegmentsService {
       throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
     }
   }
+
+  /** マッチした友だちIDリストからティア別人数を集計 */
+  async getFriendTierBreakdown(friendIds: string[]) {
+    const result = { active: 0, warm: 0, cold: 0, dormant: 0, unknown: 0 };
+    if (!friendIds.length) return result;
+
+    const rows = await this.db
+      .select({
+        tier: friends.engagementTier,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(friends)
+      .where(inArray(friends.id, friendIds))
+      .groupBy(friends.engagementTier);
+
+    for (const row of rows) {
+      if (row.tier in result) result[row.tier as keyof typeof result] = row.count;
+    }
+    return result;
+  }
 }

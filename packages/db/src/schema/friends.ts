@@ -27,10 +27,13 @@ export const friends = pgTable(
     profileSyncedAt: timestamp('profile_synced_at', { withTimezone: true }),
     lastReadAt: timestamp('last_read_at', { withTimezone: true }),
     chatStatus: varchar('chat_status', { length: 20 }).notNull().default('unread'),
+    lastInteractionAt: timestamp('last_interaction_at', { withTimezone: true }),
+    engagementTier: varchar('engagement_tier', { length: 10 }).notNull().default('unknown'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     uniqueIndex('friends_account_user_idx').on(table.lineAccountId, table.lineUserId),
     index('friends_tenant_idx').on(table.tenantId),
+    index('friends_tenant_tier_idx').on(table.tenantId, table.engagementTier),
   ],
 );

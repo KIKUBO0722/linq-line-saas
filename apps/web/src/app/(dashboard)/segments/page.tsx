@@ -34,7 +34,12 @@ export default function SegmentsPage() {
 
   // Preview
   const [previewSegmentId, setPreviewSegmentId] = useState<string | null>(null);
-  const [previewData, setPreviewData] = useState<{ count: number; friends: Array<{ id: string; displayName?: string | null; lineUserId?: string }> } | null>(null);
+  const [previewData, setPreviewData] = useState<{
+    count: number;
+    friends: Array<{ id: string; displayName?: string | null; lineUserId?: string }>;
+    tierBreakdown?: { active: number; warm: number; cold: number; dormant: number; unknown: number } | null;
+    costEstimate?: { totalRecipients: number; costYen: number; dormantCount: number; costWithoutDormantYen: number; potentialSavingsYen: number; pricePerMessage: number } | null;
+  } | null>(null);
   const [previewing, setPreviewing] = useState(false);
 
   // Broadcast
@@ -662,6 +667,40 @@ export default function SegmentsPage() {
             ) : previewData ? (
               <div className="space-y-3">
                 <p className="text-sm font-medium">{previewData.count}人がマッチ</p>
+
+                {/* ティア内訳 */}
+                {previewData.tierBreakdown && previewData.count > 0 && (
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    {([
+                      ['active', 'アクティブ', 'bg-green-100 text-green-700'],
+                      ['warm', 'ウォーム', 'bg-amber-100 text-amber-700'],
+                      ['cold', 'コールド', 'bg-blue-100 text-blue-700'],
+                      ['dormant', '休眠', 'bg-gray-100 text-gray-500'],
+                    ] as const).map(([key, label, cls]) => {
+                      const val = previewData.tierBreakdown?.[key] ?? 0;
+                      return val > 0 ? (
+                        <span key={key} className={`rounded-full px-2 py-0.5 font-medium whitespace-nowrap ${cls}`}>
+                          {label}: {val}
+                        </span>
+                      ) : null;
+                    })}
+                  </div>
+                )}
+
+                {/* コスト試算 */}
+                {previewData.costEstimate && previewData.count > 0 && (
+                  <div className="rounded-md border bg-muted/30 px-3 py-2 space-y-1">
+                    <p className="text-xs text-muted-foreground">
+                      推定配信コスト: <span className="font-medium text-foreground">{previewData.count}人 × {previewData.costEstimate.pricePerMessage}円 = {previewData.costEstimate.costYen.toLocaleString()}円</span>
+                    </p>
+                    {previewData.costEstimate.dormantCount > 0 && (
+                      <p className="text-xs text-amber-600">
+                        休眠{previewData.costEstimate.dormantCount}人を除外すると約{previewData.costEstimate.potentialSavingsYen.toLocaleString()}円節約（推定）
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {previewData.friends.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {previewData.friends.map((f) => (

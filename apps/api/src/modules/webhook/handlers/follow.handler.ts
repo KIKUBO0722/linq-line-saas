@@ -63,6 +63,7 @@ export class FollowHandler {
     // Update engagement score (+5 for following/re-following)
     if (friend?.id) {
       await this.friendsService.updateScore(friend.id, 5);
+      await this.friendsService.updateEngagement(friend.id);
     }
 
     // Send greeting message (priority: greeting_messages > aiConfig.welcomeMessage)

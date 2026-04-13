@@ -94,6 +94,11 @@ referral, ai-knowledge
 - **insightsの閾値**: blockRate>5%で高ブロック配信警告、7日以内友だち>40%で新規脆弱性、1h以内ブロック>50%で頻度警告、前期比>30%増で増加トレンド、90日超友だち>30%で長期離脱
 - **alerts統合**: getAlerts()にblock_eventsからの配信別ブロック警告を追加（blockRate>5%の配信を具体名付きで表示）。block_eventsテーブル未作成時はtry/catchでスキップ
 - **ブロック分析UI**: リテンションタブ（旧コホート）内。totalBlocks<5件は「データ蓄積中」表示。全数値に「推定」注記
+- **engagementTier カラム**: friends テーブルに自動分類ティア。active(7日以内)/warm(8-30日)/cold(31-90日)/dormant(90日超 or 未アクション)。Webhookで即時'active'化、6時間CRONでダウングレード
+- **lastInteractionAt**: 友だちの直近アクション記録。inbound message, follow/re-followで更新。outboundは対象外
+- **friends.scheduler.ts**: EVERY_6_HOURSでengagement_tier一括更新。全テナント横断バッチ処理。IS DISTINCT FROMで変更行のみ更新
+- **コスト試算**: セグメントプレビューで3円/通の推定コスト表示+休眠除外の節約提案。LINE Standard基準の固定値
+- **engagement-distribution API**: `GET /analytics/engagement-distribution` — フォロー中友だちのティア別人数
 
 ## Current Priorities
 - Fix AI Copilot response failures across all pages

@@ -479,6 +479,7 @@ export default function FriendsPage() {
                     <TableHead>ステータス</TableHead>
                     <TableHead>タグ</TableHead>
                     <TableHead>スコア</TableHead>
+                    <TableHead>エンゲージメント</TableHead>
                     <TableHead>追加日</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -529,6 +530,23 @@ export default function FriendsPage() {
                         )}>
                           {f.score ?? 0}
                         </span>
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const tierConfig: Record<string, { label: string; cls: string }> = {
+                            active: { label: 'アクティブ', cls: 'bg-green-100 text-green-700' },
+                            warm: { label: 'ウォーム', cls: 'bg-amber-100 text-amber-700' },
+                            cold: { label: 'コールド', cls: 'bg-blue-100 text-blue-700' },
+                            dormant: { label: '休眠', cls: 'bg-gray-100 text-gray-500' },
+                            unknown: { label: '未分類', cls: 'bg-slate-100 text-slate-500' },
+                          };
+                          const c = tierConfig[f.engagementTier] || tierConfig.unknown;
+                          return (
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap ${c.cls}`}>
+                              {c.label}
+                            </span>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs">
                         {f.createdAt ? new Date(f.createdAt).toLocaleDateString('ja-JP') : '-'}

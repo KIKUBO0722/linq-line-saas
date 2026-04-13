@@ -407,4 +407,45 @@ export class FriendsService {
       return { events: [], total: 0 };
     }
   }
+
+  /** 友だちのエンゲージメントを即時active化（inbound message, follow, URL click時に呼ぶ） */
+  async updateEngagement(friendId: string) {
+    try {
+      await this.db
+        .update(friends)
+        .set({ lastInteractionAt: new Date(), engagementTier: 'active' })
+        .where(eq(friends.id, friendId));
+    } catch (error) {
+      this.logger.error(`Failed to update engagement for ${friendId}`, error);
+    }
+  }
+
+  /** 全テナントのエンゲージメントティアを一括更新（CRONから呼ばれる） */
+  async refreshAllTiers(): Promise<number> {
+    try {
+      const result = await this.db.execute(sql`
+        UPDATE friends SET engagement_tier = CASE
+          WHEN last_interaction_at >= NOW() - INTERVAL '7 days' THEN 'active'
+          WHEN last_interaction_at >= NOW() - INTERVAL '30 days' THEN 'warm'
+          WHEN last_interaction_at >= NOW() - INTERVAL '90 days' THEN 'cold'
+          WHEN last_interaction_at IS NOT NULL THEN 'dormant'
+          WHEN followed_at IS NOT NULL AND followed_at < NOW() - INTERVAL '90 days' THEN 'dormant'
+          ELSE 'unknown'
+        END
+        WHERE is_following = true
+          AND engagement_tier IS DISTINCT FROM CASE
+            WHEN last_interaction_at >= NOW() - INTERVAL '7 days' THEN 'active'
+            WHEN last_interaction_at >= NOW() - INTERVAL '30 days' THEN 'warm'
+            WHEN last_interaction_at >= NOW() - INTERVAL '90 days' THEN 'cold'
+            WHEN last_interaction_at IS NOT NULL THEN 'dormant'
+            WHEN followed_at IS NOT NULL AND followed_at < NOW() - INTERVAL '90 days' THEN 'dormant'
+            ELSE 'unknown'
+          END
+      `);
+      return Number((result as unknown as { rowCount?: number })?.rowCount ?? 0);
+    } catch (error) {
+      this.logger.error('Failed to refresh engagement tiers', error);
+      return 0;
+    }
+  }
 }

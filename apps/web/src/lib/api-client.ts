@@ -5,6 +5,7 @@ import type {
   AnalyticsOverview,
   BestSendTimeData,
   BlockAnalysis,
+  EngagementDistribution,
   BroadcastAnalytics,
   BroadcastPerformance,
   BroadcastPerformanceDetail,
@@ -182,6 +183,7 @@ export const api = {
     broadcastPerformance: (days?: number) => fetchApi<BroadcastPerformance[]>(`/api/v1/analytics/broadcast-performance${days ? `?days=${days}` : ''}`),
     broadcastPerformanceDetail: (id: string) => fetchApi<BroadcastPerformanceDetail>(`/api/v1/analytics/broadcast-performance/${id}`),
     blockAnalysis: (days?: number) => fetchApi<BlockAnalysis>(`/api/v1/analytics/block-analysis${days ? `?days=${days}` : ''}`),
+    engagementDistribution: () => fetchApi<EngagementDistribution>('/api/v1/analytics/engagement-distribution'),
   },
   tags: {
     list: () => fetchApi<Tag[]>('/api/v1/tags'),

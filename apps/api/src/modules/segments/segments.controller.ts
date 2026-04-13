@@ -36,7 +36,7 @@ export class SegmentsController {
   async preview(@TenantId() tenantId: string, @Param('id') id: string) {
     const segments = await this.segmentsService.list(tenantId);
     const segment = segments.find((s: { id: string }) => s.id === id);
-    if (!segment) return { count: 0, friends: [] };
+    if (!segment) return { count: 0, friends: [], tierBreakdown: null, costEstimate: null };
 
     const matchingFriends = await this.segmentsService.getMatchingFriends(
       tenantId,
@@ -44,7 +44,28 @@ export class SegmentsController {
       segment.matchType,
       segment.excludeTagIds,
     );
-    return { count: matchingFriends.length, friends: matchingFriends };
+
+    // Tier breakdown + cost estimate
+    const friendIds = matchingFriends.map((f: { id: string }) => f.id);
+    const tierBreakdown = await this.segmentsService.getFriendTierBreakdown(friendIds);
+    const COST_PER_MESSAGE = 3;
+    const totalCost = matchingFriends.length * COST_PER_MESSAGE;
+    const dormantCount = tierBreakdown.dormant;
+    const costWithoutDormant = (matchingFriends.length - dormantCount) * COST_PER_MESSAGE;
+
+    return {
+      count: matchingFriends.length,
+      friends: matchingFriends,
+      tierBreakdown,
+      costEstimate: {
+        totalRecipients: matchingFriends.length,
+        costYen: totalCost,
+        dormantCount,
+        costWithoutDormantYen: costWithoutDormant,
+        potentialSavingsYen: totalCost - costWithoutDormant,
+        pricePerMessage: COST_PER_MESSAGE,
+      },
+    };
   }
 
   @Post(':id/broadcast')

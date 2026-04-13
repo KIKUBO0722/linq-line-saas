@@ -1278,6 +1278,31 @@ export class AnalyticsService {
     }
   }
 
+  /** エンゲージメントティア分布（フォロー中の友だちのみ） */
+  async getEngagementDistribution(tenantId: string) {
+    try {
+      const rows = await this.db
+        .select({
+          tier: friends.engagementTier,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(friends)
+        .where(and(eq(friends.tenantId, tenantId), eq(friends.isFollowing, true)))
+        .groupBy(friends.engagementTier);
+
+      const distribution = { active: 0, warm: 0, cold: 0, dormant: 0, unknown: 0 };
+      for (const row of rows) {
+        if (row.tier in distribution) distribution[row.tier as keyof typeof distribution] = row.count;
+      }
+      const total = Object.values(distribution).reduce((a, b) => a + b, 0);
+      return { distribution, total };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`getEngagementDistribution failed: ${message}`);
+      return { distribution: { active: 0, warm: 0, cold: 0, dormant: 0, unknown: 0 }, total: 0 };
+    }
+  }
+
   /**
    * ブロック時にコンテキスト情報を記録する
    * 失敗しても例外を投げない（markUnfollowedの成功を妨げない）

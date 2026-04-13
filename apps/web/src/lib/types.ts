@@ -79,7 +79,14 @@ export interface Friend {
   profileSyncedAt: string | null;
   lastReadAt: string | null;
   chatStatus: string;
+  lastInteractionAt: string | null;
+  engagementTier: 'active' | 'warm' | 'cold' | 'dormant' | 'unknown';
   createdAt: string;
+}
+
+export interface EngagementDistribution {
+  distribution: { active: number; warm: number; cold: number; dormant: number; unknown: number };
+  total: number;
 }
 
 export interface TimelineEvent {
