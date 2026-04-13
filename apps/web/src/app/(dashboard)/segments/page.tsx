@@ -3,7 +3,7 @@
 import { toast } from 'sonner';
 
 import { useEffect, useState } from 'react';
-import { Filter, Plus, Trash2, Send, Eye, Users, Ban, Sparkles, Loader2, Check } from 'lucide-react';
+import { Filter, Plus, Trash2, Send, Eye, Users, Ban, Sparkles, Loader2, Check, Pencil } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import type { Segment, Tag } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,14 @@ export default function SegmentsPage() {
   const [broadcastSegmentId, setBroadcastSegmentId] = useState<string | null>(null);
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [broadcasting, setBroadcasting] = useState(false);
+
+  // Edit
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editTagIds, setEditTagIds] = useState<string[]>([]);
+  const [editMatchType, setEditMatchType] = useState<'any' | 'all'>('any');
+  const [editExcludeTagIds, setEditExcludeTagIds] = useState<string[]>([]);
 
   // AI Suggestions
   const [aiSuggestions, setAiSuggestions] = useState<Array<{ name: string; description: string; tagNames: string[]; matchType: 'any' | 'all'; reasoning: string; estimatedFriendCount: number }>>([]);
@@ -138,6 +146,36 @@ export default function SegmentsPage() {
       toast.error(err instanceof Error ? err.message : 'セグメントの作成に失敗しました');
     } finally {
       setCreating(false);
+    }
+  }
+
+  function startEditSegment(segment: Segment) {
+    setEditingId(segment.id);
+    setEditName(segment.name);
+    setEditDescription(segment.description || '');
+    setEditTagIds([...segment.tagIds]);
+    setEditMatchType((segment.matchType as 'any' | 'all') || 'any');
+    setEditExcludeTagIds([...(segment.excludeTagIds || [])]);
+  }
+
+  async function handleUpdateSegment() {
+    if (!editingId || !editName.trim() || editTagIds.length === 0) {
+      toast.error('セグメント名とタグを1つ以上選択してください');
+      return;
+    }
+    try {
+      const updated = await api.segments.update(editingId, {
+        name: editName.trim(),
+        description: editDescription.trim() || undefined,
+        tagIds: editTagIds,
+        matchType: editMatchType,
+        excludeTagIds: editExcludeTagIds,
+      }) as Segment;
+      setSegments((prev) => prev.map((s) => (s.id === editingId ? { ...s, ...updated } : s)));
+      setEditingId(null);
+      toast.success('セグメントを更新しました');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'セグメントの更新に失敗しました');
     }
   }
 
@@ -454,42 +492,108 @@ export default function SegmentsPage() {
       )}
 
       {/* Segments list */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">セグメント一覧</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <PageSkeleton />
-          ) : segments.length === 0 ? (
-            <EmptyState
-              illustration="segments"
-              title="セグメントがまだありません"
-              description="「セグメント作成」から最初のセグメントを作成しましょう"
-            />
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>セグメント</TableHead>
-                  <TableHead>条件</TableHead>
-                  <TableHead>タグ</TableHead>
-                  <TableHead className="w-[180px] text-right">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {segments.map((segment) => (
+      {loading ? (
+        <PageSkeleton />
+      ) : segments.length === 0 ? (
+        <EmptyState
+          illustration="segments"
+          title="セグメントがまだありません"
+          description="「セグメント作成」から最初のセグメントを作成しましょう"
+        />
+      ) : (
+        <div className="rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>セグメント</TableHead>
+                <TableHead>条件</TableHead>
+                <TableHead>タグ</TableHead>
+                <TableHead className="w-[180px] text-right">操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {segments.map((segment) => {
+                if (editingId === segment.id) {
+                  return (
+                    <TableRow key={segment.id}>
+                      <TableCell colSpan={4} className="p-4 bg-muted/30">
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-xs font-medium">セグメント名</label>
+                              <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-8 text-sm" />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs font-medium">説明</label>
+                              <Input value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className="h-8 text-sm" placeholder="任意" />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium">マッチ条件</label>
+                            <div className="flex gap-2">
+                              <button type="button" onClick={() => setEditMatchType('any')}
+                                className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${editMatchType === 'any' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:bg-muted'}`}>
+                                OR
+                              </button>
+                              <button type="button" onClick={() => setEditMatchType('all')}
+                                className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${editMatchType === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:bg-muted'}`}>
+                                AND
+                              </button>
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium">タグ</label>
+                            <div className="flex flex-wrap gap-1.5">
+                              {tags.map((tag) => (
+                                <button key={tag.id} type="button" onClick={() => {
+                                  setEditTagIds((prev) => prev.includes(tag.id) ? prev.filter((id) => id !== tag.id) : [...prev, tag.id]);
+                                  setEditExcludeTagIds((prev) => prev.filter((id) => id !== tag.id));
+                                }}>
+                                  <Badge variant={editTagIds.includes(tag.id) ? 'default' : 'outline'} className="cursor-pointer text-xs"
+                                    style={{ borderColor: tag.color || '#6B7280', color: editTagIds.includes(tag.id) ? '#fff' : (tag.color || '#6B7280'), backgroundColor: editTagIds.includes(tag.id) ? (tag.color || '#6B7280') : 'transparent' }}>
+                                    {tag.name}
+                                  </Badge>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium flex items-center gap-1"><Ban className="h-3 w-3 text-destructive" />除外タグ</label>
+                            <div className="flex flex-wrap gap-1.5">
+                              {tags.filter((t) => !editTagIds.includes(t.id)).map((tag) => (
+                                <button key={tag.id} type="button" onClick={() => {
+                                  setEditExcludeTagIds((prev) => prev.includes(tag.id) ? prev.filter((id) => id !== tag.id) : [...prev, tag.id]);
+                                }}>
+                                  <Badge variant={editExcludeTagIds.includes(tag.id) ? 'destructive' : 'outline'} className="cursor-pointer text-xs"
+                                    style={{ borderColor: editExcludeTagIds.includes(tag.id) ? undefined : (tag.color || '#6B7280'), color: editExcludeTagIds.includes(tag.id) ? '#fff' : (tag.color || '#6B7280') }}>
+                                    <Ban className="w-2 h-2 mr-0.5" />{tag.name}
+                                  </Badge>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={handleUpdateSegment} disabled={!editName.trim() || editTagIds.length === 0}>保存</Button>
+                            <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>キャンセル</Button>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+
+                return (
                   <TableRow key={segment.id}>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{segment.name}</p>
+                        <p className="font-medium text-sm">{segment.name}</p>
                         {segment.description && (
                           <p className="text-xs text-muted-foreground mt-0.5">{segment.description}</p>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={segment.matchType === 'all' ? 'default' : 'secondary'} className="text-xs">
+                      <Badge variant={segment.matchType === 'all' ? 'default' : 'secondary'} className="text-xs whitespace-nowrap">
                         {segment.matchType === 'all' ? 'AND' : 'OR'}
                       </Badge>
                     </TableCell>
@@ -498,62 +602,48 @@ export default function SegmentsPage() {
                         {segment.tagIds.map((tagId) => {
                           const tag = getTagById(tagId);
                           return tag ? (
-                            <Badge
-                              key={tagId}
-                              variant="outline"
-                              className="text-xs"
-                              style={{
-                                borderColor: tag.color || '#6B7280',
-                                color: tag.color || '#6B7280',
-                              }}
-                            >
-                              <span
-                                className="w-1.5 h-1.5 rounded-full mr-1 inline-block"
-                                style={{ backgroundColor: tag.color || '#6B7280' }}
-                              />
+                            <Badge key={tagId} variant="outline" className="text-xs whitespace-nowrap"
+                              style={{ borderColor: tag.color || '#6B7280', color: tag.color || '#6B7280' }}>
+                              <span className="w-1.5 h-1.5 rounded-full mr-1 inline-block" style={{ backgroundColor: tag.color || '#6B7280' }} />
                               {tag.name}
                             </Badge>
                           ) : (
-                            <Badge key={tagId} variant="outline" className="text-xs text-muted-foreground">
-                              不明
-                            </Badge>
+                            <Badge key={tagId} variant="outline" className="text-xs text-muted-foreground">不明</Badge>
                           );
                         })}
                         {(segment.excludeTagIds || []).map((tagId) => {
                           const tag = getTagById(tagId);
                           return tag ? (
-                            <Badge
-                              key={`ex-${tagId}`}
-                              variant="destructive"
-                              className="text-xs"
-                            >
-                              <Ban className="w-2 h-2 mr-0.5" />
-                              {tag.name}
+                            <Badge key={`ex-${tagId}`} variant="destructive" className="text-xs whitespace-nowrap">
+                              <Ban className="w-2 h-2 mr-0.5" />{tag.name}
                             </Badge>
                           ) : null;
                         })}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => handlePreview(segment.id)} title="プレビュー" aria-label="プレビュー">
+                      <div className="flex justify-end gap-0.5">
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => startEditSegment(segment)} title="編集">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => handlePreview(segment.id)} title="プレビュー">
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setBroadcastSegmentId(broadcastSegmentId === segment.id ? null : segment.id)} title="配信" aria-label="配信">
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setBroadcastSegmentId(broadcastSegmentId === segment.id ? null : segment.id)} title="配信">
                           <Send className="h-3.5 w-3.5" />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleDelete(segment.id)} className="text-destructive hover:text-destructive" title="削除" aria-label="削除">
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(segment.id)} title="削除">
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {/* Preview panel */}
       {previewSegmentId && (

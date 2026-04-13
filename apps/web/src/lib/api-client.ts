@@ -206,6 +206,8 @@ export const api = {
     list: () => fetchApi<Segment[]>('/api/v1/segments'),
     create: (data: { name: string; description?: string; tagIds: string[]; matchType?: string; excludeTagIds?: string[] }) =>
       fetchApi('/api/v1/segments', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: { name?: string; description?: string; tagIds?: string[]; matchType?: string; excludeTagIds?: string[] }) =>
+      fetchApi(`/api/v1/segments/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: (id: string) =>
       fetchApi(`/api/v1/segments/${id}`, { method: 'DELETE' }),
     preview: (id: string) =>

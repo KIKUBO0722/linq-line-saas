@@ -3,7 +3,7 @@
 import { toast } from 'sonner';
 
 import { useEffect, useState } from 'react';
-import { FileStack, Plus, Pencil, Trash2, X, Check, Copy, ClipboardCheck, ChevronDown, ChevronUp, Image as ImageIcon, Eye } from 'lucide-react';
+import { FileStack, Plus, Pencil, Trash2, X, Check, Copy, ClipboardCheck, ChevronDown, ChevronUp, Image as ImageIcon, Eye, Search } from 'lucide-react';
 import { LinePreview, templateToLineMessages } from '@/components/line-preview';
 import type { MessageContent } from '@/lib/types';
 import { api } from '@/lib/api-client';
@@ -707,6 +707,7 @@ export default function TemplatesPage() {
   const [editCategory, setEditCategory] = useState('');
   const [activeTab, setActiveTab] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // AI Copilot fill: open form and populate with AI-generated content
   const [aiTextContent, setAiTextContent] = useState('');
@@ -832,9 +833,14 @@ export default function TemplatesPage() {
     }
   }
 
-  const filtered = activeTab
-    ? templates.filter((t) => t.category === activeTab)
-    : templates;
+  const filtered = templates.filter((t) => {
+    if (activeTab && t.category !== activeTab) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return t.name.toLowerCase().includes(q) || t.content.toLowerCase().includes(q);
+    }
+    return true;
+  });
 
   const grouped = filtered.reduce<Record<string, Template[]>>((acc, t) => {
     const key = t.category || 'uncategorized';
@@ -883,16 +889,28 @@ export default function TemplatesPage() {
         </Card>
       )}
 
-      {/* Category filter tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          {CATEGORIES.map((c) => (
-            <TabsTrigger key={c.value} value={c.value}>
-              {c.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      {/* Search + Category filter */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="テンプレート検索..."
+            className="pl-8 h-8 text-sm"
+          />
+        </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="h-8">
+            {CATEGORIES.map((c) => (
+              <TabsTrigger key={c.value} value={c.value} className="text-xs px-2.5 h-6">
+                {c.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        <span className="text-xs text-muted-foreground whitespace-nowrap">{filtered.length}件</span>
+      </div>
 
       {/* Template list */}
       {loading ? (
@@ -900,138 +918,113 @@ export default function TemplatesPage() {
       ) : filtered.length === 0 ? (
         <EmptyState
           illustration="templates"
-          title={activeTab ? 'このカテゴリにテンプレートがありません' : 'テンプレートがまだありません'}
-          description="「テンプレート作成」から最初のテンプレートを作成しましょう"
+          title={searchQuery ? '検索結果がありません' : activeTab ? 'このカテゴリにテンプレートがありません' : 'テンプレートがまだありません'}
+          description={searchQuery ? '別のキーワードで検索してみてください' : '「テンプレート作成」から最初のテンプレートを作成しましょう'}
         />
       ) : (
-        <div className="space-y-6">
+        <div className="rounded-lg border divide-y">
           {sortedGroups.map((groupKey) => (
-            <div key={groupKey} className="space-y-3">
-              {!activeTab && (
-                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  {CATEGORY_MAP[groupKey] || '未分類'}
-                </h2>
+            <div key={groupKey}>
+              {!activeTab && sortedGroups.length > 1 && (
+                <div className="px-3 py-1.5 bg-muted/50 border-b">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    {CATEGORY_MAP[groupKey] || '未分類'}
+                  </span>
+                </div>
               )}
-              <div className="grid gap-3 sm:grid-cols-2">
-                {grouped[groupKey].map((template) => (
-                  <Card key={template.id} className="relative group">
-                    {editingId === template.id ? (
-                      <CardContent className="pt-5">
-                        <TemplateForm
-                          initialType={parseContentToForm(template.content).templateType}
-                          initialTextContent={parseContentToForm(template.content).templateType === 'text' ? template.content : ''}
-                          initialButtonsData={
-                            parseContentToForm(template.content).templateType === 'buttons'
-                              ? parseContentToForm(template.content).parsed
-                              : undefined
-                          }
-                          initialConfirmData={
-                            parseContentToForm(template.content).templateType === 'confirm'
-                              ? parseContentToForm(template.content).parsed
-                              : undefined
-                          }
-                          initialCarouselData={
-                            parseContentToForm(template.content).templateType === 'carousel'
-                              ? parseContentToForm(template.content).parsed
-                              : undefined
-                          }
-                          name={editName}
-                          setName={setEditName}
-                          category={editCategory}
-                          setCategory={setEditCategory}
-                          onSubmit={(content) => handleUpdate(template.id, content)}
-                          onCancel={() => setEditingId(null)}
-                          submitLabel="保存"
-                          submitting={false}
-                        />
-                      </CardContent>
-                    ) : (
-                      <>
-                        <CardHeader className="pb-2">
-                          <div className="flex items-start justify-between">
-                            <div className="space-y-1">
-                              <CardTitle className="text-base">{template.name}</CardTitle>
-                              <div className="flex gap-1.5 flex-wrap">
-                                {template.category && (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-xs"
-                                    style={{
-                                      borderColor: CATEGORY_COLORS[template.category] || '#6B7280',
-                                      color: CATEGORY_COLORS[template.category] || '#6B7280',
-                                    }}
-                                  >
-                                    {CATEGORY_MAP[template.category] || template.category}
-                                  </Badge>
-                                )}
-                                {getTemplateTypeLabel(template.content) && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    {getTemplateTypeLabel(template.content)}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => copyToClipboard(template)}
-                                title="コピー"
-                              >
-                                {copiedId === template.id ? (
-                                  <ClipboardCheck className="h-3.5 w-3.5 text-green-500" />
-                                ) : (
-                                  <Copy className="h-3.5 w-3.5" />
-                                )}
-                              </Button>
-                              <Button size="sm" variant="ghost" onClick={() => startEdit(template)} title="編集">
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleDelete(template.id)}
-                                className="text-destructive hover:text-destructive"
-                                title="削除"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-4">
-                            {getDisplayText(template.content)}
-                          </p>
-                          {/* Inline preview for rich templates */}
-                          {getTemplateTypeLabel(template.content) && (
-                            <div className="mt-2">
-                              <TemplatePreview
-                                templateType={parseContentToForm(template.content).templateType}
-                                buttonsData={
-                                  parseContentToForm(template.content).templateType === 'buttons'
-                                    ? parseContentToForm(template.content).parsed
-                                    : undefined
-                                }
-                                confirmData={
-                                  parseContentToForm(template.content).templateType === 'confirm'
-                                    ? parseContentToForm(template.content).parsed
-                                    : undefined
-                                }
-                                carouselData={
-                                  parseContentToForm(template.content).templateType === 'carousel'
-                                    ? parseContentToForm(template.content).parsed
-                                    : undefined
-                                }
-                              />
-                            </div>
+              {grouped[groupKey].map((template) => (
+                <div key={template.id}>
+                  {editingId === template.id ? (
+                    <div className="p-4 bg-muted/30">
+                      <TemplateForm
+                        initialType={parseContentToForm(template.content).templateType}
+                        initialTextContent={parseContentToForm(template.content).templateType === 'text' ? template.content : ''}
+                        initialButtonsData={
+                          parseContentToForm(template.content).templateType === 'buttons'
+                            ? parseContentToForm(template.content).parsed
+                            : undefined
+                        }
+                        initialConfirmData={
+                          parseContentToForm(template.content).templateType === 'confirm'
+                            ? parseContentToForm(template.content).parsed
+                            : undefined
+                        }
+                        initialCarouselData={
+                          parseContentToForm(template.content).templateType === 'carousel'
+                            ? parseContentToForm(template.content).parsed
+                            : undefined
+                        }
+                        name={editName}
+                        setName={setEditName}
+                        category={editCategory}
+                        setCategory={setEditCategory}
+                        onSubmit={(content) => handleUpdate(template.id, content)}
+                        onCancel={() => setEditingId(null)}
+                        submitLabel="保存"
+                        submitting={false}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/30 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium truncate">{template.name}</span>
+                          {template.category && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-1.5 py-0 h-4 shrink-0 whitespace-nowrap"
+                              style={{
+                                borderColor: CATEGORY_COLORS[template.category] || '#6B7280',
+                                color: CATEGORY_COLORS[template.category] || '#6B7280',
+                              }}
+                            >
+                              {CATEGORY_MAP[template.category] || template.category}
+                            </Badge>
                           )}
-                        </CardContent>
-                      </>
-                    )}
-                  </Card>
-                ))}
-              </div>
+                          {getTemplateTypeLabel(template.content) && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 shrink-0 whitespace-nowrap">
+                              {getTemplateTypeLabel(template.content)}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">
+                          {getDisplayText(template.content)}
+                        </p>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
+                        {new Date(template.updatedAt || template.createdAt).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}
+                      </span>
+                      <div className="flex gap-0.5 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0"
+                          onClick={() => copyToClipboard(template)}
+                          title="コピー"
+                        >
+                          {copiedId === template.id ? (
+                            <ClipboardCheck className="h-3.5 w-3.5 text-green-500" />
+                          ) : (
+                            <Copy className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => startEdit(template)} title="編集">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(template.id)}
+                          title="削除"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           ))}
         </div>

@@ -78,6 +78,8 @@ referral, ai-knowledge
 ## Important Notes
 - **AI Copilot**: 応答失敗時はバックエンドのpageContextMap（ai.service.ts）を確認。全ページにコンテキスト定義が必要
 - **禁止**: UI上の短いラベル・バッジの改行回り込み → whitespace-nowrapで防ぐ
+- **UIレイアウト方針**: カードグリッド禁止。テーブル/リスト型で情報密度を確保。padding/gap最小限。Linear/Notion的なプロフェッショナルUI
+- **segments PATCH**: `PATCH /api/v1/segments/:id` — name, description, tagIds, matchType, excludeTagIds を部分更新可能（UpdateSegmentDto）
 
 ## Current Priorities
 - Fix AI Copilot response failures across all pages

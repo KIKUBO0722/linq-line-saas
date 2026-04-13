@@ -42,6 +42,28 @@ export class SegmentsService {
     }
   }
 
+  async update(id: string, data: { name?: string; description?: string; tagIds?: string[]; matchType?: string; excludeTagIds?: string[] }) {
+    try {
+      const updateData: Record<string, unknown> = {};
+      if (data.name !== undefined) updateData.name = data.name;
+      if (data.description !== undefined) updateData.description = data.description;
+      if (data.tagIds !== undefined) updateData.tagIds = data.tagIds;
+      if (data.matchType !== undefined) updateData.matchType = data.matchType;
+      if (data.excludeTagIds !== undefined) updateData.excludeTagIds = data.excludeTagIds;
+
+      const [updated] = await this.db
+        .update(segments)
+        .set(updateData)
+        .where(eq(segments.id, id))
+        .returning();
+      if (!updated) throw new NotFoundException('セグメントが見つかりません');
+      return updated;
+    } catch (error) {
+      this.logger.error(`Failed to update segment ${id}: ${error}`);
+      throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
+    }
+  }
+
   async delete(id: string) {
     try {
       await this.db.delete(segments).where(eq(segments.id, id));

@@ -1,9 +1,9 @@
-import { Controller, Get, Post, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { SegmentsService } from './segments.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { TenantId } from '../../common/decorators/tenant.decorator';
-import { CreateSegmentDto, BroadcastSegmentDto } from './dto/segments.dto';
+import { CreateSegmentDto, UpdateSegmentDto, BroadcastSegmentDto } from './dto/segments.dto';
 
 @ApiTags('Segments')
 @Controller('api/v1/segments')
@@ -19,6 +19,11 @@ export class SegmentsController {
   @Post()
   async create(@TenantId() tenantId: string, @Body() body: CreateSegmentDto) {
     return this.segmentsService.create(tenantId, body);
+  }
+
+  @Patch(':id')
+  async update(@Param('id') id: string, @Body() body: UpdateSegmentDto) {
+    return this.segmentsService.update(id, body);
   }
 
   @Delete(':id')
