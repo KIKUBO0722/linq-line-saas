@@ -15,6 +15,7 @@ export const aiConfigs = pgTable('ai_configs', {
   welcomeMessage: varchar('welcome_message', { length: 2000 }),
   autoReplyEnabled: boolean('auto_reply_enabled').notNull().default(false),
   handoffKeywords: jsonb('handoff_keywords').default([]),
+  keywordRules: jsonb('keyword_rules').default([]),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

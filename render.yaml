@@ -11,7 +11,7 @@ services:
         sync: false
       - key: ENCRYPTION_KEY
         sync: false
-      - key: GEMINI_API_KEY
+      - key: ANTHROPIC_API_KEY
         sync: false
       - key: API_URL
         sync: false

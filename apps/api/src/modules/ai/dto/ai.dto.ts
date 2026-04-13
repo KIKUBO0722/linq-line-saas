@@ -10,8 +10,20 @@ export class UpdateAiConfigDto {
   systemPrompt?: string;
 
   @IsOptional()
+  @IsString()
+  welcomeMessage?: string;
+
+  @IsOptional()
   @IsArray()
   knowledgeBase?: Record<string, unknown>[];
+
+  @IsOptional()
+  @IsArray()
+  handoffKeywords?: string[];
+
+  @IsOptional()
+  @IsArray()
+  keywordRules?: Record<string, unknown>[];
 
   @IsOptional()
   @IsString()

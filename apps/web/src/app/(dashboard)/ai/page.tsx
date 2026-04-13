@@ -308,28 +308,6 @@ export default function AiPage() {
 
         {/* Tab 1: Auto-reply config */}
         <TabsContent value="auto-reply" className="space-y-4">
-          {/* Welcome message */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <MessageCircleReply className="h-5 w-5 text-green-600" />
-                <div>
-                  <CardTitle className="text-base">あいさつメッセージ</CardTitle>
-                  <CardDescription>友だち追加時に自動送信されるメッセージ</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Textarea
-                value={config.welcomeMessage || ''}
-                onChange={(e) => setConfig((p: AiPageConfig) => ({ ...p, welcomeMessage: e.target.value }))}
-                rows={3}
-                placeholder="例: 友だち追加ありがとうございます！&#10;ご予約やお問い合わせはこちらからどうぞ。"
-              />
-              <p className="text-xs text-muted-foreground">空欄の場合、あいさつメッセージは送信されません</p>
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
