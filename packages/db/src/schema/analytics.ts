@@ -1,7 +1,9 @@
-import { pgTable, uuid, varchar, integer, jsonb, timestamp, index, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, integer, numeric, jsonb, text, timestamp, index, boolean } from 'drizzle-orm/pg-core';
 import { tenants } from './tenants';
 import { friends } from './friends';
 import { trackedUrls } from './messages';
+import { segments } from './segments';
+import { tags } from './tags';
 
 export const analyticsEvents = pgTable(
   'analytics_events',
@@ -54,6 +56,46 @@ export const conversionEvents = pgTable(
     index('conversion_events_goal_idx').on(table.goalId, table.convertedAt),
   ],
 );
+
+// Unified broadcasts table — tracks all broadcast types (segment, all, scheduled)
+export const broadcasts = pgTable(
+  'broadcasts',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    type: varchar('type', { length: 20 }).notNull(), // 'segment', 'all', 'scheduled'
+    segmentId: uuid('segment_id').references(() => segments.id, { onDelete: 'set null' }),
+    title: varchar('title', { length: 255 }),
+    contentPreview: text('content_preview'),
+    messageType: varchar('message_type', { length: 20 }),
+    recipientCount: integer('recipient_count').notNull().default(0),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+    scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
+    status: varchar('status', { length: 20 }).notNull().default('sent'),
+    autoTagOnResponse: uuid('auto_tag_on_response').references(() => tags.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('idx_broadcasts_tenant').on(table.tenantId, table.sentAt),
+  ],
+);
+
+// Cached broadcast performance stats — updated asynchronously after send
+export const broadcastStats = pgTable('broadcast_stats', {
+  broadcastId: uuid('broadcast_id')
+    .primaryKey()
+    .references(() => broadcasts.id, { onDelete: 'cascade' }),
+  recipientCount: integer('recipient_count').notNull().default(0),
+  responseCount: integer('response_count').notNull().default(0),
+  clickCount: integer('click_count').notNull().default(0),
+  clickerCount: integer('clicker_count').notNull().default(0),
+  blockCount: integer('block_count').notNull().default(0),
+  engagementRate: numeric('engagement_rate', { precision: 5, scale: 2 }).default('0'),
+  blockRate: numeric('block_rate', { precision: 5, scale: 2 }).default('0'),
+  computedAt: timestamp('computed_at', { withTimezone: true }).defaultNow(),
+});
 
 export const trafficSources = pgTable('traffic_sources', {
   id: uuid('id').defaultRandom().primaryKey(),

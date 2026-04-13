@@ -46,6 +46,7 @@ export const messages = pgTable(
     scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
     sentAt: timestamp('sent_at', { withTimezone: true }),
     error: jsonb('error'),
+    broadcastId: uuid('broadcast_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
@@ -54,6 +55,7 @@ export const messages = pgTable(
       table.friendId,
       table.createdAt,
     ),
+    index('idx_messages_broadcast').on(table.broadcastId),
   ],
 );
 

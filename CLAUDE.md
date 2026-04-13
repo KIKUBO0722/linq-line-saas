@@ -83,6 +83,9 @@ referral, ai-knowledge
 - **analytics health API**: `GET /api/v1/analytics/health?days=N` — 純増数・ブロック率・アクティブ率・反応率を前期比付きで返す。KPIバーと概要タブで使用
 - **analytics alerts API**: `GET /api/v1/analytics/alerts` — 直近7日の指標を分析し意思決定アラートを生成（ブロック率急上昇・純減・アクティブ率低下等）
 - **ブロック率閾値**: 2%超で警告色（赤）表示。LINE業界平均1-2%が根拠
+- **broadcasts テーブル**: 全配信タイプ（segment/all/scheduled）を統一管理。messages.broadcast_idで紐付け。配信別の効果測定の基盤
+- **broadcast_stats テーブル**: 配信別の集計キャッシュ（反応数・クリック数・ブロック数）。非同期で更新
+- **連携ルール**: 配信送信時は必ずbroadcastsにレコード作成→そのIDをmessages.broadcastIdにセット（segments.service.ts, messages.service.ts両方）
 
 ## Current Priorities
 - Fix AI Copilot response failures across all pages

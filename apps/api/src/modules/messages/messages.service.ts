@@ -1,7 +1,7 @@
 import { Injectable, Inject, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { eq, and, desc, gt, lte, isNotNull, sql, count, max } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
-import { messages, friends, lineAccounts } from '@line-saas/db';
+import { messages, friends, lineAccounts, broadcasts } from '@line-saas/db';
 import { LineService } from '../line/line.service';
 import { messagingApi } from '@line/bot-sdk';
 
@@ -299,6 +299,22 @@ export class MessagesService {
       (lineMessage as Record<string, unknown>).quickReply = message.quickReply;
     }
 
+    // Create unified broadcast record
+    const contentPreview = message.text ? (message.text.length > 100 ? message.text.slice(0, 100) + '...' : message.text) : `[${message.type}]`;
+    const [broadcast] = await this.db
+      .insert(broadcasts)
+      .values({
+        tenantId,
+        type: 'all',
+        title: `全体配信`,
+        contentPreview,
+        messageType: message.type,
+        recipientCount: 0, // Unknown for all-broadcast (LINE doesn't report count)
+        sentAt: new Date(),
+        status: 'sent',
+      })
+      .returning();
+
     for (const account of accounts) {
       await this.lineService.broadcast(
         { channelSecret: account.channelSecret, channelAccessToken: account.channelAccessToken },
@@ -314,6 +330,7 @@ export class MessagesService {
         sendType: 'broadcast',
         status: 'sent',
         sentAt: new Date(),
+        broadcastId: broadcast.id,
       });
     }
 
@@ -325,6 +342,21 @@ export class MessagesService {
       .select()
       .from(lineAccounts)
       .where(and(eq(lineAccounts.tenantId, tenantId), eq(lineAccounts.isActive, true)));
+
+    const contentPreview = text.length > 100 ? text.slice(0, 100) + '...' : text;
+    const [broadcast] = await this.db
+      .insert(broadcasts)
+      .values({
+        tenantId,
+        type: 'all',
+        title: '全体配信',
+        contentPreview,
+        messageType: 'text',
+        recipientCount: 0,
+        sentAt: new Date(),
+        status: 'sent',
+      })
+      .returning();
 
     for (const account of accounts) {
       await this.lineService.broadcast(
@@ -341,6 +373,7 @@ export class MessagesService {
         sendType: 'broadcast',
         status: 'sent',
         sentAt: new Date(),
+        broadcastId: broadcast.id,
       });
     }
 
@@ -353,6 +386,21 @@ export class MessagesService {
       .from(lineAccounts)
       .where(and(eq(lineAccounts.tenantId, tenantId), eq(lineAccounts.isActive, true)));
 
+    const contentPreview = text.length > 100 ? text.slice(0, 100) + '...' : text;
+    const [broadcast] = await this.db
+      .insert(broadcasts)
+      .values({
+        tenantId,
+        type: 'scheduled',
+        title: '予約配信',
+        contentPreview,
+        messageType: 'text',
+        recipientCount: 0,
+        scheduledAt,
+        status: 'scheduled',
+      })
+      .returning();
+
     for (const account of accounts) {
       await this.db.insert(messages).values({
         tenantId,
@@ -363,6 +411,7 @@ export class MessagesService {
         sendType: 'broadcast',
         status: 'scheduled',
         scheduledAt,
+        broadcastId: broadcast.id,
       });
     }
 

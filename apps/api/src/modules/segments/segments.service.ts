@@ -1,7 +1,7 @@
 import { Injectable, Inject, Logger, NotFoundException, InternalServerErrorException, HttpException } from '@nestjs/common';
 import { eq, inArray, and, notInArray, sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
-import { segments, segmentBroadcasts, friends, friendTags, lineAccounts, messages } from '@line-saas/db';
+import { segments, segmentBroadcasts, friends, friendTags, lineAccounts, messages, broadcasts } from '@line-saas/db';
 import { LineService } from '../line/line.service';
 
 @Injectable()
@@ -146,6 +146,23 @@ export class SegmentsService {
       })
       .returning();
 
+    // Create unified broadcast record for analytics
+    const contentPreview = message.length > 100 ? message.slice(0, 100) + '...' : message;
+    const [broadcast] = await this.db
+      .insert(broadcasts)
+      .values({
+        tenantId,
+        type: 'segment',
+        segmentId,
+        title: `${segment.name} 配信`,
+        contentPreview,
+        messageType: 'text',
+        recipientCount: matchingFriends.length,
+        sentAt: new Date(),
+        status: 'sent',
+      })
+      .returning();
+
     // Send LINE messages grouped by account
     const byAccount = new Map<string, { lineUserId: string; friendId: string }[]>();
     for (const f of matchingFriends) {
@@ -185,6 +202,7 @@ export class SegmentsService {
           sendType: 'broadcast' as const,
           status: 'sent' as const,
           sentAt: new Date(),
+          broadcastId: broadcast.id,
         }));
         if (messageRows.length > 0) {
           await this.db.insert(messages).values(messageRows);
