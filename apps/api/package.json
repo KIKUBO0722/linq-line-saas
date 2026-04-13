@@ -21,7 +21,6 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
-    "@google/generative-ai": "^0.24.1",
     "@line-saas/db": "workspace:*",
     "@line-saas/shared": "workspace:*",
     "@line/bot-sdk": "^10.6.0",

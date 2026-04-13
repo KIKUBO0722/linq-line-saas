@@ -19,7 +19,7 @@ export const envSchema = z.object({
   ENCRYPTION_KEY: z.string().min(16),
 
   // AI
-  GEMINI_API_KEY: z.string().optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

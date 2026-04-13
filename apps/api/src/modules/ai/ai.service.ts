@@ -1,7 +1,7 @@
 import { Injectable, Inject, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { eq, and, or, ilike, sql } from 'drizzle-orm';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Anthropic from '@anthropic-ai/sdk';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import {
   aiConfigs, aiConversations, friends, messages, stepScenarios, stepMessages,
@@ -12,30 +12,28 @@ import { SEED_KNOWLEDGE } from './seed-knowledge';
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
-  private genAI: GoogleGenerativeAI | null = null;
+  private client: Anthropic | null = null;
 
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     private readonly config: ConfigService,
   ) {
-    const geminiKey = this.config.get<string>('GEMINI_API_KEY');
-    if (geminiKey) {
-      this.genAI = new GoogleGenerativeAI(geminiKey);
+    const apiKey = this.config.get<string>('ANTHROPIC_API_KEY');
+    if (apiKey) {
+      this.client = new Anthropic({ apiKey });
     }
   }
 
-  private getModel() {
-    if (!this.genAI) throw new BadRequestException('AI is not configured. Set GEMINI_API_KEY.');
-    return this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-  }
-
   private async generate(systemPrompt: string, userMessage: string): Promise<string> {
-    const model = this.getModel();
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-      systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
+    if (!this.client) throw new BadRequestException('AI is not configured. Set ANTHROPIC_API_KEY.');
+    const result = await this.client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4096,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }],
     });
-    return result.response.text();
+    const block = result.content[0];
+    return block.type === 'text' ? block.text : '';
   }
 
   async getConfig(tenantId: string) {
@@ -69,7 +67,7 @@ export class AiService {
     userMessage: string,
   ): Promise<{ reply: string; tokensUsed: number } | null> {
     const config = await this.getConfig(tenantId);
-    if (!config?.autoReplyEnabled || !this.genAI) return null;
+    if (!config?.autoReplyEnabled || !this.client) return null;
 
     const handoffKeywords = (config.handoffKeywords as string[]) || [];
     if (handoffKeywords.some((kw) => userMessage.includes(kw))) {

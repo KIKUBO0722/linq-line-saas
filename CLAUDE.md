@@ -49,7 +49,7 @@ referral, ai-knowledge
 - **API**: NestJS 11, Drizzle ORM, BullMQ, @nestjs/schedule
 - **Frontend**: Next.js 15, Tailwind CSS, Shadcn/UI, Recharts, Lucide icons
 - **DB**: PostgreSQL (Supabase), Redis (BullMQ)
-- **AI**: Google Gemini 2.5 Flash (auto-reply, copilot, onboarding)
+- **AI**: Anthropic Claude Sonnet 4 (auto-reply, copilot, onboarding)
 - **LINE**: @line/bot-sdk v10 (messaging, rich menus, webhook)
 - **Billing**: Stripe (subscriptions, usage tracking)
 - **Auth**: Argon2 password hashing, session-based (7-day expiry), Google OAuth
