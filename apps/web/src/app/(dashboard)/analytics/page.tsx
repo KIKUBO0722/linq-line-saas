@@ -408,9 +408,9 @@ export default function AnalyticsPage() {
             <Radio className="h-4 w-4" />
             配信分析
           </TabsTrigger>
-          <TabsTrigger value="delivery" className="gap-1.5" title="LINE公式アカウントの配信到達数をAPIの種類別に確認します">
+          <TabsTrigger value="delivery" className="gap-1.5" title="LINE公式アカウントの配信実績をAPIの種類別に確認します">
             <Eye className="h-4 w-4" />
-            配信到達
+            配信実績
           </TabsTrigger>
           <TabsTrigger value="traffic" className="gap-1.5" title="友だちがどこから来たか（広告、SNS、QRコードなど）を追跡します">
             <Route className="h-4 w-4" />
@@ -420,17 +420,17 @@ export default function AnalyticsPage() {
             <Link2 className="h-4 w-4" />
             URL測定
           </TabsTrigger>
-          <TabsTrigger value="conversions" className="gap-1.5" title="友だちが目標アクション（購入・予約など）を達成した数を追跡します">
+          <TabsTrigger value="conversions" className="gap-1.5" title="フォーム回答・予約完了・クーポン利用など、友だちが目標を達成した回数を追跡します">
             <Target className="h-4 w-4" />
-            CV
+            成果
           </TabsTrigger>
-          <TabsTrigger value="cohort" className="gap-1.5" title="コホートリテンションとブロック帰属分析。友だちの維持率とブロック原因を分析します">
+          <TabsTrigger value="cohort" className="gap-1.5" title="友だちがどれだけ定着しているかと、ブロックの原因を分析します">
             <Activity className="h-4 w-4" />
-            リテンション
+            定着分析
           </TabsTrigger>
-          <TabsTrigger value="engagement" className="gap-1.5" title="タグごとの反応率を比較して、どのグループが活発かを確認します">
+          <TabsTrigger value="engagement" className="gap-1.5" title="タグごとの友だちの反応の違いを比較できます">
             <Tags className="h-4 w-4" />
-            エンゲージメント
+            反応分析
           </TabsTrigger>
           <TabsTrigger value="send-time" className="gap-1.5" title="友だちの返信率が高い時間帯を分析し、最適な配信時間を見つけます">
             <Clock className="h-4 w-4" />
@@ -1083,7 +1083,7 @@ export default function AnalyticsPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div>
-                <CardTitle className="text-base">コンバージョン目標</CardTitle>
+                <CardTitle className="text-base">成果目標</CardTitle>
                 <CardDescription className="text-xs">フォーム回答・予約完了・クーポン利用などの成果を計測</CardDescription>
               </div>
               <Button size="sm" className="gap-1.5" onClick={() => setShowGoalForm(!showGoalForm)}>
@@ -1122,7 +1122,7 @@ export default function AnalyticsPage() {
                         setCvGoals((prev) => [goal, ...prev]);
                         setNewGoalName('');
                         setShowGoalForm(false);
-                        toast.success('コンバージョン目標を作成しました');
+                        toast.success('成果目標を作成しました');
                       } catch {
                         toast.error('目標作成に失敗しました');
                       } finally {
@@ -1138,7 +1138,7 @@ export default function AnalyticsPage() {
               {cvGoals.length === 0 ? (
                 <EmptyState
                   illustration="analytics"
-                  title="コンバージョン目標がありません"
+                  title="成果目標がありません"
                   description="「目標追加」からフォーム回答や予約完了などの成果指標を設定しましょう"
                 />
               ) : (
@@ -1147,7 +1147,7 @@ export default function AnalyticsPage() {
                     <TableRow>
                       <TableHead>目標名</TableHead>
                       <TableHead className="w-28">種別</TableHead>
-                      <TableHead className="w-20 text-center">CV数</TableHead>
+                      <TableHead className="w-20 text-center">達成数</TableHead>
                       <TableHead className="w-20 text-center">状態</TableHead>
                       <TableHead className="w-20" />
                     </TableRow>
@@ -1242,13 +1242,13 @@ export default function AnalyticsPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Target className="h-4 w-4" />
-                  CV詳細: {selectedGoal.name}
+                  成果の詳細: {selectedGoal.name}
                 </CardTitle>
-                <CardDescription className="text-xs">合計 {selectedGoal.conversionCount ?? 0} 件のコンバージョン</CardDescription>
+                <CardDescription className="text-xs">合計 {selectedGoal.conversionCount ?? 0} 件の成果</CardDescription>
               </CardHeader>
               <CardContent>
                 {goalEvents.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">まだコンバージョンがありません</p>
+                  <p className="text-sm text-muted-foreground text-center py-6">まだ成果がありません</p>
                 ) : (
                   <Table>
                     <TableHeader>
@@ -1479,7 +1479,7 @@ export default function AnalyticsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                週次コホートリテンション
+                週ごとの継続率
                 <HelpTip content="同じ週に友だち追加した人たちが、その後も反応し続けているかを週ごとに追跡する表です。数値が高いほど、友だちが長く活発に利用しています" />
               </CardTitle>
               <CardDescription>友だち追加週ごとの継続率（過去8週）</CardDescription>
@@ -1533,19 +1533,19 @@ export default function AnalyticsPage() {
               ) : (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Activity className="h-10 w-10 text-muted-foreground/30 mb-3" />
-                  <p className="text-sm text-muted-foreground">コホートデータがまだありません</p>
+                  <p className="text-sm text-muted-foreground">継続率データがまだありません</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* --- ブロック分析（推定）--- */}
+          {/* --- ブロック原因の分析（推定）--- */}
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Zap className="h-4 w-4 text-red-500" />
-                  ブロック分析（推定）
+                  ブロック原因の分析（推定）
                 </CardTitle>
                 <span className="text-xs text-muted-foreground">※ 相関に基づく推定値です</span>
               </div>
@@ -1656,7 +1656,7 @@ export default function AnalyticsPage() {
                 <CardContent className="pt-5 pb-4">
                   <div className="flex items-start justify-between mb-2">
                     <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                      疑似CTR
+                      クリック率
                       <HelpTip content="メッセージ内のURLクリック数÷配信数で算出。友だちがメッセージにどれだけ反応しているかの目安です" iconClassName="h-3 w-3" />
                     </span>
                     <TrendingUp className="h-8 w-8 text-amber-500" />
@@ -1713,7 +1713,7 @@ export default function AnalyticsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                タグ別エンゲージメント
+                タグ別の反応度
                 <HelpTip content="友だちに付けたタグごとに、メッセージへの反応率を比較します。どのグループが活発か、どのタグの効果が高いかが分かります" />
               </CardTitle>
               <CardDescription>タグごとの友だち数・応答率を比較</CardDescription>

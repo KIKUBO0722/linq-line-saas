@@ -479,7 +479,7 @@ export default function FriendsPage() {
                     <TableHead>ステータス</TableHead>
                     <TableHead>タグ</TableHead>
                     <TableHead>スコア</TableHead>
-                    <TableHead>エンゲージメント</TableHead>
+                    <TableHead>反応状況</TableHead>
                     <TableHead>追加日</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -535,10 +535,10 @@ export default function FriendsPage() {
                         {(() => {
                           const tierConfig: Record<string, { label: string; cls: string }> = {
                             active: { label: 'アクティブ', cls: 'bg-green-100 text-green-700' },
-                            warm: { label: 'ウォーム', cls: 'bg-amber-100 text-amber-700' },
-                            cold: { label: 'コールド', cls: 'bg-blue-100 text-blue-700' },
+                            warm: { label: 'やや停滞', cls: 'bg-amber-100 text-amber-700' },
+                            cold: { label: '停滞中', cls: 'bg-blue-100 text-blue-700' },
                             dormant: { label: '休眠', cls: 'bg-gray-100 text-gray-500' },
-                            unknown: { label: '未分類', cls: 'bg-slate-100 text-slate-500' },
+                            unknown: { label: '未判定', cls: 'bg-slate-100 text-slate-500' },
                           };
                           const c = tierConfig[f.engagementTier] || tierConfig.unknown;
                           return (

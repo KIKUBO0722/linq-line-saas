@@ -119,7 +119,7 @@ export default function ExitPopupsPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium">トリガー</label>
+                <label className="text-sm font-medium">表示トリガー</label>
                 <select
                   className="flex h-9 w-full mt-1 rounded-md border border-input bg-background px-3 text-sm"
                   value={triggerType}
@@ -164,10 +164,10 @@ export default function ExitPopupsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>名前</TableHead>
-                  <TableHead className="w-28">トリガー</TableHead>
+                  <TableHead className="w-28">表示トリガー</TableHead>
                   <TableHead className="w-24 text-center">表示数</TableHead>
                   <TableHead className="w-24 text-center">クリック数</TableHead>
-                  <TableHead className="w-20 text-center">CVR</TableHead>
+                  <TableHead className="w-20 text-center">成果率</TableHead>
                   <TableHead className="w-16 text-center">状態</TableHead>
                   <TableHead className="w-16" />
                 </TableRow>

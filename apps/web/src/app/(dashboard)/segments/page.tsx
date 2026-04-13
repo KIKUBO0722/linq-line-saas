@@ -238,7 +238,7 @@ export default function SegmentsPage() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold">セグメント配信</h1>
+            <h1 className="text-2xl font-bold">絞り込み配信</h1>
             <HelpTip content="条件に合う友だちだけにメッセージを送る絞り込み配信の設定画面です" />
           </div>
           <p className="text-sm text-muted-foreground">タグでフィルタしたグループにターゲット配信</p>
@@ -673,8 +673,8 @@ export default function SegmentsPage() {
                   <div className="flex flex-wrap gap-2 text-xs">
                     {([
                       ['active', 'アクティブ', 'bg-green-100 text-green-700'],
-                      ['warm', 'ウォーム', 'bg-amber-100 text-amber-700'],
-                      ['cold', 'コールド', 'bg-blue-100 text-blue-700'],
+                      ['warm', 'やや停滞', 'bg-amber-100 text-amber-700'],
+                      ['cold', '停滞中', 'bg-blue-100 text-blue-700'],
                       ['dormant', '休眠', 'bg-gray-100 text-gray-500'],
                     ] as const).map(([key, label, cls]) => {
                       const val = previewData.tierBreakdown?.[key] ?? 0;
@@ -724,7 +724,7 @@ export default function SegmentsPage() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Send className="h-4 w-4" />
-              セグメント配信
+              絞り込み配信
             </CardTitle>
           </CardHeader>
           <CardContent>

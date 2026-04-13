@@ -456,8 +456,8 @@ export default function StepsPage() {
                 </div>
                 <Card className="flex-1 bg-blue-50 border-blue-200">
                   <CardContent className="py-3 px-4">
-                    <p className="text-sm font-medium text-blue-900">トリガー: {triggerLabels[selectedScenario.triggerType]}</p>
-                    <p className="text-xs text-blue-700 mt-0.5">ここからシナリオ開始</p>
+                    <p className="text-sm font-medium text-blue-900">開始トリガー: {triggerLabels[selectedScenario.triggerType]}</p>
+                    <p className="text-xs text-blue-700 mt-0.5">ここから自動配信シナリオ開始</p>
                   </CardContent>
                 </Card>
               </div>
@@ -684,7 +684,7 @@ export default function StepsPage() {
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">新規シナリオ</h1>
+            <h1 className="text-2xl font-bold">新規シナリオ作成</h1>
             <p className="text-sm text-muted-foreground">自動配信シナリオを作成</p>
           </div>
         </div>
@@ -701,7 +701,7 @@ export default function StepsPage() {
                 <Textarea value={newDescription} onChange={(e) => setNewDescription(e.target.value)} rows={2} placeholder="シナリオの目的..." />
               </div>
               <div className="space-y-2">
-                <Label>トリガー</Label>
+                <Label>トリガー条件</Label>
                 <select
                   value={newTrigger}
                   onChange={(e) => setNewTrigger(e.target.value)}
@@ -742,7 +742,7 @@ export default function StepsPage() {
           </Button>
           <Button onClick={() => setView('create')}>
             <Plus className="h-4 w-4 mr-2" />
-            新規シナリオ
+            新規シナリオ作成
           </Button>
         </div>
       </div>
@@ -935,8 +935,8 @@ export default function StepsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>シナリオ名</TableHead>
-                <TableHead>トリガー</TableHead>
+                <TableHead>自動配信シナリオ</TableHead>
+                <TableHead>開始トリガー</TableHead>
                 <TableHead>ステータス</TableHead>
                 <TableHead></TableHead>
               </TableRow>

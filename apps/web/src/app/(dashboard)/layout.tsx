@@ -60,7 +60,7 @@ const navigation: NavEntry[] = [
     items: [
       { name: 'チャット', href: '/messages', icon: Send },
       { name: 'ステップ配信', href: '/steps', icon: GitBranch },
-      { name: 'セグメント配信', href: '/segments', icon: Filter },
+      { name: '絞り込み配信', href: '/segments', icon: Filter },
     ],
   },
   { name: '友だち', href: '/friends', icon: Users },
