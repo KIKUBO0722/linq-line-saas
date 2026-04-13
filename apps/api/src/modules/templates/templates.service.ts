@@ -1,5 +1,5 @@
 import { Injectable, Inject, Logger, InternalServerErrorException, HttpException } from '@nestjs/common';
-import { eq, desc } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { messageTemplates } from '@line-saas/db';
 
@@ -175,6 +175,7 @@ export class TemplatesService {
   }
 
   async update(
+    tenantId: string,
     id: string,
     data: { name?: string; content?: string; category?: string; messageType?: string; messageData?: Record<string, unknown> },
   ) {
@@ -189,7 +190,7 @@ export class TemplatesService {
       const [template] = await this.db
         .update(messageTemplates)
         .set(values)
-        .where(eq(messageTemplates.id, id))
+        .where(and(eq(messageTemplates.id, id), eq(messageTemplates.tenantId, tenantId)))
         .returning();
       return template;
     } catch (error) {
@@ -198,9 +199,9 @@ export class TemplatesService {
     }
   }
 
-  async delete(id: string) {
+  async delete(tenantId: string, id: string) {
     try {
-      await this.db.delete(messageTemplates).where(eq(messageTemplates.id, id));
+      await this.db.delete(messageTemplates).where(and(eq(messageTemplates.id, id), eq(messageTemplates.tenantId, tenantId)));
     } catch (error) {
       this.logger.error(`Failed to delete template ${id}: ${error}`);
       throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');

@@ -42,7 +42,7 @@ export class SegmentsService {
     }
   }
 
-  async update(id: string, data: { name?: string; description?: string; tagIds?: string[]; matchType?: string; excludeTagIds?: string[] }) {
+  async update(tenantId: string, id: string, data: { name?: string; description?: string; tagIds?: string[]; matchType?: string; excludeTagIds?: string[] }) {
     try {
       const updateData: Record<string, unknown> = {};
       if (data.name !== undefined) updateData.name = data.name;
@@ -54,7 +54,7 @@ export class SegmentsService {
       const [updated] = await this.db
         .update(segments)
         .set(updateData)
-        .where(eq(segments.id, id))
+        .where(and(eq(segments.id, id), eq(segments.tenantId, tenantId)))
         .returning();
       if (!updated) throw new NotFoundException('セグメントが見つかりません');
       return updated;
@@ -64,9 +64,9 @@ export class SegmentsService {
     }
   }
 
-  async delete(id: string) {
+  async delete(tenantId: string, id: string) {
     try {
-      await this.db.delete(segments).where(eq(segments.id, id));
+      await this.db.delete(segments).where(and(eq(segments.id, id), eq(segments.tenantId, tenantId)));
     } catch (error) {
       this.logger.error(`Failed to delete segment ${id}: ${error}`);
       throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');

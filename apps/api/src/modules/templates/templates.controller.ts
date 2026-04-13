@@ -22,13 +22,13 @@ export class TemplatesController {
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() body: UpdateTemplateDto) {
-    return this.templatesService.update(id, body);
+  async update(@TenantId() tenantId: string, @Param('id') id: string, @Body() body: UpdateTemplateDto) {
+    return this.templatesService.update(tenantId, id, body);
   }
 
   @Delete(':id')
-  async delete(@Param('id') id: string) {
-    await this.templatesService.delete(id);
+  async delete(@TenantId() tenantId: string, @Param('id') id: string) {
+    await this.templatesService.delete(tenantId, id);
     return { ok: true };
   }
 }

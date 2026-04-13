@@ -22,18 +22,18 @@ export class CouponsController {
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() body: UpdateCouponDto) {
-    return this.couponsService.update(id, body);
+  async update(@TenantId() tenantId: string, @Param('id') id: string, @Body() body: UpdateCouponDto) {
+    return this.couponsService.update(tenantId, id, body);
   }
 
   @Delete(':id')
-  async delete(@Param('id') id: string) {
-    await this.couponsService.delete(id);
+  async delete(@TenantId() tenantId: string, @Param('id') id: string) {
+    await this.couponsService.delete(tenantId, id);
     return { ok: true };
   }
 
   @Post(':id/toggle')
-  async toggle(@Param('id') id: string, @Body() body: ToggleCouponDto) {
-    return this.couponsService.toggle(id, body.isActive);
+  async toggle(@TenantId() tenantId: string, @Param('id') id: string, @Body() body: ToggleCouponDto) {
+    return this.couponsService.toggle(tenantId, id, body.isActive);
   }
 }

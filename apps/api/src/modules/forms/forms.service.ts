@@ -1,5 +1,5 @@
 import { Injectable, Inject, NotFoundException, Logger, InternalServerErrorException, HttpException } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { forms, formResponses, friendTags } from '@line-saas/db';
 import { FriendsService } from '../friends/friends.service';
@@ -32,24 +32,27 @@ export class FormsService {
     }
   }
 
-  async getById(id: string) {
-    const [form] = await this.db.select().from(forms).where(eq(forms.id, id)).limit(1);
+  async getById(tenantId: string | null, id: string) {
+    const condition = tenantId
+      ? and(eq(forms.id, id), eq(forms.tenantId, tenantId))
+      : eq(forms.id, id);
+    const [form] = await this.db.select().from(forms).where(condition).limit(1);
     if (!form) throw new NotFoundException('Form not found');
     return form;
   }
 
-  async update(id: string, data: Partial<typeof forms.$inferInsert>) {
+  async update(tenantId: string, id: string, data: Partial<typeof forms.$inferInsert>) {
     try {
-      await this.db.update(forms).set(data).where(eq(forms.id, id));
+      await this.db.update(forms).set(data).where(and(eq(forms.id, id), eq(forms.tenantId, tenantId)));
     } catch (error) {
       this.logger.error(`Failed to update form ${id}: ${error}`);
       throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
     }
   }
 
-  async delete(id: string) {
+  async delete(tenantId: string, id: string) {
     try {
-      await this.db.delete(forms).where(eq(forms.id, id));
+      await this.db.delete(forms).where(and(eq(forms.id, id), eq(forms.tenantId, tenantId)));
     } catch (error) {
       this.logger.error(`Failed to delete form ${id}: ${error}`);
       throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');

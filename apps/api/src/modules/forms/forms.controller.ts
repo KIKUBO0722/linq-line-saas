@@ -23,19 +23,19 @@ export class FormsController {
   }
 
   @Get(':id')
-  async getById(@Param('id') id: string) {
-    return this.formsService.getById(id);
+  async getById(@TenantId() tenantId: string, @Param('id') id: string) {
+    return this.formsService.getById(tenantId, id);
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() body: UpdateFormDto) {
-    await this.formsService.update(id, body);
+  async update(@TenantId() tenantId: string, @Param('id') id: string, @Body() body: UpdateFormDto) {
+    await this.formsService.update(tenantId, id, body);
     return { ok: true };
   }
 
   @Delete(':id')
-  async delete(@Param('id') id: string) {
-    await this.formsService.delete(id);
+  async delete(@TenantId() tenantId: string, @Param('id') id: string) {
+    await this.formsService.delete(tenantId, id);
     return { ok: true };
   }
 
@@ -50,8 +50,8 @@ export class FormsController {
   }
 
   @Get(':id/responses/export/csv')
-  async exportResponsesCsv(@Param('id') formId: string, @Res() res: Response) {
-    const form = await this.formsService.getById(formId);
+  async exportResponsesCsv(@TenantId() tenantId: string, @Param('id') formId: string, @Res() res: Response) {
+    const form = await this.formsService.getById(tenantId, formId);
     const responses = await this.formsService.getResponses(formId);
 
     // Collect all answer keys across responses

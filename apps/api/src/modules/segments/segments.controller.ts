@@ -22,13 +22,13 @@ export class SegmentsController {
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() body: UpdateSegmentDto) {
-    return this.segmentsService.update(id, body);
+  async update(@TenantId() tenantId: string, @Param('id') id: string, @Body() body: UpdateSegmentDto) {
+    return this.segmentsService.update(tenantId, id, body);
   }
 
   @Delete(':id')
-  async delete(@Param('id') id: string) {
-    await this.segmentsService.delete(id);
+  async delete(@TenantId() tenantId: string, @Param('id') id: string) {
+    await this.segmentsService.delete(tenantId, id);
     return { ok: true };
   }
 

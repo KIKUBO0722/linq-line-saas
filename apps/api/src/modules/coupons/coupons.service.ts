@@ -1,5 +1,5 @@
 import { Injectable, Inject, Logger, InternalServerErrorException, HttpException } from '@nestjs/common';
-import { eq, desc } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import { coupons } from '@line-saas/db';
 
@@ -56,6 +56,7 @@ export class CouponsService {
   }
 
   async update(
+    tenantId: string,
     id: string,
     data: {
       name?: string;
@@ -81,7 +82,7 @@ export class CouponsService {
       const [coupon] = await this.db
         .update(coupons)
         .set(updateData)
-        .where(eq(coupons.id, id))
+        .where(and(eq(coupons.id, id), eq(coupons.tenantId, tenantId)))
         .returning();
       return coupon;
     } catch (error) {
@@ -90,21 +91,21 @@ export class CouponsService {
     }
   }
 
-  async delete(id: string) {
+  async delete(tenantId: string, id: string) {
     try {
-      await this.db.delete(coupons).where(eq(coupons.id, id));
+      await this.db.delete(coupons).where(and(eq(coupons.id, id), eq(coupons.tenantId, tenantId)));
     } catch (error) {
       this.logger.error(`Failed to delete coupon ${id}: ${error}`);
       throw error instanceof HttpException ? error : new InternalServerErrorException('操作に失敗しました');
     }
   }
 
-  async toggle(id: string, isActive: boolean) {
+  async toggle(tenantId: string, id: string, isActive: boolean) {
     try {
       const [coupon] = await this.db
         .update(coupons)
         .set({ isActive })
-        .where(eq(coupons.id, id))
+        .where(and(eq(coupons.id, id), eq(coupons.tenantId, tenantId)))
         .returning();
       return coupon;
     } catch (error) {

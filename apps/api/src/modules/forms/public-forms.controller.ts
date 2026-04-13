@@ -10,7 +10,7 @@ export class PublicFormsController {
 
   @Get(':id')
   async getForm(@Param('id') id: string) {
-    const form = await this.formsService.getById(id);
+    const form = await this.formsService.getById(null, id);
     // Only expose safe fields to public
     return {
       id: form.id,
