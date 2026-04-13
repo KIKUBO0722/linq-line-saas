@@ -385,6 +385,24 @@ export interface KpiData {
   broadcastCount: number;
 }
 
+// --- Health Metrics ---
+export interface HealthMetrics {
+  period: number;
+  totalFollowing: number;
+  totalFriends: number;
+  blocked: number;
+  netGrowth: { current: number; newFriends: number; blocks: number; previous: number; change: number };
+  blockRate: { current: number; blocks: number; sent: number; previous: number; change: number };
+  activeRate: { current: number; activeFriends: number; totalFollowing: number; previous: number; change: number };
+  responseRate: { current: number; inbound: number; outbound: number; previous: number; change: number };
+}
+
+export interface AnalyticsAlert {
+  type: 'danger' | 'warning' | 'success' | 'info';
+  title: string;
+  message: string;
+}
+
 // --- Referral ---
 export interface ReferralProgram {
   id: string;

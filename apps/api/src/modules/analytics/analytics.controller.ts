@@ -103,6 +103,16 @@ export class AnalyticsController {
     return this.analyticsService.getKpiWithComparison(tenantId);
   }
 
+  @Get('health')
+  async health(@TenantId() tenantId: string, @Query('days') days?: string) {
+    return this.analyticsService.getHealthMetrics(tenantId, days ? parseInt(days, 10) : 30);
+  }
+
+  @Get('alerts')
+  async alerts(@TenantId() tenantId: string) {
+    return this.analyticsService.getAlerts(tenantId);
+  }
+
   @Get('traffic-sources')
   async listTrafficSources(@TenantId() tenantId: string) {
     return this.analyticsService.getSourceStats(tenantId);

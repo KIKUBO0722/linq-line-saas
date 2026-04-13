@@ -1,6 +1,7 @@
 import type {
   AdminUser,
   AiSuggestedStep,
+  AnalyticsAlert,
   AnalyticsOverview,
   BestSendTimeData,
   BroadcastAnalytics,
@@ -22,6 +23,7 @@ import type {
   GachaPrize,
   GachaStyle,
   GreetingMessage,
+  HealthMetrics,
   KpiData,
   LineAccount,
   Message,
@@ -172,6 +174,8 @@ export const api = {
     bestSendTime: (days?: number) => fetchApi<BestSendTimeData>(`/api/v1/analytics/best-send-time${days ? `?days=${days}` : ''}`),
     segments: () => fetchApi<SegmentAnalytics[]>('/api/v1/analytics/segments'),
     kpi: () => fetchApi<KpiData>('/api/v1/analytics/kpi'),
+    health: (days?: number) => fetchApi<HealthMetrics>(`/api/v1/analytics/health${days ? `?days=${days}` : ''}`),
+    alerts: () => fetchApi<AnalyticsAlert[]>('/api/v1/analytics/alerts'),
   },
   tags: {
     list: () => fetchApi<Tag[]>('/api/v1/tags'),

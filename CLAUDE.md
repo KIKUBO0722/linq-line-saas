@@ -80,9 +80,13 @@ referral, ai-knowledge
 - **禁止**: UI上の短いラベル・バッジの改行回り込み → whitespace-nowrapで防ぐ
 - **UIレイアウト方針**: カードグリッド禁止。テーブル/リスト型で情報密度を確保。padding/gap最小限。Linear/Notion的なプロフェッショナルUI
 - **segments PATCH**: `PATCH /api/v1/segments/:id` — name, description, tagIds, matchType, excludeTagIds を部分更新可能（UpdateSegmentDto）
+- **analytics health API**: `GET /api/v1/analytics/health?days=N` — 純増数・ブロック率・アクティブ率・反応率を前期比付きで返す。KPIバーと概要タブで使用
+- **analytics alerts API**: `GET /api/v1/analytics/alerts` — 直近7日の指標を分析し意思決定アラートを生成（ブロック率急上昇・純減・アクティブ率低下等）
+- **ブロック率閾値**: 2%超で警告色（赤）表示。LINE業界平均1-2%が根拠
 
 ## Current Priorities
 - Fix AI Copilot response failures across all pages
+- Analytics: add revenue metrics as separate page (EC users only)
 - Strengthen analytics (cohort analysis, pseudo-CTR, segment comparison)
 - Add friend timeline (action history)
 - Add class-validator DTOs to remaining endpoints

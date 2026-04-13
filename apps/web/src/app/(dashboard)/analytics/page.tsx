@@ -17,6 +17,7 @@ import { api } from '@/lib/api-client';
 import type {
   ConversionGoalType, ConversionGoal, ConversionEvent,
   TrackedUrl, UrlClick, TrafficSource,
+  HealthMetrics, AnalyticsAlert,
 } from '@/lib/types';
 
 // --- Analytics page local types ---
@@ -139,6 +140,8 @@ export default function AnalyticsPage() {
     bestHours?: Array<{ hour: number; responseRate: number; sentCount: number; responseCount: number }>;
     hourly?: Array<{ hour: number; responseRate: number; sentCount: number }>;
   } | null>(null);
+  const [health, setHealth] = useState<HealthMetrics | null>(null);
+  const [alerts, setAlerts] = useState<AnalyticsAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [periodDays, setPeriodDays] = useState(14);
   const [deliveryDate, setDeliveryDate] = useState(() => {
@@ -171,8 +174,10 @@ export default function AnalyticsPage() {
       api.analytics.ctr(days).catch(track(null)),
       api.analytics.segments().catch(track([])),
       api.analytics.bestSendTime(days).catch(track(null)),
+      api.analytics.health(days).catch(track(null)),
+      api.analytics.alerts().catch(track([])),
     ])
-      .then(([s, u, d, b, ts, urls, goals, ch, k, ct, seg, bst]) => {
+      .then(([s, u, d, b, ts, urls, goals, ch, k, ct, seg, bst, h, al]) => {
         if (failCount > 0) toast.error('一部のアナリティクスデータの読み込みに失敗しました');
         setStats(s as typeof stats);
         setUsage(u as typeof usage);
@@ -186,6 +191,8 @@ export default function AnalyticsPage() {
         setCtr(ct as typeof ctr);
         setSegmentData(Array.isArray(seg) ? (seg as typeof segmentData) : []);
         setBestSendTime(bst as typeof bestSendTime);
+        setHealth(h as HealthMetrics | null);
+        setAlerts(Array.isArray(al) ? (al as AnalyticsAlert[]) : []);
       })
       .finally(() => setLoading(false));
   }
@@ -335,40 +342,45 @@ export default function AnalyticsPage() {
         </Card>
       )}
 
-      {/* Main metrics - inline bar */}
+      {/* Main metrics - inline bar (健康指標) */}
       <div className="flex items-center gap-5 px-4 py-2.5 rounded-lg border bg-background overflow-x-auto">
         <div className="flex items-center gap-1.5 shrink-0">
           <Users className="h-4 w-4 text-blue-500 shrink-0" />
-          <span className="text-xs text-muted-foreground whitespace-nowrap">友だち</span>
-          <span className="text-sm font-bold whitespace-nowrap">{(stats?.friends?.total || 0).toLocaleString()}</span>
+          <span className="text-xs text-muted-foreground whitespace-nowrap">有効友だち</span>
+          <span className="text-sm font-bold whitespace-nowrap">{(health?.totalFollowing || stats?.friends?.total || 0).toLocaleString()}</span>
         </div>
         <div className="h-4 w-px bg-border shrink-0" />
         <div className="flex items-center gap-1.5 shrink-0">
-          <ArrowUpRight className="h-4 w-4 text-green-500 shrink-0" />
-          <span className="text-xs text-muted-foreground whitespace-nowrap">送信</span>
-          <span className="text-sm font-bold whitespace-nowrap">{(stats?.messages?.outbound || 0).toLocaleString()}</span>
-        </div>
-        <div className="h-4 w-px bg-border shrink-0" />
-        <div className="flex items-center gap-1.5 shrink-0">
-          <ArrowDownRight className="h-4 w-4 text-purple-500 shrink-0" />
-          <span className="text-xs text-muted-foreground whitespace-nowrap">受信</span>
-          <span className="text-sm font-bold whitespace-nowrap">{(stats?.messages?.inbound || 0).toLocaleString()}</span>
-        </div>
-        <div className="h-4 w-px bg-border shrink-0" />
-        <div className="flex items-center gap-1.5 shrink-0">
-          <Zap className="h-4 w-4 text-amber-500 shrink-0" />
-          <span className="text-xs text-muted-foreground whitespace-nowrap">イベント</span>
-          <span className="text-sm font-bold whitespace-nowrap">{(stats?.events?.total || 0).toLocaleString()}</span>
-        </div>
-        {kpi?.newFriends?.change !== undefined && (
-          <>
-            <div className="h-4 w-px bg-border shrink-0" />
-            <span className={`text-xs flex items-center gap-0.5 shrink-0 whitespace-nowrap ${(kpi.newFriends.change || 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-              {(kpi.newFriends.change || 0) >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-              {Math.abs(kpi.newFriends.change || 0)}% 前週比
+          <TrendingUp className="h-4 w-4 text-green-500 shrink-0" />
+          <span className="text-xs text-muted-foreground whitespace-nowrap">純増</span>
+          <span className={`text-sm font-bold whitespace-nowrap ${(health?.netGrowth.current || 0) < 0 ? 'text-red-500' : ''}`}>
+            {health?.netGrowth.current !== undefined ? (health.netGrowth.current >= 0 ? '+' : '') + health.netGrowth.current : '—'}
+          </span>
+          {health?.netGrowth.change !== undefined && health.netGrowth.change !== 0 && (
+            <span className={`text-xs flex items-center gap-0.5 whitespace-nowrap ${health.netGrowth.change >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+              {health.netGrowth.change >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+              {Math.abs(health.netGrowth.change)}%
             </span>
-          </>
-        )}
+          )}
+        </div>
+        <div className="h-4 w-px bg-border shrink-0" />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Activity className="h-4 w-4 text-emerald-500 shrink-0" />
+          <span className="text-xs text-muted-foreground whitespace-nowrap">アクティブ率</span>
+          <span className="text-sm font-bold whitespace-nowrap">{health?.activeRate.current ?? 0}%</span>
+        </div>
+        <div className="h-4 w-px bg-border shrink-0" />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <MessageSquare className="h-4 w-4 text-purple-500 shrink-0" />
+          <span className="text-xs text-muted-foreground whitespace-nowrap">反応率</span>
+          <span className="text-sm font-bold whitespace-nowrap">{health?.responseRate.current ?? 0}%</span>
+        </div>
+        <div className="h-4 w-px bg-border shrink-0" />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Zap className={`h-4 w-4 shrink-0 ${(health?.blockRate.current || 0) > 2 ? 'text-red-500' : 'text-amber-500'}`} />
+          <span className="text-xs text-muted-foreground whitespace-nowrap">ブロック率</span>
+          <span className={`text-sm font-bold whitespace-nowrap ${(health?.blockRate.current || 0) > 2 ? 'text-red-500' : ''}`}>{health?.blockRate.current ?? 0}%</span>
+        </div>
       </div>
 
       <Tabs defaultValue="overview">
@@ -415,54 +427,121 @@ export default function AnalyticsPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Overview tab */}
+        {/* Overview tab - 健康指標 + アラート */}
         <TabsContent value="overview" className="mt-3 space-y-4">
-          <div className="rounded-lg border p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold">メッセージ内訳</h3>
-              <span className="text-xs text-muted-foreground">合計 {msgTotal.toLocaleString()}</span>
+          {/* アラート */}
+          {alerts.length > 0 && (
+            <div className="space-y-2">
+              {alerts.map((alert, i) => (
+                <div
+                  key={i}
+                  className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-sm ${
+                    alert.type === 'danger' ? 'border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800' :
+                    alert.type === 'warning' ? 'border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800' :
+                    alert.type === 'success' ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800' :
+                    'border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800'
+                  }`}
+                >
+                  <span className="shrink-0 mt-0.5">
+                    {alert.type === 'danger' ? '🚨' : alert.type === 'warning' ? '⚠️' : alert.type === 'success' ? '✅' : '💡'}
+                  </span>
+                  <div>
+                    <p className="font-medium">{alert.title}</p>
+                    <p className="text-muted-foreground mt-0.5">{alert.message}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="flex items-center gap-6">
-              <div className="h-[120px] w-[120px] shrink-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={[
-                        { name: '送信', value: stats?.messages?.outbound || 0 },
-                        { name: '受信', value: stats?.messages?.inbound || 0 },
-                      ]}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={30}
-                      outerRadius={50}
-                      paddingAngle={3}
-                      dataKey="value"
-                    >
-                      <Cell fill="#06C755" />
-                      <Cell fill="#8B5CF6" />
-                    </Pie>
-                    <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex-1 space-y-3">
-                <ProgressBar label="送信メッセージ" value={stats?.messages?.outbound || 0} percentage={outboundPct} color="#06C755" />
-                <ProgressBar label="受信メッセージ" value={stats?.messages?.inbound || 0} percentage={inboundPct} color="#8B5CF6" />
-              </div>
-            </div>
-          </div>
+          )}
 
-          <div className="rounded-lg border p-4">
-            <h3 className="text-sm font-semibold mb-3">今月の利用状況</h3>
-            {usage ? (
-              <div className="space-y-3">
-                <UsageBar label="メッセージ送信" used={usage.messagesSent || 0} limit={usage.messagesLimit} icon={<MessageSquare className="h-4 w-4 text-blue-500" />} />
-                <UsageBar label="AI応答" used={usage.aiTokensUsed || 0} limit={usage.aiTokensLimit} icon={<Zap className="h-4 w-4 text-yellow-500" />} />
-                <UsageBar label="友だち数" used={stats?.friends?.total || 0} limit={usage.friendsLimit} icon={<Users className="h-4 w-4 text-green-500" />} />
+          {/* 友だちの健康状態 */}
+          {health && (
+            <div className="rounded-lg border p-4">
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                友だちの健康状態
+                <HelpTip content="事業の生命線となる友だち指標。純増がプラスで、ブロック率が低く、アクティブ率が高いほど健全です" />
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="space-y-1">
+                  <span className="text-xs text-muted-foreground">純増数（{health.period}日間）</span>
+                  <p className={`text-2xl font-bold tracking-tight ${health.netGrowth.current < 0 ? 'text-red-500' : ''}`}>
+                    {health.netGrowth.current >= 0 ? '+' : ''}{health.netGrowth.current}
+                  </p>
+                  <p className="text-xs text-muted-foreground">新規 {health.netGrowth.newFriends} − ブロック {health.netGrowth.blocks}</p>
+                  <ChangeIndicator change={health.netGrowth.change} />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-xs text-muted-foreground">ブロック率</span>
+                  <p className={`text-2xl font-bold tracking-tight ${health.blockRate.current > 2 ? 'text-red-500' : health.blockRate.current > 1 ? 'text-amber-500' : ''}`}>
+                    {health.blockRate.current}%
+                  </p>
+                  <p className="text-xs text-muted-foreground">{health.blockRate.blocks}件 / 配信{health.blockRate.sent}通</p>
+                  <ChangeIndicator change={health.blockRate.change} invert />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-xs text-muted-foreground">アクティブ率（{health.period}日）</span>
+                  <p className="text-2xl font-bold tracking-tight">{health.activeRate.current}%</p>
+                  <p className="text-xs text-muted-foreground">{health.activeRate.activeFriends}人 / {health.activeRate.totalFollowing}人</p>
+                  <ChangeIndicator change={health.activeRate.change} />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-xs text-muted-foreground">反応率</span>
+                  <p className="text-2xl font-bold tracking-tight">{health.responseRate.current}%</p>
+                  <p className="text-xs text-muted-foreground">受信{health.responseRate.inbound} / 送信{health.responseRate.outbound}</p>
+                  <ChangeIndicator change={health.responseRate.change} />
+                </div>
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground py-4 text-center">利用データがまだありません</p>
-            )}
+            </div>
+          )}
+
+          {/* メッセージ内訳 + 利用状況（既存をコンパクトに） */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-lg border p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold">メッセージ内訳</h3>
+                <span className="text-xs text-muted-foreground">合計 {msgTotal.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="h-[100px] w-[100px] shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: '送信', value: stats?.messages?.outbound || 0 },
+                          { name: '受信', value: stats?.messages?.inbound || 0 },
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={25}
+                        outerRadius={42}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        <Cell fill="#06C755" />
+                        <Cell fill="#8B5CF6" />
+                      </Pie>
+                      <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex-1 space-y-2">
+                  <ProgressBar label="送信" value={stats?.messages?.outbound || 0} percentage={outboundPct} color="#06C755" />
+                  <ProgressBar label="受信" value={stats?.messages?.inbound || 0} percentage={inboundPct} color="#8B5CF6" />
+                </div>
+              </div>
+            </div>
+            <div className="rounded-lg border p-4">
+              <h3 className="text-sm font-semibold mb-3">今月の利用状況</h3>
+              {usage ? (
+                <div className="space-y-2">
+                  <UsageBar label="メッセージ送信" used={usage.messagesSent || 0} limit={usage.messagesLimit} icon={<MessageSquare className="h-4 w-4 text-blue-500" />} />
+                  <UsageBar label="AI応答" used={usage.aiTokensUsed || 0} limit={usage.aiTokensLimit} icon={<Zap className="h-4 w-4 text-yellow-500" />} />
+                  <UsageBar label="友だち数" used={stats?.friends?.total || 0} limit={usage.friendsLimit} icon={<Users className="h-4 w-4 text-green-500" />} />
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-4 text-center">利用データがまだありません</p>
+              )}
+            </div>
           </div>
         </TabsContent>
 
@@ -1619,6 +1698,18 @@ function KpiCard({ label, value, change }: { label: string; value?: number; chan
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/* 前期比の増減表示。invert=trueの場合、上昇が悪い（ブロック率など） */
+function ChangeIndicator({ change, invert }: { change?: number; invert?: boolean }) {
+  if (change === undefined || change === 0) return null;
+  const isPositive = invert ? change < 0 : change > 0;
+  return (
+    <p className={`text-xs flex items-center gap-0.5 ${isPositive ? 'text-emerald-600' : 'text-red-500'}`}>
+      {change > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+      {Math.abs(change)}% 前期比
+    </p>
   );
 }
 

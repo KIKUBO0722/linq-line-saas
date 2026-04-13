@@ -584,6 +584,275 @@ export class AnalyticsService {
     }
   }
 
+  /**
+   * 友だちの健康指標: 純増数・ブロック率・アクティブ率・反応率
+   * 現在期間 vs 前期間の比較付き
+   */
+  async getHealthMetrics(tenantId: string, days: number = 30) {
+    try {
+      const now = new Date();
+      const currentStart = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+      const previousStart = new Date(now.getTime() - days * 2 * 24 * 60 * 60 * 1000);
+
+      // Total following friends
+      const [totalFollowing] = await this.db
+        .select({ total: count() })
+        .from(friends)
+        .where(and(eq(friends.tenantId, tenantId), eq(friends.isFollowing, true)));
+
+      const [totalFriends] = await this.db
+        .select({ total: count() })
+        .from(friends)
+        .where(eq(friends.tenantId, tenantId));
+
+      // New friends in current period
+      const [newCurrent] = await this.db
+        .select({ total: count() })
+        .from(friends)
+        .where(and(eq(friends.tenantId, tenantId), gte(friends.createdAt, currentStart)));
+
+      const [newPrevious] = await this.db
+        .select({ total: count() })
+        .from(friends)
+        .where(and(
+          eq(friends.tenantId, tenantId),
+          gte(friends.createdAt, previousStart),
+          lte(friends.createdAt, currentStart),
+        ));
+
+      // Blocks in current period (unfollowedAt in range)
+      const [blocksCurrent] = await this.db
+        .select({ total: count() })
+        .from(friends)
+        .where(and(
+          eq(friends.tenantId, tenantId),
+          gte(friends.unfollowedAt, currentStart),
+        ));
+
+      const [blocksPrevious] = await this.db
+        .select({ total: count() })
+        .from(friends)
+        .where(and(
+          eq(friends.tenantId, tenantId),
+          gte(friends.unfollowedAt, previousStart),
+          lte(friends.unfollowedAt, currentStart),
+        ));
+
+      // Messages sent in current period
+      const [sentCurrent] = await this.db
+        .select({ total: count() })
+        .from(messages)
+        .where(and(
+          eq(messages.tenantId, tenantId),
+          eq(messages.direction, 'outbound'),
+          gte(messages.createdAt, currentStart),
+        ));
+
+      const [sentPrevious] = await this.db
+        .select({ total: count() })
+        .from(messages)
+        .where(and(
+          eq(messages.tenantId, tenantId),
+          eq(messages.direction, 'outbound'),
+          gte(messages.createdAt, previousStart),
+          lte(messages.createdAt, currentStart),
+        ));
+
+      // Messages received (inbound) in current period
+      const [inboundCurrent] = await this.db
+        .select({ total: count() })
+        .from(messages)
+        .where(and(
+          eq(messages.tenantId, tenantId),
+          eq(messages.direction, 'inbound'),
+          gte(messages.createdAt, currentStart),
+        ));
+
+      const [inboundPrevious] = await this.db
+        .select({ total: count() })
+        .from(messages)
+        .where(and(
+          eq(messages.tenantId, tenantId),
+          eq(messages.direction, 'inbound'),
+          gte(messages.createdAt, previousStart),
+          lte(messages.createdAt, currentStart),
+        ));
+
+      // Active friends: distinct friends with inbound messages in period
+      const activeCurrentResult = await this.db
+        .select({ total: sql<number>`COUNT(DISTINCT ${messages.friendId})` })
+        .from(messages)
+        .where(and(
+          eq(messages.tenantId, tenantId),
+          eq(messages.direction, 'inbound'),
+          gte(messages.createdAt, currentStart),
+        ));
+      const activeCurrent = Number(activeCurrentResult[0]?.total) || 0;
+
+      const activePreviousResult = await this.db
+        .select({ total: sql<number>`COUNT(DISTINCT ${messages.friendId})` })
+        .from(messages)
+        .where(and(
+          eq(messages.tenantId, tenantId),
+          eq(messages.direction, 'inbound'),
+          gte(messages.createdAt, previousStart),
+          lte(messages.createdAt, currentStart),
+        ));
+      const activePrevious = Number(activePreviousResult[0]?.total) || 0;
+
+      const totalFollow = totalFollowing?.total || 0;
+      const totalAll = totalFriends?.total || 0;
+      const newC = newCurrent?.total || 0;
+      const newP = newPrevious?.total || 0;
+      const blocksC = blocksCurrent?.total || 0;
+      const blocksP = blocksPrevious?.total || 0;
+      const sentC = sentCurrent?.total || 0;
+      const sentP = sentPrevious?.total || 0;
+      const inC = inboundCurrent?.total || 0;
+      const inP = inboundPrevious?.total || 0;
+
+      const calcChange = (current: number, previous: number) => {
+        if (previous === 0) return current > 0 ? 100 : 0;
+        return Math.round((current - previous) / previous * 100);
+      };
+
+      const blockRateCurrent = sentC > 0 ? Math.round(blocksC / sentC * 10000) / 100 : 0;
+      const blockRatePrevious = sentP > 0 ? Math.round(blocksP / sentP * 10000) / 100 : 0;
+      const activeRateCurrent = totalFollow > 0 ? Math.round(activeCurrent / totalFollow * 10000) / 100 : 0;
+      const activeRatePrevious = totalFollow > 0 ? Math.round(activePrevious / totalFollow * 10000) / 100 : 0;
+      const responseRateCurrent = sentC > 0 ? Math.round(inC / sentC * 10000) / 100 : 0;
+      const responseRatePrevious = sentP > 0 ? Math.round(inP / sentP * 10000) / 100 : 0;
+
+      return {
+        period: days,
+        totalFollowing: totalFollow,
+        totalFriends: totalAll,
+        blocked: totalAll - totalFollow,
+        netGrowth: {
+          current: newC - blocksC,
+          newFriends: newC,
+          blocks: blocksC,
+          previous: newP - blocksP,
+          change: calcChange(newC - blocksC, newP - blocksP),
+        },
+        blockRate: {
+          current: blockRateCurrent,
+          blocks: blocksC,
+          sent: sentC,
+          previous: blockRatePrevious,
+          change: calcChange(blockRateCurrent, blockRatePrevious),
+        },
+        activeRate: {
+          current: activeRateCurrent,
+          activeFriends: activeCurrent,
+          totalFollowing: totalFollow,
+          previous: activeRatePrevious,
+          change: calcChange(activeRateCurrent, activeRatePrevious),
+        },
+        responseRate: {
+          current: responseRateCurrent,
+          inbound: inC,
+          outbound: sentC,
+          previous: responseRatePrevious,
+          change: calcChange(responseRateCurrent, responseRatePrevious),
+        },
+      };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Health metrics failed: ${message}`);
+      return {
+        period: days,
+        totalFollowing: 0, totalFriends: 0, blocked: 0,
+        netGrowth: { current: 0, newFriends: 0, blocks: 0, previous: 0, change: 0 },
+        blockRate: { current: 0, blocks: 0, sent: 0, previous: 0, change: 0 },
+        activeRate: { current: 0, activeFriends: 0, totalFollowing: 0, previous: 0, change: 0 },
+        responseRate: { current: 0, inbound: 0, outbound: 0, previous: 0, change: 0 },
+      };
+    }
+  }
+
+  /**
+   * 意思決定アラート: 現在の指標を分析してアクションを提案
+   */
+  async getAlerts(tenantId: string) {
+    try {
+      // Compare last 7 days vs previous 7 days
+      const metrics = await this.getHealthMetrics(tenantId, 7);
+      const alerts: Array<{ type: 'danger' | 'warning' | 'success' | 'info'; title: string; message: string }> = [];
+
+      // Block rate spike
+      if (metrics.blockRate.current > 0 && metrics.blockRate.change > 50) {
+        alerts.push({
+          type: 'danger',
+          title: 'ブロック率が急上昇',
+          message: `ブロック率が前週比${metrics.blockRate.change}%増加（${metrics.blockRate.previous}%→${metrics.blockRate.current}%）。配信頻度を下げるか、コンテンツを見直してください`,
+        });
+      } else if (metrics.blockRate.current > 2) {
+        alerts.push({
+          type: 'warning',
+          title: 'ブロック率が高め',
+          message: `ブロック率${metrics.blockRate.current}%。業界平均は1-2%です。配信内容の最適化を検討してください`,
+        });
+      }
+
+      // Net growth negative
+      if (metrics.netGrowth.current < 0) {
+        alerts.push({
+          type: 'danger',
+          title: '友だち純減',
+          message: `この7日間で${Math.abs(metrics.netGrowth.current)}人純減（新規${metrics.netGrowth.newFriends}人 - ブロック${metrics.netGrowth.blocks}人）。獲得施策の強化が必要です`,
+        });
+      } else if (metrics.netGrowth.current > 0 && metrics.netGrowth.change > 20) {
+        alerts.push({
+          type: 'success',
+          title: '友だち順調に増加',
+          message: `前週比${metrics.netGrowth.change}%の成長（純増${metrics.netGrowth.current}人）`,
+        });
+      }
+
+      // Active rate drop
+      if (metrics.activeRate.previous > 0 && metrics.activeRate.change < -30) {
+        alerts.push({
+          type: 'warning',
+          title: 'アクティブ率が低下',
+          message: `アクティブ率が前週比${Math.abs(metrics.activeRate.change)}%低下（${metrics.activeRate.previous}%→${metrics.activeRate.current}%）。再エンゲージメント施策を検討してください`,
+        });
+      }
+
+      // Response rate insights
+      if (metrics.responseRate.current > 0 && metrics.responseRate.change > 20) {
+        alerts.push({
+          type: 'success',
+          title: '反応率が改善',
+          message: `反応率が前週比${metrics.responseRate.change}%改善（${metrics.responseRate.previous}%→${metrics.responseRate.current}%）。配信内容が効果的です`,
+        });
+      } else if (metrics.responseRate.previous > 0 && metrics.responseRate.change < -30) {
+        alerts.push({
+          type: 'warning',
+          title: '反応率が低下',
+          message: `反応率が前週比${Math.abs(metrics.responseRate.change)}%低下。配信時間帯やコンテンツの見直しを検討してください`,
+        });
+      }
+
+      // Best send time hint
+      const bestTime = await this.getBestSendTime(tenantId, 14);
+      if (bestTime.bestHours.length > 0) {
+        const top = bestTime.bestHours[0];
+        alerts.push({
+          type: 'info',
+          title: '最適な配信時間帯',
+          message: `${top.hour}時台の反応率が${top.responseRate}%で最高。この時間帯に配信すると効果的です`,
+        });
+      }
+
+      return alerts;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Alerts generation failed: ${message}`);
+      return [];
+    }
+  }
+
   async attributeFriend(friendId: string, sourceCode: string) {
     const [source] = await this.db
       .select()
