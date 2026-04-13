@@ -5,7 +5,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
 import {
   aiConfigs, aiConversations, friends, messages, stepScenarios, stepMessages,
-  aiKnowledge, coupons, segments, richMenus, tags, forms, friendTags, formResponses,
+  aiKnowledge, coupons, segments, richMenus, tags, forms, friendTags, formResponses, reservationSlots,
 } from '@line-saas/db';
 import { SEED_KNOWLEDGE } from './seed-knowledge';
 
@@ -300,26 +300,26 @@ JSON配列で返してください: ["返信1","返信2","返信3"]`;
     input: { message: string; page: string; pageData?: Record<string, unknown>; history?: { role: string; content: string }[] },
   ): Promise<{ reply: string; action?: { type: string; data: Record<string, unknown> } }> {
     const pageContextMap: Record<string, string> = {
-      '/overview': 'ダッシュボード概要ページ。KPI確認、全体状況の把握。actionは不要。',
-      '/messages': 'メッセージページ。個別チャット、一斉配信の作成・送信。→ action type: generate_message',
-      '/steps': 'ステップ配信ページ。自動配信シナリオの作成・管理。→ action type: create_scenario',
-      '/segments': 'セグメント配信ページ。属性・行動ベースでターゲットを絞った配信。→ action type: create_segment',
-      '/templates': 'テンプレートページ。メッセージテンプレート管理。→ action type: generate_message',
-      '/friends': '友だち一覧ページ。友だちの検索・詳細確認・タグ付け。→ action type: create_tags',
-      '/tags': 'タグ管理ページ。→ action type: create_tags',
-      '/rich-menus': 'リッチメニューページ。LINEトーク下部のメニュー作成。→ action type: create_rich_menu',
-      '/forms': 'フォームページ。アンケート・予約・申込フォームの作成。→ action type: create_form',
-      '/coupons': 'クーポンページ。クーポンの作成・配布・管理。→ action type: create_coupon',
-      '/ai': 'AI設定ページ。自動応答設定・ナレッジベース管理。→ action type: update_ai_config',
-      '/auto-reply': '自動応答ルールページ。→ action type: update_ai_config',
-      '/reservations': '予約管理ページ。予約枠の作成・管理。→ action type: create_reservation_slot',
-      '/analytics': '分析ページ。KPIダッシュボード。actionは不要。',
-      '/referral': '紹介プログラムページ。actionは不要。',
-      '/tutorial': 'チュートリアルページ。初期設定ウィザード。actionは不要。',
-      '/settings': '設定ページ。LINE接続・プラン管理。actionは不要。',
-      '/exit-popups': '離脱防止ポップアップページ。Webサイトの離脱防止ポップアップを作成・管理。クーポン表示やメッセージ表示で離脱を防ぐ。actionは不要。',
-      '/gacha': 'ガチャキャンペーンページ。ガチャ（くじ引き）キャンペーンの作成・景品設定・当選確率管理。actionは不要。',
-      '/agency': '代理店管理ページ。クライアント管理・マージン設定・コミッション管理。actionは不要。',
+      '/overview': 'ダッシュボード概要ページ。友だち数、メッセージ数、AIトークン使用量のKPIを確認できる。セットアップ進捗も表示。actionは不要。',
+      '/messages': 'チャットページ。友だちとの個別チャット（左に友だちリスト、右にチャット画面）と、全友だちへの一斉配信機能がある。テキスト・画像・動画・Flexメッセージに対応。→ action type: generate_message',
+      '/steps': 'ステップ配信ページ。友だち追加や特定条件をきっかけに、自動で順番にメッセージを送る自動配信シナリオを設定する。開始トリガー（友だち追加、タグ追加など）を選び、遅延時間とメッセージ内容を設定する。→ action type: create_scenario',
+      '/segments': '絞り込み配信ページ。タグ条件（AND/OR）で友だちを絞り込んで配信する。プレビューで対象人数、反応状況別の内訳、推定配信コスト（3円/通）を事前確認できる。→ action type: create_segment',
+      '/templates': 'テンプレートページ。よく使うメッセージ（あいさつ、販促、フォローアップなど）をテンプレート保存して再利用する。テキスト・画像・Flexに対応。→ action type: generate_message',
+      '/friends': '友だち一覧ページ。全友だちの一覧表示。反応状況（アクティブ/やや停滞/停滞中/休眠の自動分類）、スコア、タグ、カスタムフィールドを確認。詳細パネルでAI分析・タイムライン・タグ管理ができる。→ action type: create_tags',
+      '/tags': 'タグ管理ページ。友だちに付けるラベルの作成・色分け・削除。タグは絞り込み配信やステップ配信の条件に使用する。→ action type: create_tags',
+      '/rich-menus': 'リッチメニューページ。LINEトーク画面下部に表示されるメニューを作成。レイアウトテンプレートを選び、各ボタンにURL・メッセージ・電話などのアクションを設定する。タブグループで複数メニューの切り替えも可能。→ action type: create_rich_menu',
+      '/forms': 'フォームページ。友だちに回答してもらうWebフォーム（アンケート、申し込みなど）を作成。テキスト・選択肢・メール・電話番号などのフィールドを設定。回答時の自動タグ付けにも対応。AI最適化で改善提案も可能。→ action type: create_form',
+      '/coupons': 'クーポンページ。割引クーポン（定率/定額/無料）を作成・管理。有効期限・利用回数の制限、有効/無効の切り替えができる。→ action type: create_coupon',
+      '/ai': 'AI・自動化ページ。5つのタブがある: ①自動応答設定（AI自動応答のON/OFF、システムプロンプト）、②キーワード応答（特定キーワードに定型文で即時返答するルール設定）、③ナレッジベース（AIが参照する業務知識の追加・管理）、④AI生成ツール（メッセージ内容のAI生成）、⑤あいさつメッセージ（友だち追加時に自動送信するメッセージ。新規フォロー用・再フォロー用を個別に設定）。→ action type: update_ai_config',
+      '/auto-reply': '自動応答ルールページ。AI・自動化ページと同じ。→ action type: update_ai_config',
+      '/reservations': '予約管理ページ。3タブ構成: ①予約一覧（日付・ステータスでフィルタ、ステータス変更）、②メニュー管理（予約枠の名前・所要時間・説明を設定）、③Googleカレンダー連携。→ action type: create_reservation_slot',
+      '/analytics': '分析ページ。10タブで多角的に分析: 概要（健康指標+アラート）、日次推移、配信分析（配信別の反応率・クリック・ブロック率）、配信実績、流入経路、URL測定、成果（目標達成の追跡）、定着分析（週ごとの継続率+ブロック原因分析）、反応分析（タグ別反応度+クリック率）、配信最適化（時間帯別反応率）。actionは不要。',
+      '/referral': '紹介プログラムページ。友だちが他の人を紹介する仕組みを管理。紹介コード・報酬設定。actionは不要。',
+      '/tutorial': 'チュートリアルページ。初回セットアップの手順案内。LINE接続→あいさつメッセージ→テンプレート作成の流れ。actionは不要。',
+      '/settings': '設定ページ。4タブ: ①LINEアカウント接続（Webhook URL設定・チャネルシークレット）、②プラン・利用状況（サブスクリプション管理）、③チームメンバー（招待・権限管理）、④ブランディング（ロゴ・色設定）。actionは不要。',
+      '/exit-popups': '離脱防止ポップアップページ。Webサイトに設置する離脱防止ポップアップを作成。表示トリガー（離脱意図検知・スクロール・時間経過）を設定し、クーポンやメッセージを表示してLINE友だち追加を促す。actionは不要。',
+      '/gacha': 'ガチャキャンペーンページ。くじ引きキャンペーンの作成。景品の設定・当選確率・期間を管理。友だちのエンゲージメント向上に活用。actionは不要。',
+      '/agency': '代理店管理ページ。クライアントの一覧管理、マージン率の設定、コミッション実績の確認。actionは不要。',
     };
 
     const pageContext = pageContextMap[input.page] || 'ダッシュボード';
@@ -1149,6 +1149,24 @@ JSON形式のみで出力してください。`;
             areas: areaConfigs.map((a: any) => ({ label: a.label, actionType: a.actionType || 'message' })),
             note: 'LINE公式アカウントと同期するにはリッチメニューページから画像をアップロードしてください',
           },
+        };
+      }
+
+      case 'create_reservation_slot': {
+        const [slot] = await this.db
+          .insert(reservationSlots)
+          .values({
+            tenantId,
+            name: `🤖 ${data.name || 'AI作成メニュー'}`,
+            duration: Number(data.duration) || 60,
+            description: (data.description as string) || null,
+          })
+          .returning();
+        return {
+          success: true,
+          type: 'reservation_slot',
+          id: slot.id,
+          details: { slot },
         };
       }
 
