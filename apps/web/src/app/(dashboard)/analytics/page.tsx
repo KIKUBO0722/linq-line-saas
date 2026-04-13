@@ -19,6 +19,7 @@ import type {
   TrackedUrl, UrlClick, TrafficSource,
   HealthMetrics, AnalyticsAlert,
   BroadcastPerformance, BroadcastPerformanceDetail,
+  BlockAnalysis,
 } from '@/lib/types';
 
 // --- Analytics page local types ---
@@ -144,6 +145,7 @@ export default function AnalyticsPage() {
   const [health, setHealth] = useState<HealthMetrics | null>(null);
   const [alerts, setAlerts] = useState<AnalyticsAlert[]>([]);
   const [bcPerf, setBcPerf] = useState<BroadcastPerformance[]>([]);
+  const [blockAnalysis, setBlockAnalysis] = useState<BlockAnalysis | null>(null);
   const [bcDetail, setBcDetail] = useState<BroadcastPerformanceDetail | null>(null);
   const [expandedBc, setExpandedBc] = useState<string | null>(null);
   const [loadingBcDetail, setLoadingBcDetail] = useState(false);
@@ -182,8 +184,9 @@ export default function AnalyticsPage() {
       api.analytics.health(days).catch(track(null)),
       api.analytics.alerts().catch(track([])),
       api.analytics.broadcastPerformance(days).catch(track([])),
+      api.analytics.blockAnalysis(days).catch(track(null)),
     ])
-      .then(([s, u, d, b, ts, urls, goals, ch, k, ct, seg, bst, h, al, bp]) => {
+      .then(([s, u, d, b, ts, urls, goals, ch, k, ct, seg, bst, h, al, bp, ba]) => {
         if (failCount > 0) toast.error('一部のアナリティクスデータの読み込みに失敗しました');
         setStats(s as typeof stats);
         setUsage(u as typeof usage);
@@ -200,6 +203,7 @@ export default function AnalyticsPage() {
         setHealth(h as HealthMetrics | null);
         setAlerts(Array.isArray(al) ? (al as AnalyticsAlert[]) : []);
         setBcPerf(Array.isArray(bp) ? (bp as BroadcastPerformance[]) : []);
+        setBlockAnalysis(ba as BlockAnalysis | null);
       })
       .finally(() => setLoading(false));
   }
@@ -420,9 +424,9 @@ export default function AnalyticsPage() {
             <Target className="h-4 w-4" />
             CV
           </TabsTrigger>
-          <TabsTrigger value="cohort" className="gap-1.5" title="友だち追加した週ごとに、どれだけの人が使い続けているかを見る表です">
+          <TabsTrigger value="cohort" className="gap-1.5" title="コホートリテンションとブロック帰属分析。友だちの維持率とブロック原因を分析します">
             <Activity className="h-4 w-4" />
-            コホート
+            リテンション
           </TabsTrigger>
           <TabsTrigger value="engagement" className="gap-1.5" title="タグごとの反応率を比較して、どのグループが活発かを確認します">
             <Tags className="h-4 w-4" />
@@ -1531,6 +1535,111 @@ export default function AnalyticsPage() {
                   <Activity className="h-10 w-10 text-muted-foreground/30 mb-3" />
                   <p className="text-sm text-muted-foreground">コホートデータがまだありません</p>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* --- ブロック分析（推定）--- */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-red-500" />
+                  ブロック分析（推定）
+                </CardTitle>
+                <span className="text-xs text-muted-foreground">※ 相関に基づく推定値です</span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!blockAnalysis || blockAnalysis.summary.totalBlocks < 5 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <Zap className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                  <p className="text-sm text-muted-foreground">ブロックデータを蓄積中です（5件以上で分析が有効になります）</p>
+                </div>
+              ) : (
+                <>
+                  {/* Insights */}
+                  {blockAnalysis.insights.length > 0 && (
+                    <div className="space-y-2">
+                      {blockAnalysis.insights.map((insight, i) => (
+                        <div
+                          key={i}
+                          className={`rounded-md border-l-4 px-4 py-3 text-sm ${
+                            insight.type === 'danger'
+                              ? 'border-red-500 bg-red-50 dark:bg-red-950/20'
+                              : insight.type === 'warning'
+                                ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/20'
+                                : 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
+                          }`}
+                        >
+                          <p className="font-medium mb-0.5">{insight.title}</p>
+                          <p className="text-muted-foreground">{insight.message}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Summary row */}
+                  <div className="grid grid-cols-3 gap-4 text-center py-2">
+                    <div>
+                      <p className="text-2xl font-bold">{blockAnalysis.summary.totalBlocks}</p>
+                      <p className="text-xs text-muted-foreground">ブロック数</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">
+                        {blockAnalysis.summary.avgHoursToBlock != null
+                          ? `${blockAnalysis.summary.avgHoursToBlock}h`
+                          : '—'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">平均ブロック時間</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">
+                        {blockAnalysis.summary.avgFriendAgeDays != null
+                          ? `${blockAnalysis.summary.avgFriendAgeDays}日`
+                          : '—'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">平均友だち歴</p>
+                    </div>
+                  </div>
+
+                  {/* Broadcast block ranking table */}
+                  {blockAnalysis.broadcastBlockRanking.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">配信別ブロックランキング</h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b text-left text-muted-foreground">
+                              <th className="pb-2 font-medium">タイトル</th>
+                              <th className="pb-2 font-medium text-right whitespace-nowrap">配信日</th>
+                              <th className="pb-2 font-medium text-right whitespace-nowrap">送信数</th>
+                              <th className="pb-2 font-medium text-right whitespace-nowrap">ブロック</th>
+                              <th className="pb-2 font-medium text-right whitespace-nowrap">推定率</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {blockAnalysis.broadcastBlockRanking.map((row) => (
+                              <tr key={row.broadcastId} className="border-b last:border-0">
+                                <td className="py-2 max-w-[200px] truncate">{row.title || '無題'}</td>
+                                <td className="py-2 text-right text-muted-foreground whitespace-nowrap">
+                                  {row.sentAt ? new Date(row.sentAt).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' }) : '—'}
+                                </td>
+                                <td className="py-2 text-right">{row.recipientCount}</td>
+                                <td className="py-2 text-right font-medium text-red-600">{row.blockCount}</td>
+                                <td className="py-2 text-right">
+                                  <span className={`font-medium ${row.blockRate > 5 ? 'text-red-600' : row.blockRate > 2 ? 'text-amber-600' : ''}`}>
+                                    {row.blockRate}%
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

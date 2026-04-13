@@ -1,7 +1,7 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { eq, and, gte, lte, desc, sql, count } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
-import { friends, messages, webhookEvents, analyticsEvents, lineAccounts, trafficSources, trackedUrls, urlClicks, tags, friendTags, broadcasts, broadcastStats } from '@line-saas/db';
+import { friends, messages, webhookEvents, analyticsEvents, lineAccounts, trafficSources, trackedUrls, urlClicks, tags, friendTags, broadcasts, broadcastStats, blockEvents } from '@line-saas/db';
 import { LineService } from '../line/line.service';
 
 /** Raw row shape from cohort analysis SQL query */
@@ -845,6 +845,41 @@ export class AnalyticsService {
         });
       }
 
+      // Block attribution alert — 直近7日で高ブロック率の配信を具体名付きで警告
+      try {
+        const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
+        const blockAlertRows = await this.db.execute(sql`
+          SELECT
+            b.title,
+            COUNT(*)::int AS block_count,
+            b.recipient_count,
+            CASE WHEN b.recipient_count > 0
+              THEN ROUND(COUNT(*)::numeric / b.recipient_count * 100, 1)
+              ELSE 0
+            END AS block_rate
+          FROM block_events be
+          JOIN broadcasts b ON b.id = be.last_broadcast_id
+          WHERE be.tenant_id = ${tenantId}
+            AND be.blocked_at >= ${sevenDaysAgo}
+            AND be.last_broadcast_id IS NOT NULL
+          GROUP BY be.last_broadcast_id, b.title, b.recipient_count
+          HAVING COUNT(*) >= 2
+          ORDER BY block_rate DESC
+          LIMIT 1
+        `) as unknown as Array<{ title: string | null; block_count: number; recipient_count: number; block_rate: string }>;
+
+        const topBlock = blockAlertRows[0];
+        if (topBlock && Number(topBlock.block_rate) > 5) {
+          alerts.push({
+            type: 'warning',
+            title: 'ブロック率が高い配信あり',
+            message: `「${topBlock.title || '無題'}」のブロック率が${topBlock.block_rate}%（推定）。配信内容の見直しを推奨します`,
+          });
+        }
+      } catch {
+        // block_events テーブル未作成の場合はスキップ
+      }
+
       return alerts;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -1089,5 +1124,224 @@ export class AnalyticsService {
       .update(trafficSources)
       .set({ friendCount: sql`${trafficSources.friendCount} + 1` })
       .where(eq(trafficSources.id, source.id));
+  }
+
+  /**
+   * ブロック帰属分析
+   * insights: パターン検知→改善提案（競合にない独自価値）
+   * broadcastBlockRanking: 配信別ブロック数TOP10
+   */
+  async getBlockAnalysis(tenantId: string, days: number = 30) {
+    try {
+      const since = new Date(Date.now() - days * 86400000);
+      const previousSince = new Date(Date.now() - days * 2 * 86400000);
+
+      // --- summary ---
+      const summaryRows = await this.db.execute(sql`
+        SELECT
+          COUNT(*)::int AS total_blocks,
+          ROUND(AVG(hours_since_last_message)::numeric, 1) AS avg_hours,
+          ROUND(AVG(friend_age_days)::numeric, 0) AS avg_age_days
+        FROM block_events
+        WHERE tenant_id = ${tenantId} AND blocked_at >= ${since}
+      `) as unknown as Array<{ total_blocks: number; avg_hours: string | null; avg_age_days: string | null }>;
+      const summaryRow = summaryRows[0];
+      const totalBlocks = Number(summaryRow?.total_blocks) || 0;
+      const avgHoursToBlock = summaryRow?.avg_hours != null ? Number(summaryRow.avg_hours) : null;
+      const avgFriendAgeDays = summaryRow?.avg_age_days != null ? Number(summaryRow.avg_age_days) : null;
+
+      // --- broadcastBlockRanking ---
+      const rankingRows = await this.db.execute(sql`
+        SELECT
+          be.last_broadcast_id AS broadcast_id,
+          b.title,
+          b.sent_at,
+          b.recipient_count,
+          COUNT(*)::int AS block_count,
+          CASE WHEN b.recipient_count > 0
+            THEN ROUND(COUNT(*)::numeric / b.recipient_count * 100, 1)
+            ELSE 0
+          END AS block_rate
+        FROM block_events be
+        JOIN broadcasts b ON b.id = be.last_broadcast_id
+        WHERE be.tenant_id = ${tenantId}
+          AND be.blocked_at >= ${since}
+          AND be.last_broadcast_id IS NOT NULL
+        GROUP BY be.last_broadcast_id, b.title, b.sent_at, b.recipient_count
+        ORDER BY block_count DESC
+        LIMIT 10
+      `) as unknown as Array<{
+        broadcast_id: string; title: string | null; sent_at: string;
+        recipient_count: number; block_count: number; block_rate: string;
+      }>;
+
+      const broadcastBlockRanking = rankingRows.map((r) => ({
+        broadcastId: r.broadcast_id,
+        title: r.title,
+        sentAt: r.sent_at,
+        recipientCount: Number(r.recipient_count),
+        blockCount: Number(r.block_count),
+        blockRate: Number(r.block_rate),
+      }));
+
+      // --- insights (パターン検知→改善提案) ---
+      const insights: Array<{ type: 'danger' | 'warning' | 'info'; title: string; message: string }> = [];
+
+      if (totalBlocks >= 5) {
+        // Insight 1: 高ブロック率の配信を特定
+        const topOffender = broadcastBlockRanking.find((r) => r.blockRate > 5);
+        if (topOffender) {
+          insights.push({
+            type: 'danger',
+            title: '高ブロック率の配信を検出',
+            message: `「${topOffender.title || '無題'}」のブロック率が${topOffender.blockRate}%（推定）。配信内容を見直してください`,
+          });
+        }
+
+        // Insight 2: 新規友だちの脆弱性
+        const newFriendBlocks = await this.db.execute(sql`
+          SELECT COUNT(*)::int AS cnt FROM block_events
+          WHERE tenant_id = ${tenantId} AND blocked_at >= ${since}
+            AND friend_age_days IS NOT NULL AND friend_age_days <= 7
+        `) as unknown as Array<{ cnt: number }>;
+        const newFriendPct = totalBlocks > 0 ? Math.round(Number(newFriendBlocks[0]?.cnt || 0) / totalBlocks * 100) : 0;
+        if (newFriendPct > 40) {
+          insights.push({
+            type: 'warning',
+            title: '新規友だちのブロックが多い',
+            message: `追加7日以内の友だちのブロックが${newFriendPct}%。初期メッセージやあいさつの改善を推奨します`,
+          });
+        }
+
+        // Insight 3: 即時ブロック傾向
+        const quickBlocks = await this.db.execute(sql`
+          SELECT COUNT(*)::int AS cnt FROM block_events
+          WHERE tenant_id = ${tenantId} AND blocked_at >= ${since}
+            AND hours_since_last_message IS NOT NULL AND hours_since_last_message <= 1
+        `) as unknown as Array<{ cnt: number }>;
+        const quickPct = totalBlocks > 0 ? Math.round(Number(quickBlocks[0]?.cnt || 0) / totalBlocks * 100) : 0;
+        if (quickPct > 50) {
+          insights.push({
+            type: 'warning',
+            title: '配信直後のブロックが多い',
+            message: `配信後1時間以内のブロックが${quickPct}%。配信頻度が高すぎる可能性があります`,
+          });
+        }
+
+        // Insight 4: ブロック増加トレンド
+        const prevBlocks = await this.db.execute(sql`
+          SELECT COUNT(*)::int AS cnt FROM block_events
+          WHERE tenant_id = ${tenantId}
+            AND blocked_at >= ${previousSince} AND blocked_at < ${since}
+        `) as unknown as Array<{ cnt: number }>;
+        const prevCount = Number(prevBlocks[0]?.cnt) || 0;
+        if (prevCount > 0) {
+          const changeRate = Math.round((totalBlocks - prevCount) / prevCount * 100);
+          if (changeRate > 30) {
+            insights.push({
+              type: 'danger',
+              title: 'ブロック数が増加傾向',
+              message: `ブロック数が前期比${changeRate}%増加（${prevCount}→${totalBlocks}件）。配信戦略の見直しを検討してください`,
+            });
+          }
+        }
+
+        // Insight 5: 長期友だちの離脱
+        const longTermBlocks = await this.db.execute(sql`
+          SELECT COUNT(*)::int AS cnt FROM block_events
+          WHERE tenant_id = ${tenantId} AND blocked_at >= ${since}
+            AND friend_age_days IS NOT NULL AND friend_age_days > 90
+        `) as unknown as Array<{ cnt: number }>;
+        const longTermPct = totalBlocks > 0 ? Math.round(Number(longTermBlocks[0]?.cnt || 0) / totalBlocks * 100) : 0;
+        if (longTermPct > 30) {
+          insights.push({
+            type: 'info',
+            title: '長期友だちの離脱が目立つ',
+            message: `90日超の友だちのブロックが${longTermPct}%。コンテンツのマンネリ化対策を検討してください`,
+          });
+        }
+      }
+
+      return {
+        summary: { totalBlocks, avgHoursToBlock, avgFriendAgeDays },
+        insights,
+        broadcastBlockRanking,
+      };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`getBlockAnalysis failed: ${message}`);
+      return {
+        summary: { totalBlocks: 0, avgHoursToBlock: null, avgFriendAgeDays: null },
+        insights: [],
+        broadcastBlockRanking: [],
+      };
+    }
+  }
+
+  /**
+   * ブロック時にコンテキスト情報を記録する
+   * 失敗しても例外を投げない（markUnfollowedの成功を妨げない）
+   */
+  async recordBlockEvent(tenantId: string, lineAccountId: string, lineUserId: string) {
+    try {
+      const now = new Date();
+
+      // 1. friend取得
+      const [friend] = await this.db
+        .select({ id: friends.id, followedAt: friends.followedAt })
+        .from(friends)
+        .where(and(eq(friends.lineAccountId, lineAccountId), eq(friends.lineUserId, lineUserId)))
+        .limit(1);
+
+      if (!friend) {
+        this.logger.warn(`recordBlockEvent: friend not found for lineUserId=${lineUserId}`);
+        return;
+      }
+
+      // 2. 直近の配信メッセージ検索
+      const [lastBroadcastMsg] = await this.db
+        .select({ broadcastId: messages.broadcastId, sentAt: messages.sentAt })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.friendId, friend.id),
+            eq(messages.direction, 'outbound'),
+            sql`${messages.broadcastId} IS NOT NULL`,
+          ),
+        )
+        .orderBy(desc(messages.sentAt))
+        .limit(1);
+
+      // 3. 累計受信数
+      const [msgCount] = await this.db
+        .select({ total: count() })
+        .from(messages)
+        .where(and(eq(messages.friendId, friend.id), eq(messages.direction, 'outbound')));
+
+      // 4. 計算
+      const hoursSinceLastMessage = lastBroadcastMsg?.sentAt
+        ? Math.round((now.getTime() - new Date(lastBroadcastMsg.sentAt).getTime()) / 3600000 * 100) / 100
+        : null;
+
+      const friendAgeDays = friend.followedAt
+        ? Math.floor((now.getTime() - new Date(friend.followedAt).getTime()) / 86400000)
+        : null;
+
+      // 5. INSERT
+      await this.db.insert(blockEvents).values({
+        tenantId,
+        friendId: friend.id,
+        lineUserId,
+        lastBroadcastId: lastBroadcastMsg?.broadcastId ?? null,
+        hoursSinceLastMessage: hoursSinceLastMessage != null ? String(hoursSinceLastMessage) : null,
+        friendAgeDays,
+        totalMessagesReceived: msgCount?.total ?? 0,
+        blockedAt: now,
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`recordBlockEvent failed: ${message}`);
+      // 意図的にthrowしない — markUnfollowedの成功を優先
+    }
   }
 }

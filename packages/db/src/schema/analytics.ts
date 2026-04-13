@@ -109,3 +109,25 @@ export const trafficSources = pgTable('traffic_sources', {
   friendCount: integer('friend_count').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+// Block event context — captures attribution data when a friend unfollows
+export const blockEvents = pgTable(
+  'block_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    friendId: uuid('friend_id').references(() => friends.id, { onDelete: 'set null' }),
+    lineUserId: varchar('line_user_id', { length: 255 }).notNull(),
+    lastBroadcastId: uuid('last_broadcast_id').references(() => broadcasts.id, { onDelete: 'set null' }),
+    hoursSinceLastMessage: numeric('hours_since_last_message', { precision: 8, scale: 2 }),
+    friendAgeDays: integer('friend_age_days'),
+    totalMessagesReceived: integer('total_messages_received').notNull().default(0),
+    blockedAt: timestamp('blocked_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('idx_block_events_tenant').on(table.tenantId, table.blockedAt),
+  ],
+);

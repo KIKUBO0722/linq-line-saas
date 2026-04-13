@@ -434,6 +434,32 @@ export interface BroadcastPerformanceDetail {
   recipients: BroadcastRecipientAction[];
 }
 
+// --- Block Analysis ---
+export interface BlockInsight {
+  type: 'danger' | 'warning' | 'info';
+  title: string;
+  message: string;
+}
+
+export interface BlockAnalysisBroadcast {
+  broadcastId: string;
+  title: string | null;
+  sentAt: string;
+  recipientCount: number;
+  blockCount: number;
+  blockRate: number;
+}
+
+export interface BlockAnalysis {
+  summary: {
+    totalBlocks: number;
+    avgHoursToBlock: number | null;
+    avgFriendAgeDays: number | null;
+  };
+  insights: BlockInsight[];
+  broadcastBlockRanking: BlockAnalysisBroadcast[];
+}
+
 // --- Referral ---
 export interface ReferralProgram {
   id: string;

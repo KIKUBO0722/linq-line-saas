@@ -88,6 +88,12 @@ referral, ai-knowledge
 - **連携ルール**: 配信送信時は必ずbroadcastsにレコード作成→そのIDをmessages.broadcastIdにセット（segments.service.ts, messages.service.ts両方）
 - **配信別分析API**: `GET /analytics/broadcast-performance?days=N` — 配信一覧+反応率・クリック数・ブロック率。`GET /analytics/broadcast-performance/:id` — 受信者別アクション詳細
 - **反応率の定義**: URLクリック(高信頼) + 3h以内の返信(中信頼)のユニーク数 / 送信数。UIに「推定値」注記を表示
+- **block_events テーブル**: ブロック時のコンテキスト記録（帰属配信、最終メッセージからの時間、友だち歴、累計受信数）。相関データであり因果ではない
+- **連携ルール**: unfollow webhook受信時、recordBlockEvent（analytics.service.ts）→ markUnfollowed（friends.service.ts）の順で実行。recordBlockEventは失敗してもthrowしない
+- **ブロック分析API**: `GET /analytics/block-analysis?days=N` — summary（集計）+ insights（パターン検知→改善提案）+ broadcastBlockRanking（配信別TOP10）
+- **insightsの閾値**: blockRate>5%で高ブロック配信警告、7日以内友だち>40%で新規脆弱性、1h以内ブロック>50%で頻度警告、前期比>30%増で増加トレンド、90日超友だち>30%で長期離脱
+- **alerts統合**: getAlerts()にblock_eventsからの配信別ブロック警告を追加（blockRate>5%の配信を具体名付きで表示）。block_eventsテーブル未作成時はtry/catchでスキップ
+- **ブロック分析UI**: リテンションタブ（旧コホート）内。totalBlocks<5件は「データ蓄積中」表示。全数値に「推定」注記
 
 ## Current Priorities
 - Fix AI Copilot response failures across all pages

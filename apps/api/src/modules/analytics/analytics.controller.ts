@@ -118,6 +118,11 @@ export class AnalyticsController {
     return this.analyticsService.getBroadcastPerformanceList(tenantId, days ? parseInt(days, 10) : 30);
   }
 
+  @Get('block-analysis')
+  async blockAnalysis(@TenantId() tenantId: string, @Query('days') days?: string) {
+    return this.analyticsService.getBlockAnalysis(tenantId, days ? parseInt(days, 10) : 30);
+  }
+
   @Get('broadcast-performance/:id')
   async broadcastPerformanceDetail(@TenantId() tenantId: string, @Param('id') id: string) {
     return this.analyticsService.getBroadcastPerformanceDetail(tenantId, id);
