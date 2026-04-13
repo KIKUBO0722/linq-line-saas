@@ -86,6 +86,8 @@ referral, ai-knowledge
 - **broadcasts テーブル**: 全配信タイプ（segment/all/scheduled）を統一管理。messages.broadcast_idで紐付け。配信別の効果測定の基盤
 - **broadcast_stats テーブル**: 配信別の集計キャッシュ（反応数・クリック数・ブロック数）。非同期で更新
 - **連携ルール**: 配信送信時は必ずbroadcastsにレコード作成→そのIDをmessages.broadcastIdにセット（segments.service.ts, messages.service.ts両方）
+- **配信別分析API**: `GET /analytics/broadcast-performance?days=N` — 配信一覧+反応率・クリック数・ブロック率。`GET /analytics/broadcast-performance/:id` — 受信者別アクション詳細
+- **反応率の定義**: URLクリック(高信頼) + 3h以内の返信(中信頼)のユニーク数 / 送信数。UIに「推定値」注記を表示
 
 ## Current Priorities
 - Fix AI Copilot response failures across all pages

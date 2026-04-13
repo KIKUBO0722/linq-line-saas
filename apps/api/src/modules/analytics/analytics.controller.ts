@@ -113,6 +113,16 @@ export class AnalyticsController {
     return this.analyticsService.getAlerts(tenantId);
   }
 
+  @Get('broadcast-performance')
+  async broadcastPerformance(@TenantId() tenantId: string, @Query('days') days?: string) {
+    return this.analyticsService.getBroadcastPerformanceList(tenantId, days ? parseInt(days, 10) : 30);
+  }
+
+  @Get('broadcast-performance/:id')
+  async broadcastPerformanceDetail(@TenantId() tenantId: string, @Param('id') id: string) {
+    return this.analyticsService.getBroadcastPerformanceDetail(tenantId, id);
+  }
+
   @Get('traffic-sources')
   async listTrafficSources(@TenantId() tenantId: string) {
     return this.analyticsService.getSourceStats(tenantId);

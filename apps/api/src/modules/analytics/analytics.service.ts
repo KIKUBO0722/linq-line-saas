@@ -1,7 +1,7 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { eq, and, gte, lte, desc, sql, count } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../../database/database.module';
-import { friends, messages, webhookEvents, analyticsEvents, lineAccounts, trafficSources, trackedUrls, urlClicks, tags, friendTags } from '@line-saas/db';
+import { friends, messages, webhookEvents, analyticsEvents, lineAccounts, trafficSources, trackedUrls, urlClicks, tags, friendTags, broadcasts, broadcastStats } from '@line-saas/db';
 import { LineService } from '../line/line.service';
 
 /** Raw row shape from cohort analysis SQL query */
@@ -851,6 +851,225 @@ export class AnalyticsService {
       this.logger.error(`Alerts generation failed: ${message}`);
       return [];
     }
+  }
+
+  /**
+   * 配信別パフォーマンス一覧
+   * 各配信の送信数・反応率・クリック数・ブロック率を集計
+   */
+  async getBroadcastPerformanceList(tenantId: string, days: number = 30) {
+    try {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+
+      // Get all broadcasts in period
+      const broadcastList = await this.db
+        .select()
+        .from(broadcasts)
+        .where(and(
+          eq(broadcasts.tenantId, tenantId),
+          gte(broadcasts.sentAt, startDate),
+        ))
+        .orderBy(desc(broadcasts.sentAt))
+        .limit(50);
+
+      if (broadcastList.length === 0) return [];
+
+      const results = [];
+      for (const bc of broadcastList) {
+        // Check cached stats first
+        const [cached] = await this.db
+          .select()
+          .from(broadcastStats)
+          .where(eq(broadcastStats.broadcastId, bc.id));
+
+        if (cached && cached.computedAt && (Date.now() - new Date(cached.computedAt).getTime()) < 3600000) {
+          results.push({
+            broadcastId: bc.id,
+            type: bc.type,
+            title: bc.title,
+            contentPreview: bc.contentPreview,
+            messageType: bc.messageType,
+            sentAt: bc.sentAt,
+            recipientCount: cached.recipientCount,
+            responseCount: cached.responseCount,
+            engagementRate: Number(cached.engagementRate),
+            clickCount: cached.clickCount,
+            clickerCount: cached.clickerCount,
+            blockCount: cached.blockCount,
+            blockRate: Number(cached.blockRate),
+          });
+          continue;
+        }
+
+        // Compute fresh stats
+        const stats = await this.computeBroadcastStats(tenantId, bc.id, bc.sentAt);
+        results.push({
+          broadcastId: bc.id,
+          type: bc.type,
+          title: bc.title,
+          contentPreview: bc.contentPreview,
+          messageType: bc.messageType,
+          sentAt: bc.sentAt,
+          ...stats,
+        });
+      }
+
+      return results;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Broadcast performance list failed: ${message}`);
+      return [];
+    }
+  }
+
+  /**
+   * 特定配信の受信者別アクション詳細
+   */
+  async getBroadcastPerformanceDetail(tenantId: string, broadcastId: string) {
+    try {
+      const [bc] = await this.db
+        .select()
+        .from(broadcasts)
+        .where(and(eq(broadcasts.id, broadcastId), eq(broadcasts.tenantId, tenantId)));
+
+      if (!bc) return null;
+
+      const stats = await this.computeBroadcastStats(tenantId, broadcastId, bc.sentAt);
+
+      // Get recipients with their actions
+      const recipientMessages = await this.db
+        .select({
+          friendId: messages.friendId,
+          displayName: friends.displayName,
+          isFollowing: friends.isFollowing,
+          unfollowedAt: friends.unfollowedAt,
+        })
+        .from(messages)
+        .leftJoin(friends, eq(messages.friendId, friends.id))
+        .where(and(
+          eq(messages.broadcastId, broadcastId),
+          eq(messages.direction, 'outbound'),
+        ))
+        .limit(200);
+
+      const sentAt = bc.sentAt ? new Date(bc.sentAt) : new Date(bc.createdAt);
+      const responseWindow = new Date(sentAt.getTime() + 3 * 60 * 60 * 1000); // 3h
+      const blockWindow = new Date(sentAt.getTime() + 48 * 60 * 60 * 1000);
+
+      const recipients = [];
+      for (const r of recipientMessages) {
+        if (!r.friendId) continue;
+
+        // Check if responded within 3h
+        const [response] = await this.db
+          .select({ id: messages.id, createdAt: messages.createdAt })
+          .from(messages)
+          .where(and(
+            eq(messages.friendId, r.friendId),
+            eq(messages.tenantId, tenantId),
+            eq(messages.direction, 'inbound'),
+            gte(messages.createdAt, sentAt),
+            lte(messages.createdAt, responseWindow),
+          ))
+          .limit(1);
+
+        // Check if blocked within 48h
+        const blocked = r.unfollowedAt && !r.isFollowing
+          && new Date(r.unfollowedAt) >= sentAt
+          && new Date(r.unfollowedAt) <= blockWindow;
+
+        recipients.push({
+          friendId: r.friendId,
+          displayName: r.displayName,
+          responded: !!response,
+          respondedAt: response?.createdAt || null,
+          blocked: !!blocked,
+          blockedAt: blocked ? r.unfollowedAt : null,
+        });
+      }
+
+      return {
+        broadcast: { broadcastId: bc.id, type: bc.type, title: bc.title, contentPreview: bc.contentPreview, messageType: bc.messageType, sentAt: bc.sentAt, ...stats },
+        recipients,
+      };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Broadcast performance detail failed: ${message}`);
+      return null;
+    }
+  }
+
+  /**
+   * 配信の集計を計算してキャッシュに保存
+   */
+  private async computeBroadcastStats(tenantId: string, broadcastId: string, sentAt: Date | null) {
+    const bcSentAt = sentAt ? new Date(sentAt) : new Date();
+    const responseWindow = new Date(bcSentAt.getTime() + 3 * 60 * 60 * 1000);
+    const blockWindow = new Date(bcSentAt.getTime() + 48 * 60 * 60 * 1000);
+
+    // Recipient count
+    const [recipientResult] = await this.db
+      .select({ total: count() })
+      .from(messages)
+      .where(and(eq(messages.broadcastId, broadcastId), eq(messages.direction, 'outbound')));
+    const recipientCount = recipientResult?.total || 0;
+
+    // Responses: distinct friends who sent inbound within 3h
+    const responseResult = await this.db
+      .select({ total: sql<number>`COUNT(DISTINCT ${messages.friendId})` })
+      .from(messages)
+      .where(and(
+        eq(messages.tenantId, tenantId),
+        eq(messages.direction, 'inbound'),
+        gte(messages.createdAt, bcSentAt),
+        lte(messages.createdAt, responseWindow),
+        sql`${messages.friendId} IN (SELECT friend_id FROM messages WHERE broadcast_id = ${broadcastId} AND direction = 'outbound')`,
+      ));
+    const responseCount = Number(responseResult[0]?.total) || 0;
+
+    // URL clicks linked to this broadcast's messages
+    const clickResult = await this.db.execute(sql`
+      SELECT
+        COALESCE(SUM(tu.click_count), 0) as total_clicks,
+        COUNT(DISTINCT uc.friend_id) as unique_clickers
+      FROM tracked_urls tu
+      LEFT JOIN url_clicks uc ON uc.tracked_url_id = tu.id
+      WHERE tu.message_id IN (
+        SELECT id FROM messages WHERE broadcast_id = ${broadcastId} AND direction = 'outbound'
+      )
+    `);
+    const clickRow = (clickResult as unknown as Array<{ total_clicks: string; unique_clickers: string }>)[0];
+    const clickCount = Number(clickRow?.total_clicks) || 0;
+    const clickerCount = Number(clickRow?.unique_clickers) || 0;
+
+    // Blocks: recipients who unfollowed within 48h
+    const blockResult = await this.db.execute(sql`
+      SELECT COUNT(*) as block_count FROM friends f
+      WHERE f.id IN (SELECT friend_id FROM messages WHERE broadcast_id = ${broadcastId} AND direction = 'outbound')
+        AND f.is_following = false
+        AND f.unfollowed_at >= ${bcSentAt}
+        AND f.unfollowed_at <= ${blockWindow}
+    `);
+    const blockCount = Number((blockResult as unknown as Array<{ block_count: string }>)[0]?.block_count) || 0;
+
+    const engagementRate = recipientCount > 0 ? Math.round((responseCount + clickerCount) / recipientCount * 10000) / 100 : 0;
+    const blockRate = recipientCount > 0 ? Math.round(blockCount / recipientCount * 10000) / 100 : 0;
+
+    // Upsert cache
+    try {
+      await this.db
+        .insert(broadcastStats)
+        .values({ broadcastId, recipientCount, responseCount, clickCount, clickerCount, blockCount, engagementRate: String(engagementRate), blockRate: String(blockRate), computedAt: new Date() })
+        .onConflictDoUpdate({
+          target: broadcastStats.broadcastId,
+          set: { recipientCount, responseCount, clickCount, clickerCount, blockCount, engagementRate: String(engagementRate), blockRate: String(blockRate), computedAt: new Date() },
+        });
+    } catch {
+      // Cache write failure is non-critical
+    }
+
+    return { recipientCount, responseCount, engagementRate, clickCount, clickerCount, blockCount, blockRate };
   }
 
   async attributeFriend(friendId: string, sourceCode: string) {

@@ -5,6 +5,8 @@ import type {
   AnalyticsOverview,
   BestSendTimeData,
   BroadcastAnalytics,
+  BroadcastPerformance,
+  BroadcastPerformanceDetail,
   CalendarIntegration,
   CohortData,
   ConversionEvent,
@@ -176,6 +178,8 @@ export const api = {
     kpi: () => fetchApi<KpiData>('/api/v1/analytics/kpi'),
     health: (days?: number) => fetchApi<HealthMetrics>(`/api/v1/analytics/health${days ? `?days=${days}` : ''}`),
     alerts: () => fetchApi<AnalyticsAlert[]>('/api/v1/analytics/alerts'),
+    broadcastPerformance: (days?: number) => fetchApi<BroadcastPerformance[]>(`/api/v1/analytics/broadcast-performance${days ? `?days=${days}` : ''}`),
+    broadcastPerformanceDetail: (id: string) => fetchApi<BroadcastPerformanceDetail>(`/api/v1/analytics/broadcast-performance/${id}`),
   },
   tags: {
     list: () => fetchApi<Tag[]>('/api/v1/tags'),

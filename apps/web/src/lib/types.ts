@@ -403,6 +403,37 @@ export interface AnalyticsAlert {
   message: string;
 }
 
+// --- Broadcast Performance ---
+export interface BroadcastPerformance {
+  broadcastId: string;
+  type: string;
+  title: string | null;
+  contentPreview: string | null;
+  messageType: string | null;
+  sentAt: string | null;
+  recipientCount: number;
+  responseCount: number;
+  engagementRate: number;
+  clickCount: number;
+  clickerCount: number;
+  blockCount: number;
+  blockRate: number;
+}
+
+export interface BroadcastRecipientAction {
+  friendId: string;
+  displayName: string | null;
+  responded: boolean;
+  respondedAt: string | null;
+  blocked: boolean;
+  blockedAt: string | null;
+}
+
+export interface BroadcastPerformanceDetail {
+  broadcast: BroadcastPerformance;
+  recipients: BroadcastRecipientAction[];
+}
+
 // --- Referral ---
 export interface ReferralProgram {
   id: string;

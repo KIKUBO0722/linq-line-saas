@@ -2,7 +2,7 @@
 
 import { toast } from 'sonner';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   BarChart3, Users, MessageSquare, ArrowUpRight, ArrowDownRight,
   Zap, TrendingUp, Radio, Calendar, RefreshCw, Eye, Route, Plus, Trash2, QrCode, Copy,
@@ -18,6 +18,7 @@ import type {
   ConversionGoalType, ConversionGoal, ConversionEvent,
   TrackedUrl, UrlClick, TrafficSource,
   HealthMetrics, AnalyticsAlert,
+  BroadcastPerformance, BroadcastPerformanceDetail,
 } from '@/lib/types';
 
 // --- Analytics page local types ---
@@ -142,6 +143,10 @@ export default function AnalyticsPage() {
   } | null>(null);
   const [health, setHealth] = useState<HealthMetrics | null>(null);
   const [alerts, setAlerts] = useState<AnalyticsAlert[]>([]);
+  const [bcPerf, setBcPerf] = useState<BroadcastPerformance[]>([]);
+  const [bcDetail, setBcDetail] = useState<BroadcastPerformanceDetail | null>(null);
+  const [expandedBc, setExpandedBc] = useState<string | null>(null);
+  const [loadingBcDetail, setLoadingBcDetail] = useState(false);
   const [loading, setLoading] = useState(true);
   const [periodDays, setPeriodDays] = useState(14);
   const [deliveryDate, setDeliveryDate] = useState(() => {
@@ -176,8 +181,9 @@ export default function AnalyticsPage() {
       api.analytics.bestSendTime(days).catch(track(null)),
       api.analytics.health(days).catch(track(null)),
       api.analytics.alerts().catch(track([])),
+      api.analytics.broadcastPerformance(days).catch(track([])),
     ])
-      .then(([s, u, d, b, ts, urls, goals, ch, k, ct, seg, bst, h, al]) => {
+      .then(([s, u, d, b, ts, urls, goals, ch, k, ct, seg, bst, h, al, bp]) => {
         if (failCount > 0) toast.error('一部のアナリティクスデータの読み込みに失敗しました');
         setStats(s as typeof stats);
         setUsage(u as typeof usage);
@@ -193,6 +199,7 @@ export default function AnalyticsPage() {
         setBestSendTime(bst as typeof bestSendTime);
         setHealth(h as HealthMetrics | null);
         setAlerts(Array.isArray(al) ? (al as AnalyticsAlert[]) : []);
+        setBcPerf(Array.isArray(bp) ? (bp as BroadcastPerformance[]) : []);
       })
       .finally(() => setLoading(false));
   }
@@ -395,7 +402,7 @@ export default function AnalyticsPage() {
           </TabsTrigger>
           <TabsTrigger value="broadcasts" className="gap-1.5">
             <Radio className="h-4 w-4" />
-            配信履歴
+            配信分析
           </TabsTrigger>
           <TabsTrigger value="delivery" className="gap-1.5" title="LINE公式アカウントの配信到達数をAPIの種類別に確認します">
             <Eye className="h-4 w-4" />
@@ -581,90 +588,160 @@ export default function AnalyticsPage() {
           )}
         </TabsContent>
 
-        {/* Broadcasts tab */}
-        <TabsContent value="broadcasts" className="mt-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base">配信履歴</CardTitle>
-                  <CardDescription>一斉配信・予約配信の送信履歴</CardDescription>
-                </div>
-                {broadcasts.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={async () => {
-                      try {
-                        const API_BASE = getApiUrl();
-                        const res = await fetch(`${API_BASE}/api/v1/analytics/broadcasts/export/csv`, { credentials: 'include' });
-                        if (!res.ok) throw new Error();
-                        const blob = await res.blob();
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `broadcasts_${new Date().toISOString().slice(0, 10)}.csv`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                        toast.success('CSVをダウンロードしました');
-                      } catch {
-                        toast.error('CSVエクスポートに失敗しました');
-                      }
-                    }}
-                  >
-                    <Download className="h-4 w-4" />
-                    CSV
-                  </Button>
-                )}
+        {/* Broadcasts Performance tab */}
+        <TabsContent value="broadcasts" className="mt-4 space-y-4">
+          {/* KPI summary bar */}
+          {bcPerf.length > 0 && (
+            <div className="flex items-center gap-5 px-4 py-2.5 rounded-lg border bg-background overflow-x-auto">
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Radio className="h-4 w-4 text-blue-500 shrink-0" />
+                <span className="text-xs text-muted-foreground whitespace-nowrap">総配信数</span>
+                <span className="text-sm font-bold whitespace-nowrap">{bcPerf.length}</span>
               </div>
-            </CardHeader>
-            <CardContent>
-              {broadcasts.length === 0 ? (
+              <div className="h-4 w-px bg-border shrink-0" />
+              <div className="flex items-center gap-1.5 shrink-0">
+                <MessageSquare className="h-4 w-4 text-green-500 shrink-0" />
+                <span className="text-xs text-muted-foreground whitespace-nowrap">平均反応率</span>
+                <span className="text-sm font-bold whitespace-nowrap">
+                  {bcPerf.length > 0 ? (bcPerf.reduce((s, b) => s + (b.engagementRate || 0), 0) / bcPerf.length).toFixed(1) : 0}%
+                </span>
+              </div>
+              <div className="h-4 w-px bg-border shrink-0" />
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Zap className="h-4 w-4 text-red-500 shrink-0" />
+                <span className="text-xs text-muted-foreground whitespace-nowrap">平均ブロック率</span>
+                <span className="text-sm font-bold whitespace-nowrap">
+                  {bcPerf.length > 0 ? (bcPerf.reduce((s, b) => s + (b.blockRate || 0), 0) / bcPerf.length).toFixed(2) : 0}%
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className="text-xs text-muted-foreground px-1">
+            反応率は推定値です（URLクリック + 3時間以内の返信をカウント）
+          </div>
+
+          {bcPerf.length === 0 && broadcasts.length === 0 ? (
+            <Card>
+              <CardContent className="py-12">
                 <EmptyState
                   illustration="messages"
-                  title="配信履歴がありません"
-                  description="メッセージページから一斉配信を送信しましょう"
+                  title="配信データがありません"
+                  description="メッセージページから配信を送信すると、ここに効果測定が表示されます"
                 />
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>配信内容</TableHead>
-                      <TableHead>ステータス</TableHead>
-                      <TableHead>配信日時</TableHead>
-                      <TableHead>作成日時</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {broadcasts.map((b) => {
-                      const text = b.content?.text || JSON.stringify(b.content);
-                      return (
-                        <TableRow key={b.id}>
-                          <TableCell>
-                            <p className="text-sm max-w-[300px] truncate">{text}</p>
-                          </TableCell>
-                          <TableCell>
-                            <StatusBadge status={b.status} />
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {b.sentAt
-                              ? formatDateTime(b.sentAt)
-                              : b.scheduledAt
-                                ? `予約: ${formatDateTime(b.scheduledAt)}`
-                                : '-'}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {formatDateTime(b.createdAt)}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="rounded-lg border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[200px]">配信内容</TableHead>
+                    <TableHead className="text-center">種別</TableHead>
+                    <TableHead className="text-right">送信数</TableHead>
+                    <TableHead className="text-right">反応率</TableHead>
+                    <TableHead className="text-right">クリック</TableHead>
+                    <TableHead className="text-right">ブロック率</TableHead>
+                    <TableHead className="text-right">配信日時</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {/* New broadcast performance data */}
+                  {bcPerf.map((b) => (
+                    <React.Fragment key={b.broadcastId}>
+                      <TableRow
+                        className={`cursor-pointer hover:bg-muted/50 ${(b.blockRate || 0) > 2 ? 'bg-red-50 dark:bg-red-950/10' : ''}`}
+                        onClick={async () => {
+                          if (expandedBc === b.broadcastId) {
+                            setExpandedBc(null);
+                            setBcDetail(null);
+                            return;
+                          }
+                          setExpandedBc(b.broadcastId);
+                          setLoadingBcDetail(true);
+                          try {
+                            const detail = await api.analytics.broadcastPerformanceDetail(b.broadcastId);
+                            setBcDetail(detail);
+                          } catch { setBcDetail(null); }
+                          setLoadingBcDetail(false);
+                        }}
+                      >
+                        <TableCell>
+                          <p className="text-sm max-w-[200px] truncate">{b.contentPreview || b.title || '—'}</p>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="text-xs whitespace-nowrap">
+                            {b.type === 'segment' ? 'セグメント' : b.type === 'scheduled' ? '予約' : '全体'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right text-sm font-medium">{b.recipientCount.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">
+                          <span className={`text-sm font-medium ${b.engagementRate > 10 ? 'text-emerald-600' : ''}`}>
+                            {b.engagementRate}%
+                          </span>
+                          <span className="text-xs text-muted-foreground ml-1">({b.responseCount}人)</span>
+                        </TableCell>
+                        <TableCell className="text-right text-sm">{b.clickCount}</TableCell>
+                        <TableCell className="text-right">
+                          <span className={`text-sm font-medium ${b.blockRate > 2 ? 'text-red-500' : b.blockRate > 1 ? 'text-amber-500' : ''}`}>
+                            {b.blockRate}%
+                          </span>
+                          {b.blockCount > 0 && <span className="text-xs text-muted-foreground ml-1">({b.blockCount}人)</span>}
+                        </TableCell>
+                        <TableCell className="text-right text-sm text-muted-foreground whitespace-nowrap">
+                          {b.sentAt ? formatDateTime(b.sentAt) : '—'}
+                        </TableCell>
+                      </TableRow>
+                      {expandedBc === b.broadcastId && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="bg-muted/30 p-4">
+                            {loadingBcDetail ? (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                                <Loader2 className="h-4 w-4 animate-spin" /> 受信者データを読み込み中...
+                              </div>
+                            ) : bcDetail?.recipients && bcDetail.recipients.length > 0 ? (
+                              <div className="space-y-2">
+                                <p className="text-xs font-medium text-muted-foreground mb-2">受信者のアクション（上位200人）</p>
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5 text-xs">
+                                  {bcDetail.recipients.map((r) => (
+                                    <div key={r.friendId} className="flex items-center gap-1.5 px-2 py-1 rounded border bg-background">
+                                      <span className="truncate flex-1">{r.displayName || r.friendId.slice(0, 8)}</span>
+                                      {r.responded && <Badge variant="outline" className="text-[10px] px-1 py-0 text-emerald-600 border-emerald-300 whitespace-nowrap">返信</Badge>}
+                                      {r.blocked && <Badge variant="outline" className="text-[10px] px-1 py-0 text-red-500 border-red-300 whitespace-nowrap">ブロック</Badge>}
+                                      {!r.responded && !r.blocked && <span className="text-muted-foreground">—</span>}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-muted-foreground py-2">受信者データがありません（移行前の配信は詳細分析不可）</p>
+                            )}
                           </TableCell>
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+                      )}
+                    </React.Fragment>
+                  ))}
+                  {/* Fallback: old broadcasts without performance data */}
+                  {bcPerf.length === 0 && broadcasts.map((b) => {
+                    const text = b.content?.text || JSON.stringify(b.content);
+                    return (
+                      <TableRow key={b.id}>
+                        <TableCell><p className="text-sm max-w-[200px] truncate">{text}</p></TableCell>
+                        <TableCell className="text-center"><StatusBadge status={b.status} /></TableCell>
+                        <TableCell className="text-right text-sm text-muted-foreground">—</TableCell>
+                        <TableCell className="text-right text-sm text-muted-foreground">—</TableCell>
+                        <TableCell className="text-right text-sm text-muted-foreground">—</TableCell>
+                        <TableCell className="text-right text-sm text-muted-foreground">—</TableCell>
+                        <TableCell className="text-right text-sm text-muted-foreground whitespace-nowrap">
+                          {b.sentAt ? formatDateTime(b.sentAt) : b.scheduledAt ? `予約: ${formatDateTime(b.scheduledAt)}` : '-'}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </TabsContent>
 
         {/* Delivery Insight tab */}
