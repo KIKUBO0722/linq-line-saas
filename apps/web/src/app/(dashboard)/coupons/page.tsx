@@ -3,7 +3,7 @@
 import { toast } from 'sonner';
 
 import { useEffect, useState } from 'react';
-import { Ticket, Plus, Trash2, Copy, Check, X, Pencil, Search } from 'lucide-react';
+import { Ticket, Plus, Trash2, Copy, Check, X, Pencil, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import type { Coupon } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,8 @@ export default function CouponsPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<'name' | 'discountValue' | 'usedCount' | 'expiresAt' | 'createdAt'>('createdAt');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   // Form state
   const [formName, setFormName] = useState('');
@@ -212,12 +214,37 @@ export default function CouponsPage() {
     }
   }
 
-  const filteredCoupons = searchQuery
-    ? coupons.filter((c) => {
-        const q = searchQuery.toLowerCase();
-        return c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q);
-      })
-    : coupons;
+  function toggleSort(key: typeof sortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  }
+
+  function SortIcon({ column }: { column: typeof sortKey }) {
+    if (sortKey !== column) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-30" />;
+    return sortDir === 'asc' ? <ArrowUp className="h-3 w-3 ml-1" /> : <ArrowDown className="h-3 w-3 ml-1" />;
+  }
+
+  const filteredCoupons = coupons
+    .filter((c) => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q);
+    })
+    .sort((a, b) => {
+      let cmp = 0;
+      switch (sortKey) {
+        case 'name': cmp = a.name.localeCompare(b.name, 'ja'); break;
+        case 'discountValue': cmp = a.discountValue - b.discountValue; break;
+        case 'usedCount': cmp = a.usedCount - b.usedCount; break;
+        case 'expiresAt': cmp = (a.expiresAt || '').localeCompare(b.expiresAt || ''); break;
+        case 'createdAt': cmp = (a.createdAt || '').localeCompare(b.createdAt || ''); break;
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
 
   return (
     <div className="px-[5%] pt-2 space-y-3">
@@ -379,11 +406,11 @@ export default function CouponsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>クーポン名</TableHead>
+                <TableHead><button onClick={() => toggleSort('name')} className="flex items-center hover:text-foreground transition-colors">クーポン名<SortIcon column="name" /></button></TableHead>
                 <TableHead>コード</TableHead>
-                <TableHead>割引</TableHead>
-                <TableHead>有効期限</TableHead>
-                <TableHead>使用状況</TableHead>
+                <TableHead><button onClick={() => toggleSort('discountValue')} className="flex items-center hover:text-foreground transition-colors">割引<SortIcon column="discountValue" /></button></TableHead>
+                <TableHead><button onClick={() => toggleSort('expiresAt')} className="flex items-center hover:text-foreground transition-colors">有効期限<SortIcon column="expiresAt" /></button></TableHead>
+                <TableHead><button onClick={() => toggleSort('usedCount')} className="flex items-center hover:text-foreground transition-colors">使用状況<SortIcon column="usedCount" /></button></TableHead>
                 <TableHead>ステータス</TableHead>
                 <TableHead className="w-[100px] text-right">操作</TableHead>
               </TableRow>

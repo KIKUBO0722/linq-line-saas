@@ -140,6 +140,7 @@ export default function AnalyticsPage() {
     hourly?: Array<{ hour: number; responseRate: number; sentCount: number }>;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [periodDays, setPeriodDays] = useState(14);
   const [deliveryDate, setDeliveryDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 1);
@@ -153,22 +154,23 @@ export default function AnalyticsPage() {
   const [aiReport, setAiReport] = useState<{ title: string; period: string; sections: Array<{ heading: string; content: string }>; recommendations: string[] } | null>(null);
   const [aiReportLoading, setAiReportLoading] = useState(false);
 
-  useEffect(() => {
+  function loadAnalytics(days: number) {
+    setLoading(true);
     let failCount = 0;
     const track = <T,>(fallback: T) => () => { failCount++; return fallback as T; };
     Promise.all([
       api.analytics.overview().catch(track(null)),
       api.billing.usage().catch(track(null)),
-      api.analytics.daily(14).catch(track(null)),
+      api.analytics.daily(days).catch(track(null)),
       api.analytics.broadcasts().catch(track([])),
       api.analytics.trafficSources().catch(track([])),
       api.urlTracking.list().catch(track([])),
       api.conversions.listGoals().catch(track([])),
       api.analytics.cohort().catch(track(null)),
       api.analytics.kpi().catch(track(null)),
-      api.analytics.ctr().catch(track(null)),
+      api.analytics.ctr(days).catch(track(null)),
       api.analytics.segments().catch(track([])),
-      api.analytics.bestSendTime().catch(track(null)),
+      api.analytics.bestSendTime(days).catch(track(null)),
     ])
       .then(([s, u, d, b, ts, urls, goals, ch, k, ct, seg, bst]) => {
         if (failCount > 0) toast.error('一部のアナリティクスデータの読み込みに失敗しました');
@@ -186,6 +188,10 @@ export default function AnalyticsPage() {
         setBestSendTime(bst as typeof bestSendTime);
       })
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadAnalytics(periodDays);
   }, []);
 
   async function fetchDelivery() {
@@ -217,6 +223,26 @@ export default function AnalyticsPage() {
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold">分析</h1>
             <HelpTip content="LINE公式アカウントの配信・友だち・エンゲージメントなどの成果を確認できるダッシュボードです" />
+            <div className="flex gap-1 ml-3">
+              {[
+                { days: 7, label: '7日' },
+                { days: 14, label: '14日' },
+                { days: 30, label: '30日' },
+                { days: 90, label: '90日' },
+              ].map((p) => (
+                <button
+                  key={p.days}
+                  onClick={() => { setPeriodDays(p.days); loadAnalytics(p.days); }}
+                  className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
+                    periodDays === p.days
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background border-border hover:bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </div>
           <p className="text-sm text-muted-foreground">過去30日間のパフォーマンス</p>
         </div>
