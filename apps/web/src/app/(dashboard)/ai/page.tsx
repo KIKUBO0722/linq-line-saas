@@ -84,6 +84,9 @@ export default function AiPage() {
   // Handoff keywords
   const [newHandoff, setNewHandoff] = useState('');
 
+  // Tab control
+  const [activeTab, setActiveTab] = useState('auto-reply');
+
   // Greeting messages
   const [greetings, setGreetings] = useState<GreetingMessage[]>([]);
   const [greetingForm, setGreetingForm] = useState<{ type: string; name: string; text: string } | null>(null);
@@ -104,7 +107,17 @@ export default function AiPage() {
       const { type, data } = (e as CustomEvent).detail;
       if (type === 'update_ai_config' && data) {
         if (data.systemPrompt) setConfig((prev: AiPageConfig) => ({ ...prev, systemPrompt: data.systemPrompt }));
-        if (data.welcomeMessage) setConfig((prev: AiPageConfig) => ({ ...prev, welcomeMessage: data.welcomeMessage }));
+        if (data.welcomeMessage) {
+          // AI生成のあいさつメッセージ → greetingFormに流し込み、タブ切替
+          setConfig((prev: AiPageConfig) => ({ ...prev, welcomeMessage: data.welcomeMessage }));
+          setActiveTab('greetings');
+          setGreetingForm({
+            type: 'new_follow',
+            name: '新規友だち追加',
+            text: data.welcomeMessage,
+          });
+          toast.success('あいさつメッセージタブにAI生成内容を入力しました。内容を確認して保存してください。');
+        }
         if (data.knowledgeBase && Array.isArray(data.knowledgeBase)) {
           setConfig((prev: AiPageConfig) => ({
             ...prev,
@@ -297,7 +310,7 @@ export default function AiPage() {
         </Card>
       </div>
 
-      <Tabs defaultValue="auto-reply" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="auto-reply">自動応答設定</TabsTrigger>
           <TabsTrigger value="keyword-rules">キーワード応答</TabsTrigger>

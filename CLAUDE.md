@@ -69,14 +69,16 @@ referral, ai-knowledge
 - Japanese UI text throughout (user-facing), English in code/comments
 
 ## Important Patterns
-- **Cron jobs**: `@Cron(EVERY_MINUTE)` in scheduler services (messages, steps, reservations)
+- **Cron jobs**: `@Cron(EVERY_MINUTE)` in scheduler services (messages, steps, reservations)。friends.scheduler.tsのみ`EVERY_6_HOURS`
 - **LINE webhook**: Signature validation required, event deduplication via lineEventId
-- **AI Copilot**: Generates content and inserts directly into forms (Notion AI pattern)
+- **AI Copilot**: Generates content and inserts directly into forms (Notion AI pattern)。よくある質問は定型回答、クリエイティブ生成はAIのハイブリッド構造（方針確定済み）
 - **Empty states**: Custom SVG illustrations with actionable CTAs
 - **Skeleton loaders**: Used on all data-fetching pages
+- **専門用語禁止**: ウォーム→やや停滞、コールド→停滞中、CV→成果、CTR→クリック率、セグメント配信→絞り込み配信。代理店+一般ユーザー両方が使う前提
 
 ## Important Notes
 - **AI Copilot**: 応答失敗時はバックエンドのpageContextMap（ai.service.ts）を確認。全ページにコンテキスト定義が必要
+- **連携ルール**: AI Copilotの`welcomeMessage` → `greetingForm`に流し込み+タブ自動切替（ai/page.tsx）。aiConfigs.welcomeMessageにも保存（フォールバック用）。greetingMessagesテーブルへの保存はユーザーが「保存」押下時
 - **禁止**: UI上の短いラベル・バッジの改行回り込み → whitespace-nowrapで防ぐ
 - **UIレイアウト方針**: カードグリッド禁止。テーブル/リスト型で情報密度を確保。padding/gap最小限。Linear/Notion的なプロフェッショナルUI
 - **segments PATCH**: `PATCH /api/v1/segments/:id` — name, description, tagIds, matchType, excludeTagIds を部分更新可能（UpdateSegmentDto）
@@ -101,9 +103,9 @@ referral, ai-knowledge
 - **engagement-distribution API**: `GET /analytics/engagement-distribution` — フォロー中友だちのティア別人数
 
 ## Current Priorities
-- Fix AI Copilot response failures across all pages
-- Analytics: add revenue metrics as separate page (EC users only)
-- Strengthen analytics (cohort analysis, pseudo-CTR, segment comparison)
-- Add friend timeline (action history)
+- AI Copilot完成度向上（ハイブリッド構造: 定型回答+AI生成の切り分け）
+- あいさつメッセージのAI反映バグ修正（greetingForm連携）
+- 友だちタイムライン（アクション履歴の時系列表示）
+- Analytics: エンゲージメント分布UI追加（Phase 4b）、収益指標の別ページ化
 - Add class-validator DTOs to remaining endpoints
 - Reduce `any` types throughout codebase
